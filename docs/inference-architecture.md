@@ -1,6 +1,6 @@
 # OpenAI-native inference architecture
 
-Status: target architecture, M2.1 offline broker merged and CI-validated; M2.2 stream parsing next. [Architecture](architecture.md) | [Resource budget](resource-budget.md). No live inference is enabled by this document.
+Status: target architecture, M2.1 offline broker merged and CI-validated; M2.2 offline bounded Responses stream parsing in development. [Architecture](architecture.md) | [Resource budget](resource-budget.md). No live inference is enabled by this document.
 
 ## Integration contract
 
@@ -50,3 +50,5 @@ token estimation. Existing CLI/voice remain mock-only; no bypass into a live
 provider exists. See [M2.1 implementation](m2-inference-broker.md) for
 implemented invariants versus remaining request-binding, parsing, account,
 window, consent and live integration gates.
+
+M2.2 adds an opt-in [bounded SSE/JSON replay decoder](m2-responses-replay.md), with admission before reading, strict single-message text event lifecycle, identity/sequence/usage validation and differential typed-broker replay. Completed and validated failed/incomplete usage settle through the same governor. Unknown usage retains reservation. No HTTP, live streaming speech, credentials or real inference; narrow text profile is not full API compatibility. Feature-enabled CI and decoder benchmark pending.

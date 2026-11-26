@@ -24,6 +24,8 @@ jobs:
           cargo fetch --locked
       - name: Test and smoke
         run: bash scripts/test.sh
+      - name: Responses replay tests and parser benchmark
+        run: timeout --kill-after=5s 120s bash scripts/test-responses.sh
       - name: Text-only benchmark
         run: bash scripts/benchmark.sh
 
