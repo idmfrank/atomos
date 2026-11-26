@@ -15,6 +15,7 @@ pub enum Error {
     Missing,
     Conflict,
     WrongOwner,
+    DisclosureDenied,
     UnsupportedSchema,
     Io(std::io::Error),
     Storage(rusqlite::Error),
@@ -33,6 +34,7 @@ impl std::fmt::Display for Error {
             Self::Missing => "record not found",
             Self::Conflict => "record already exists or revision conflicts",
             Self::WrongOwner => "owner scope mismatch",
+            Self::DisclosureDenied => "memory disclosure is not approved",
             Self::UnsupportedSchema => "unsupported or uninitialized AMG schema",
             Self::Io(_) => "local storage I/O failure",
             Self::Storage(_) => "SQLite operation failed",
@@ -99,7 +101,10 @@ pub fn open(dir: &Path, owner: &str) -> Result<SqliteMemory> {
 pub trait MemoryReader {
     fn identity(&self) -> &Identity;
     fn recall(&self, subject: &str, predicate: &str) -> Result<Option<Fact>>;
-    /// Explicit scoped context retrieval; caller authorizes disclosure.
+    /// Revision-specific, expiring demo voice grants; default deny.
+    fn recall_voice(&self, subject: &str, predicate: &str) -> Result<Option<Fact>>;
+    /// Explicit scoped context retrieval; caller authorizes local text disclosure.
+    /// No provider disclosure is authorized by this interface.
     fn retrieve(&self, request: &ContextRequest) -> Result<RankedRetrieval>;
 }
 pub fn open_reader(dir: &Path, owner: &str) -> Result<SqliteReader> {

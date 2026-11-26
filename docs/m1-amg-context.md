@@ -1,6 +1,6 @@
 # M1.4c — Scoped retrieval and context compilation
 
-Status: development branch, CI pending. M1.4b baseline passed [CI](https://github.com/idmfrank/atomos/actions/runs/45755478646).
+Status: merged in PR #7; locked offline CI passed (40 Rust and 10 Python tests). M1.4b baseline passed [CI](https://github.com/idmfrank/atomos/actions/runs/45755478646).
 
 The read-only MemoryReader now accepts an explicit ContextRequest (anchor entity,
 question, required anchor predicates, graph depth and maximum fact count).
@@ -58,3 +58,5 @@ assertions, sensitivity classification, authenticated access, prompt injection
 resistance at a real provider boundary, measured token savings, retrieval
 recall/precision at scale, active SQLite latency/power and engine comparison
 remain unvalidated. M1.4d/e and M2 retain their existing gates.
+
+Post-merge [CI run 45796667551](https://github.com/idmfrank/atomos/actions/runs/45796667551) passed the new retrieval and scoped preview tests and prior smoke checks. No-store release CLI: 462,552 bytes; peak RSS 2,628 KiB. Active database and token savings remain unmeasured.

@@ -46,3 +46,7 @@ See [AMG architecture](amg-architecture.md). Explicit owner scope and authentica
 ### Verified M1.4b boundary
 
 Conversational access is opt-in and read-only both at the typed Rust interface and SQLite open mode. Voice accepts only demonstration owner preference text fields (favorite_color, favorite_food, favorite_music) and display name; this is not a sensitivity classifier or authenticated authorization. Anyone in earshot can hear responses. Text administration trusts the OS account; owner scope is not authentication. No real private data yet. Missing stores, wrong scope, stale finals and mutation requests are covered by regression tests; no automatic learning or remote inference. Corrected/deleted values are re-read on subsequent turns, but already spoken content is not retractable. Remaining controls include authenticated scope/sensitivity policy, encryption, full source/derived-data deletion, backup/restore, crash/disk-full and aggregate quota validation. See [M1.4b](m1-amg-conversation.md).
+
+### M1.4d development
+
+Schema v2 adds default-deny revision-specific expiring voice grants, explicit revoke and grant retirement on correction/deletion. Restore never carries grants. Logical backup/restore preserves scope, identity and history but is plaintext and not authenticated; trusted private directory only. Explicit new-directory restore may resurrect older deleted data; retention reconciliation and encrypted backup/key recovery remain gates. No provider disclosure, no real private data. See [M1.4d](m1-amg-recovery.md).

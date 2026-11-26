@@ -107,7 +107,8 @@ impl Conversation {
             return VOICE_DENIED.into();
         }
         let reader=self.reader.as_ref().expect("reader checked");
-        match reader.recall(&subject,&p) {
+        let result=if self.channel==Channel::Voice {reader.recall_voice(&subject,&p)} else {reader.recall(&subject,&p)};
+        match result {
             Ok(Some(f)) if f.subject==subject && f.predicate==p && f.superseded_at.is_none()=>{
                 if self.channel==Channel::Voice && !matches!(&f.value,Value::Text(_)) { return VOICE_DENIED.into(); }
                 let Some(value)=speak_value(f.value) else {return UNAVAILABLE.into();};
@@ -119,6 +120,7 @@ impl Conversation {
             }
             Ok(Some(_))=>UNAVAILABLE.into(),
             Ok(None)=>NO_FACT.into(),
+            Err(atomos_memory::Error::DisclosureDenied)=>VOICE_DENIED.into(),
             Err(_)=>UNAVAILABLE.into(),
         }
     }

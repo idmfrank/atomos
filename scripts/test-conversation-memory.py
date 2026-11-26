@@ -25,6 +25,8 @@ class ConversationMemory(unittest.TestCase):
         self.admin("init", "Aster")
         self.admin("remember", "owner", "favorite_color", "text", value="indigo")
         self.admin("remember", "owner", "favorite_food", "text", value="pasta")
+        self.grant("favorite_color")
+        self.grant("favorite_food")
         self.admin("remember", "owner", "private_note", "text", value="synthetic confidential note")
         self.admin("entity", "project", "Project", "project")
         self.admin("remember", "project", "status", "text", value="active")
@@ -35,6 +37,10 @@ class ConversationMemory(unittest.TestCase):
                            input=value, text=True, capture_output=True, timeout=5)
         self.assertEqual(p.returncode, 0, p.stderr)
         return p.stdout
+
+    def grant(self, predicate):
+        revision = self.admin("recall", "owner", predicate).split()[0].split("=")[1]
+        self.admin("voice-allow", "owner", predicate, revision, "3600")
 
     def cli(self, text, *flags):
         p = subprocess.run([str(BIN), "--memory", str(self.db), "demo", *flags],
@@ -79,6 +85,8 @@ class ConversationMemory(unittest.TestCase):
         self.assertIn("indigo", self.voice(b, "what is my favorite color"))
         revision = self.admin("recall", "owner", "favorite_color").split()[0].split("=")[1]
         self.admin("correct", "owner", "favorite_color", revision, "text", value="teal")
+        self.assertIn("requires the local text interface", self.voice(b, "what is my favorite color"))
+        self.grant("favorite_color")
         self.assertIn("teal", self.voice(b, "what is my favorite color"))
         self.assertIn("pasta", self.voice(b, "and favorite food"))
         self.assertIn("requires the local text interface", self.voice(b, "recall owner private_note"))
