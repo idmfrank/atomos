@@ -162,3 +162,17 @@ test('model catalog preserves listed ordering and denies duplicates, unsafe name
   assert.throws(()=>catalog({models:[{...a,display_name:'bad\nname'}]}),/invalid_model_entry/);
   assert.throws(()=>catalog({data:[]}),/invalid_model_catalog/);
 });
+
+test('signed duplicate claims and headers rejected even with valid RSA signature',()=>{
+  const a=begin(hostId(),1455);
+  const body=enc({alg:'RS256',kid:'synthetic'})+'.'+Buffer.from(JSON.stringify(claims(a)).replace(/}$/,',"sub":"other"}')).toString('base64url');
+  const token=body+'.'+sign('RSA-SHA256',Buffer.from(body),privateKey).toString('base64url');
+  assert.throws(()=>verifyIdentity(token,jwks,client,a.nonce,now),/invalid_jwt_object/);
+});
+test('explicit returning plan consent uses existing registration',()=>{
+  const a=begin(hostId(),1455,{client_id:client,subject,status:'signed_out',scopes:[]});
+  const u=new URL(a.url);
+  assert.equal(u.searchParams.get('prompt'),'consent');
+  assert.equal(u.searchParams.get('client_id'),client);
+  assert.equal(u.searchParams.has('agent_name_hint'),false);
+});
