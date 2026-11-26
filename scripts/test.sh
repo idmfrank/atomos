@@ -12,3 +12,4 @@ grep -Fxq 'Simulated inference calls: 1' <<< "$output"
 echo 'PASS: workspace tests and offline CLI smoke test'
 bash scripts/test-voice.sh
 python3 scripts/test-streaming-voice.py
+python3 scripts/test-live-voice.py

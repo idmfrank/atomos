@@ -22,3 +22,23 @@ The deterministic fixture tests use generated PCM amplitudes and mock transcript
 ## Next gate
 
 Use the optional local Sherpa-ONNX adapter to verify real streaming ASR and warm TTS, and measure performance on the selected host. Keep the default half-duplex path until the physical AEC reference is verified. Replace the energy gate with a tested speech VAD and local wake-word engine. Instrument true acoustic onset/offset and device playback before claiming barge-in latency. No automatic always-listening service or real inference yet.
+
+## Optional hardware adapter
+
+Use an owner-installed, compatible Sherpa-ONNX Python package (the adapter uses OnlineRecognizer.from_transducer, get_result_all and GenerationConfig), NumPy and python-sounddevice/PortAudio. Record exact package versions, model hashes and licenses before tests. The candidate [streaming transducer API](https://github.com/k2-fsa/sherpa-onnx/blob/master/sherpa-onnx/python/sherpa_onnx/online_recognizer.py) and [Kokoro configuration](https://k2-fsa.github.io/sherpa/onnx/tts/pretrained_models/kokoro.html) are upstream references; packages and models are not bundled or installed automatically. Test on Linux x86-64. This bridge is a development adapter, not a permanent Python dependency for the OS.
+
+    cargo build --release --locked --offline -p atomos-cli
+    python3 scripts/live-voice.py --help
+    python3 scripts/live-voice.py \
+      --encoder /models/asr/encoder.onnx \
+      --decoder /models/asr/decoder.onnx \
+      --joiner /models/asr/joiner.onnx \
+      --asr-tokens /models/asr/tokens.txt \
+      --tts-model /models/kokoro/model.onnx \
+      --tts-voices /models/kokoro/voices.bin \
+      --tts-tokens /models/kokoro/tokens.txt \
+      --tts-data-dir /models/kokoro/espeak-ng-data
+
+Paths are examples; use a compatible model release's actual files. Some voices require --tts-lexicon. Set device IDs explicitly where necessary. The adapter loads both models once, creates a new ASR stream per turn, feeds frames during speech, and runs synthesis on a separate warm worker. Kokoro currently generates an entire bounded utterance before playback, not incremental synthesis. Press Enter to activate and Ctrl+C to cancel. The session ends after eight seconds of armed silence or the configured wall-clock limit. Microphone callbacks are bounded and overflows abort rather than committing partial audio. During playback the default half-duplex controller discards capture frames. Only pass --aec-verified after measuring actual near-end speech and playback echo; the flag is an operator assertion, not AEC implementation. Model synthesis may not be cancellable until the native call returns; cancelled audio is discarded, but actual device stop latency remains unmeasured. The adapter logs coarse monotonic stage timings, not physical end-to-end response or acoustic barge-in latency.
+
+CI uses fake recognition/synthesis for the adapter boundary and actual Rust stdio IPC; it does not install speech dependencies or test native devices. The adapter itself must be verified with the specified engines and model releases on real hardware before claiming voice quality. No remote inference or spending is enabled.
