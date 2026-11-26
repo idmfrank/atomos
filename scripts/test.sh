@@ -18,3 +18,6 @@ timeout --kill-after=5s 30s python3 -u scripts/test-live-voice.py -v
 
 echo 'Running AMG process-level persistence tests'
 timeout --kill-after=5s 30s bash scripts/test-memory.sh
+
+echo 'Running conversational AMG integration tests'
+timeout --kill-after=5s 40s python3 -u scripts/test-conversation-memory.py -v

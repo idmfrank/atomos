@@ -249,3 +249,45 @@ impl MemoryStore for SqliteMemory {
         Ok(out)
     }
 }
+
+/// Separate read-only SQLite connection for the conversational runtime.
+/// Never initializes a store, runs a migration or applies write pragmas.
+pub struct SqliteReader {
+    conn: Connection,
+    identity: Identity,
+}
+impl SqliteReader {
+    pub fn open(dir: &Path, owner: &str) -> Result<Self> {
+        key(owner)?;
+        private_dir(dir)?;
+        let path = dir.join("memory.db");
+        private_file(&path)?;
+        let conn = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX)?;
+        conn.busy_timeout(Duration::from_millis(100))?;
+        conn.execute_batch("PRAGMA query_only=ON; PRAGMA cache_size=-2048;")?;
+        let app: i64 = conn.query_row("PRAGMA application_id",[],|r| r.get(0))?;
+        let version: i64 = conn.query_row("PRAGMA user_version",[],|r| r.get(0))?;
+        if app != APP_ID || version != 1 { return Err(Error::UnsupportedSchema); }
+        let identity = conn.query_row("SELECT agent_id,owner_scope,display_name,created_at FROM identity WHERE singleton=1",
+            [], |r| Ok(Identity { agent_id:r.get(0)?,owner_scope:r.get(1)?,display_name:r.get(2)?,created_at:r.get(3)? }))?;
+        if identity.owner_scope != owner { return Err(Error::WrongOwner); }
+        text(&identity.display_name,128)?;
+        Ok(Self { conn, identity })
+    }
+}
+impl crate::MemoryReader for SqliteReader {
+    fn identity(&self) -> &Identity { &self.identity }
+    fn recall(&self, s:&str,p:&str) -> Result<Option<Fact>> {
+        key(p)?;
+        let o=&self.identity.owner_scope;
+        let tx=self.conn.unchecked_transaction()?;
+        let id=match entity_id(&tx,o,s) {
+            Ok(id)=>id,
+            Err(Error::Missing)=>return Ok(None),
+            Err(e)=>return Err(e),
+        };
+        let fact=current(&tx,o,id,p)?;
+        tx.commit()?;
+        Ok(fact)
+    }
+}
