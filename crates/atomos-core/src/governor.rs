@@ -170,14 +170,14 @@ impl Governor {
                 self.entries.insert(id, Entry { priority, amount, settled: false });
                 self.next_id = id.checked_add(1).ok_or(Error::Corrupt)?;
             }
-            ["S", id, actual] => {
+            [kind @ ("S" | "X"), id, actual] => {
                 let id = number(id)?;
                 let actual = number(actual)?;
                 let entry = self.entries.get_mut(&id).ok_or(Error::Corrupt)?;
                 if entry.settled {
                     return Err(Error::Corrupt);
                 }
-                if actual > entry.amount { self.halted = true; }
+                if *kind == "X" || actual > entry.amount { self.halted = true; }
                 self.total = self.total.checked_sub(entry.amount)
                     .and_then(|v| v.checked_add(actual)).ok_or(Error::Corrupt)?;
                 if entry.priority == Priority::Background {
@@ -248,6 +248,11 @@ impl Governor {
     /// Unknown/cancelled usage remains charged at its reserved amount.
     /// An overrun is recorded, even when it exceeds the policy limit.
     pub fn settle(&mut self, reservation: Reservation, actual: u64) -> Result<(), Error> {
+        self.settle_with_halt(reservation, actual, false)
+    }
+
+    /// Atomic settlement and persistent halt for a component-cap violation.
+    pub(crate) fn settle_with_halt(&mut self, reservation: Reservation, actual: u64, halt: bool) -> Result<(), Error> {
         if !self.healthy {
             return Err(Error::Unavailable);
         }
@@ -265,6 +270,7 @@ impl Governor {
             self.halt()?;
             return Err(Error::Unavailable);
         }
-        self.persist(&format!("S {} {actual}", reservation.id))
+        let kind = if halt { "X" } else { "S" };
+        self.persist(&format!("{kind} {} {actual}", reservation.id))
     }
 }

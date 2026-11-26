@@ -1,6 +1,6 @@
 # OpenAI-native inference architecture
 
-Status: proposed, M0. [Architecture](architecture.md) | [Resource budget](resource-budget.md). No live inference is enabled by this document.
+Status: target architecture, M2.1 offline broker in development. [Architecture](architecture.md) | [Resource budget](resource-budget.md). No live inference is enabled by this document.
 
 ## Integration contract
 
@@ -40,4 +40,13 @@ M1: deterministic mock provider, no network, tests for reservation concurrency, 
 
 ## Implementation status
 
-M1.1–M1.4b automated tests passed. The runtime can answer exact read-only AMG recall locally; no model call for those queries, missing facts or storage failures. M1.4a has data-only exact context formatting and administrative graph/FTS retrieval. M1.4c will extend relevance-ranked read-only retrieval and context compilation; no live dispatch. No live broker, authorized OAuth integration, policy-aware final context compiler, calendar/rolling ledger or subscription eligibility validation yet. Governor accounting remains separate until invariants can be preserved. See [README](../README.md).
+M1.1–M1.4f merged and automated/scale validation passed. AMG remains local-only.
+SQLite + FTS5 retained for M2 development; selective retrieval and memory
+benchmarks pass on CI; no cross-engine superiority claim. M2.1 introduces
+an isolated typed synthetic replay broker, durable admission/settlement,
+conservative unknown usage, persistent overrun halt and local-first
+resolution. No live transport, OAuth, private-memory context, or actual
+token estimation. Existing CLI/voice remain mock-only; no bypass into a live
+provider exists. See [M2.1 implementation](m2-inference-broker.md) for
+implemented invariants versus remaining request-binding, parsing, account,
+window, consent and live integration gates.

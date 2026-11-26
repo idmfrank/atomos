@@ -127,12 +127,11 @@ impl Broker {
                     // Reject impossible fixture arithmetic before appending a
                     // settlement that could make the journal unreplayable.
                     if actual>1_000_000_000{return Err(Error::UnknownUsage);}
-                    self.governor.settle(permit,actual).map_err(|_|Error::LedgerUnavailable)?;
-                    if actual>reserved||usage.input>input_bound||usage.output>request.max_output{
-                        // Record authoritative usage first, then persist a halt.
-                        // Total overruns latch during replay even if halt fails.
+                    let overrun=actual>reserved||usage.input>input_bound||usage.output>request.max_output;
+                    // A single durable record settles and latches a violation.
+                    self.governor.settle_with_halt(permit,actual,overrun).map_err(|_|Error::LedgerUnavailable)?;
+                    if overrun{
                         self.suspended=true;
-                        self.governor.halt().map_err(|_|Error::LedgerUnavailable)?;
                         return Err(Error::UsageOverrun);
                     }
                     if output.trim().is_empty()||usage.output==0{return Err(Error::InvalidStream);}
