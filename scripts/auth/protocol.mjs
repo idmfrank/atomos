@@ -80,7 +80,7 @@ export function verifyIdentity(token,jwks,id,nonce,now=Math.floor(Date.now()/100
   require(valid,'invalid_signature');
   const c=object(p);
   const aud=typeof c.aud==='string'?[c.aud]:c.aud;
-  require(c.iss===ISSUER&&Array.isArray(aud)&&aud.length===1&&aud[0]===id&&(!c.azp||c.azp===id),'identity_issuer_or_audience');
+  require(c.iss===ISSUER&&Array.isArray(aud)&&aud.length===1&&aud[0]===id&&(c.azp===undefined||c.azp===id),'identity_issuer_or_audience');
   require(Number.isSafeInteger(c.exp)&&Number.isSafeInteger(c.iat)&&c.exp>now&&c.iat<=now+5&&c.exp>c.iat&&c.exp-c.iat<=86400,'identity_expired_or_time');
   if(c.nbf!==undefined)require(Number.isSafeInteger(c.nbf)&&c.nbf<=now+5,'identity_not_yet_valid');
   if(nonce!==null)require(eq(c.nonce,nonce),'nonce_mismatch');

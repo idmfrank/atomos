@@ -1,6 +1,6 @@
 # M2.3 — Synthetic account authorization boundary
 
-Status: draft; CI pending. Live inference is unconditionally disabled.
+Status: merged PR #14; post-merge CI and full scale passed. Live inference is unconditionally disabled.
 No OAuth exchange, real account grant, access token, refresh token,
 credential store, HTTP client or private AMG context is implemented.
 
@@ -116,3 +116,5 @@ Next: complete security/authorization gates before M2.4. Separate
 owner-approved supported OAuth experiment and model catalog only after
 eligibility confirmed. No live inference until spending and generation
 bound issues resolved and transport/credential controls implemented.
+
+Verified [post-merge CI](https://github.com/idmfrank/atomos/actions/runs/45859290355): 86 distinct Rust + 11 Python tests, 11 authorization tests including 2 feature-only, no real provider calls. [Full AMG scale](https://github.com/idmfrank/atomos/actions/runs/45859954016) passed all 3 sizes and recovery. M2.3b develops [auth-only utility](m2-official-sign-in.md), no live inference.

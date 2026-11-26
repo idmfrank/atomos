@@ -10,12 +10,13 @@ async function request(url,form=null,empty=false){
   require(ALLOWED.has(url)&&process.env.NODE_TLS_REJECT_UNAUTHORIZED!=='0','unsafe_endpoint_or_tls');
   const r=await fetch(url,{method:form?'POST':'GET',body:form??undefined,redirect:'error',signal:AbortSignal.timeout(15000),headers:form?{'content-type':'application/x-www-form-urlencoded'}:{accept:'application/json'}});
   if(!r.ok){await r.body?.cancel();throw new AuthError('auth_http_'+r.status);}
-  if(empty){require(r.status===200,'revocation_not_confirmed');await r.body?.cancel();return;}
+  if(empty){require(r.status===200,'revocation_not_confirmed');for await(const b of r.body??[]){require(b.length===0,'revocation_not_confirmed');}return;}
   let n=0;const chunks=[];
   for await(const b of r.body){n+=b.length;require(n<=MAX,'auth_response_limit');chunks.push(Buffer.from(b));}
   return JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(Buffer.concat(chunks,n)));
 }
 async function signIn(store){
+  require(!store.pendingRegistration,'registration_pending_manual_recovery');
   require(!store.profile||store.profile.status==='signed_out','sign_out_first');
   const cfg=discovery(await request(DISCOVERY));
   // User opens a local start link; authorization URL (possibly ID-token
@@ -47,6 +48,7 @@ async function signIn(store){
     start='/continue/'+randomBytes(24).toString('base64url');
     console.log('Continue with ChatGPT: http://127.0.0.1:'+server.address().port+start);
     const c=await result;
+    if(!store.profile)store.markRegistration(c.client_id);
     const t=await request(cfg.token_endpoint,c.form);
     const jwks=await request(cfg.jwks_uri);
     const record=tokenRecord(t,attempt,c.client_id,jwks,store.host);
@@ -57,6 +59,7 @@ async function signIn(store){
       catch{console.log('Remote revocation unconfirmed; disconnect in ChatGPT Settings.');}
     }
     store.save(record);
+    store.finishRegistration();
     console.log(planGranted(record)?'Signed in; plan scope granted. Live inference remains disabled.':'Identity verified; plan permission incomplete. Live inference disabled.');
   }finally{clearTimeout(timer);server.closeAllConnections();await new Promise(ok=>server.close(ok));}
 }
@@ -92,7 +95,7 @@ async function main(){
     if(cmd==='refresh')return refresh(store);
     if(cmd==='sign-out')return signOut(store);
     const p=store.profile;
-    console.log(JSON.stringify({registration:!!p,status:p?.status??'unregistered',plan_scope_granted:!!p&&planGranted(p),access_expired:p?.status==='active'?p.expires_at<=Math.floor(Date.now()/1000):null,live_inference_enabled:false}));
+    console.log(JSON.stringify({registration:!!p,pending_registration:store.pendingRegistration,status:p?.status??'unregistered',plan_scope_granted:!!p&&planGranted(p),access_expired:p?.status==='active'?p.expires_at<=Math.floor(Date.now()/1000):null,live_inference_enabled:false}));
   });
 }
 main().catch(e=>{console.error(e instanceof AuthError?e.message:'Authentication operation failed; inspect local permissions and documented recovery without sharing credentials.');process.exitCode=1;});

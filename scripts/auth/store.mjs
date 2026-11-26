@@ -45,7 +45,8 @@ export function withStore(dir,action){ // synchronous acquisition, async lifetim
       let profile=exists(pp)?openRead(pp):null;
       if(profile)require(profile.version===1&&profile.host===host&&clientId(profile.client_id)&&opaque(profile.subject,1024)&&['active','signed_out','pending'].includes(profile.status)&&Array.isArray(profile.scopes),'invalid_profile');
       if(profile?.status==='active')require(planGranted(profile)&&opaque(profile.access_token,65536)&&opaque(profile.refresh_token,65536)&&opaque(profile.id_token,65536)&&opaque(profile.nonce,128)&&Number.isSafeInteger(profile.expires_at),'invalid_active_profile');
-      const store={host,get profile(){return profile;},save(p){require(p.host===host&&clientId(p.client_id)&&opaque(p.subject,1024)&&(!profile||(p.client_id===profile.client_id&&p.subject===profile.subject)),'profile_binding');atomic(dir,'profile.json',p);profile=p;}};
+      const pending=path.join(dir,'registration-pending.json');
+      const store={host,get profile(){return profile;},get pendingRegistration(){return exists(pending);},markRegistration(id){require(clientId(id)&&!exists(pending),'registration_pending');atomic(dir,'registration-pending.json',{client_id:id});},finishRegistration(){if(exists(pending)){fs.unlinkSync(pending);syncDir(dir);}},save(p){require(p.host===host&&clientId(p.client_id)&&opaque(p.subject,1024)&&(!profile||(p.client_id===profile.client_id&&p.subject===profile.subject)),'profile_binding');atomic(dir,'profile.json',p);profile=p;}};
       return await action(store);
     }finally{fs.rmdirSync(lock);syncDir(dir);}
   })();
