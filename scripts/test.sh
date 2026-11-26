@@ -11,3 +11,7 @@ grep -Fxq 'Mock response: explain entropy' <<< "$output"
 grep -Fxq 'Simulated inference calls: 1' <<< "$output"
 echo 'PASS: workspace tests and offline CLI smoke test'
 bash scripts/test-voice.sh
+echo 'Running streaming IPC regression tests'
+timeout --kill-after=5s 30s python3 -u scripts/test-streaming-voice.py -v
+echo 'Running live adapter boundary tests'
+timeout --kill-after=5s 30s python3 -u scripts/test-live-voice.py -v

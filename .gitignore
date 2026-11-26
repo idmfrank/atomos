@@ -3,3 +3,6 @@
 *.pcm
 *.wav
 .env
+
+__pycache__/
+*.pyc

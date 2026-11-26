@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+mod voice_events;
 use atomos_core::turn::{TurnManager, MAX_TRANSCRIPT_BYTES};
 use atomos_core::{respond, MockInference};
 use std::io::{self, BufRead, Read, Write};
@@ -29,12 +30,22 @@ fn answer(provider: &mut MockInference, turns: &mut TurnManager, line: &str) -> 
 }
 
 fn main() -> io::Result<()> {
+    let args: Vec<_> = std::env::args_os().skip(1).collect();
+
+    if args.len() == 1 && args[0] == "--voice-events" {
+        return voice_events::run(false);
+    }
+    if args.len() == 2 && args[0] == "--voice-events" && args[1] == "--aec-verified" {
+        return voice_events::run(true);
+    }
+
+    // Each mode owns its stdio locks. Dispatch voice mode before acquiring
+    // any locks here: the voice coordinator reads stdin itself.
     let mut provider = MockInference::default();
     let mut turns = TurnManager::default();
     let stdin = io::stdin();
     let mut input = stdin.lock();
     let mut out = io::stdout().lock();
-    let args: Vec<_> = std::env::args_os().skip(1).collect();
 
     // Plain response only: the local audio harness uses this interface.
     if args.len() == 1 && args[0] == "--single-turn" {
@@ -48,7 +59,7 @@ fn main() -> io::Result<()> {
         return Ok(());
     }
     if !args.is_empty() {
-        return Err(io::Error::new(io::ErrorKind::InvalidInput, "Usage: atomos [--single-turn]"));
+        return Err(io::Error::new(io::ErrorKind::InvalidInput, "Usage: atomos [--single-turn | --voice-events [--aec-verified]]"));
     }
 
     writeln!(out, "AtomOS M1: offline mock (no OpenAI calls)")?;
