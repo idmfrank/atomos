@@ -82,6 +82,7 @@ pub struct Governor {
     total: u64,
     background: u64,
     healthy: bool,
+    halted: bool,
 }
 
 impl Governor {
@@ -131,6 +132,7 @@ impl Governor {
             total: 0,
             background: 0,
             healthy: true,
+            halted: false,
         };
         for line in log.lines() {
             governor.replay(line)?;
@@ -168,13 +170,14 @@ impl Governor {
                 self.entries.insert(id, Entry { priority, amount, settled: false });
                 self.next_id = id.checked_add(1).ok_or(Error::Corrupt)?;
             }
-            ["S", id, actual] => {
+            [kind @ ("S" | "X"), id, actual] => {
                 let id = number(id)?;
                 let actual = number(actual)?;
                 let entry = self.entries.get_mut(&id).ok_or(Error::Corrupt)?;
                 if entry.settled {
                     return Err(Error::Corrupt);
                 }
+                if *kind == "X" || actual > entry.amount { self.halted = true; }
                 self.total = self.total.checked_sub(entry.amount)
                     .and_then(|v| v.checked_add(actual)).ok_or(Error::Corrupt)?;
                 if entry.priority == Priority::Background {
@@ -184,6 +187,7 @@ impl Governor {
                 entry.amount = actual;
                 entry.settled = true;
             }
+            ["H"] => { self.halted = true; }
             _ => return Err(Error::Corrupt),
         }
         Ok(())
@@ -212,7 +216,7 @@ impl Governor {
         if !self.healthy {
             return Err(Error::Unavailable);
         }
-        if amount == 0 || amount > self.limits.per_request {
+        if self.halted || amount == 0 || amount > self.limits.per_request {
             return Err(Error::Denied);
         }
         let projected = self.total.checked_add(amount).ok_or(Error::Denied)?;
@@ -234,10 +238,21 @@ impl Governor {
         Ok(Reservation { instance: self.instance, id })
     }
 
+    /// Fail closed after an observed cap violation. Replay preserves the halt.
+    pub(crate) fn halt(&mut self) -> Result<(), Error> {
+        if self.halted { return Ok(()); }
+        self.persist("H")
+    }
+
     /// Only authoritative, final usage may settle a reservation.
     /// Unknown/cancelled usage remains charged at its reserved amount.
     /// An overrun is recorded, even when it exceeds the policy limit.
     pub fn settle(&mut self, reservation: Reservation, actual: u64) -> Result<(), Error> {
+        self.settle_with_halt(reservation, actual, false)
+    }
+
+    /// Atomic settlement and persistent halt for a component-cap violation.
+    pub(crate) fn settle_with_halt(&mut self, reservation: Reservation, actual: u64, halt: bool) -> Result<(), Error> {
         if !self.healthy {
             return Err(Error::Unavailable);
         }
@@ -248,6 +263,14 @@ impl Governor {
         if entry.settled {
             return Err(Error::Unknown);
         }
-        self.persist(&format!("S {} {actual}", reservation.id))
+        // Preflight arithmetic before writing a record replay cannot apply.
+        if self.total.checked_sub(entry.amount).and_then(|v|v.checked_add(actual)).is_none()
+            || (entry.priority==Priority::Background &&
+                self.background.checked_sub(entry.amount).and_then(|v|v.checked_add(actual)).is_none()) {
+            self.halt()?;
+            return Err(Error::Unavailable);
+        }
+        let kind = if halt { "X" } else { "S" };
+        self.persist(&format!("{kind} {} {actual}", reservation.id))
     }
 }

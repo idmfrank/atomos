@@ -117,3 +117,18 @@ fn reservation_cannot_settle_another_ledger_or_reopened_instance() {
     assert!(matches!(ga.settle(ra, 0), Err(Error::Unknown)));
     assert_eq!(ga.charged(), 40);
 }
+
+
+#[test]
+fn reservation_overrun_halts_even_below_total_and_survives_replay(){
+    let dir=Fixture::new();
+    let mut g=Governor::open(&dir.0,limits()).unwrap();
+    let r=g.reserve(Priority::Interactive,20).unwrap();
+    g.settle(r,21).unwrap();
+    assert_eq!(g.charged(),21);
+    assert!(matches!(g.reserve(Priority::Interactive,1),Err(Error::Denied)));
+    drop(g);
+    let mut g=Governor::open(&dir.0,limits()).unwrap();
+    assert_eq!(g.charged(),21);
+    assert!(matches!(g.reserve(Priority::Interactive,1),Err(Error::Denied)));
+}

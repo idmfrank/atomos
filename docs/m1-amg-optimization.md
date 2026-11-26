@@ -1,6 +1,6 @@
 # M1.4f — Retrieval optimization, streaming recovery and verification
 
-Status: development branch, automated and scale validation pending.
+Status: merged in PR #11; post-merge and combined scale validation passed.
 
 ## Reference baseline and decision
 
@@ -103,3 +103,7 @@ recovery and independent target-device testing. Later M2: one provider
 response replayed through local parsers, never duplicated inference or
 side effects. Memory loop: AGENTS.md rules, regression tests and recorded
 decision history. No autonomous production shadowing or private telemetry.
+
+## Verified M1.4f results
+
+[Post-merge CI](https://github.com/idmfrank/atomos/actions/runs/45807144684): 51 Rust and 11 Python tests passed; text-only release CLI 466,464 bytes, peak RSS 2,796 KiB. [Scale CI](https://github.com/idmfrank/atomos/actions/runs/45807347862): 90 common-term comparisons, zero mismatches/reference errors, 100% fixture precision/recall and 300/300 complete selective packets. At 100k entities, reference p95 60.7457 ms vs candidate 5.9669 ms, selective context p95 0.4233 ms, active CLI RSS 4,152 KiB vs 2,568 KiB. Export 600,005 records / 85,222,570 bytes in 3.209 s, restore 18.202 s and verify 2.467 s, recovery RSS 9,156 KiB. 1k and 10k recovery passed too. No hard quota, target-device or cryptographic recovery certification. Retain SQLite for M2; no equivalent alternative-engine benchmarks.

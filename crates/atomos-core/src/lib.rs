@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 pub mod audio;
+pub mod broker;
 pub mod governor;
 pub mod turn;
 pub mod voice;
