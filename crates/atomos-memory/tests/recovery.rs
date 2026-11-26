@@ -73,7 +73,7 @@ fn explicit_v1_migration_preserves_facts_and_rejects_wrong_scope(){
     let fact=db.remember("owner","favorite_color",v("blue")).unwrap();
     let identity=db.identity().clone();drop(db);
     let raw=rusqlite::Connection::open(path.join("memory.db")).unwrap();
-    raw.execute_batch("DROP TRIGGER voice_grant_retire; DROP TABLE voice_grant; PRAGMA user_version=1;").unwrap();drop(raw);
+    raw.execute_batch("DROP TRIGGER assertion_delete_source; DROP INDEX assertion_source; DROP INDEX assertion_supersedes; DROP TRIGGER voice_grant_retire; DROP TABLE voice_grant; PRAGMA user_version=1;").unwrap();drop(raw);
     assert!(matches!(open(&path,"demo"),Err(Error::UnsupportedSchema)));
     assert!(matches!(SqliteMemory::migrate(&path,"wrong"),Err(Error::WrongOwner)));
     SqliteMemory::migrate(&path,"demo").unwrap();
@@ -96,4 +96,51 @@ fn malformed_backup_and_corrupt_index_fail_closed(){
     raw.execute("DELETE FROM fact_search",[]).unwrap();drop(raw);
     assert!(db.verify().is_err());
     assert!(db.export_logical(&f.0.join("bad.amg")).is_err());
+}
+
+
+#[test]
+fn explicit_v2_migration_preserves_voice_grant_and_adds_indexes(){
+    let f=Fixture::new();let path=f.0.join("db");
+    let mut db=init(&path,"demo","Aster").unwrap();
+    let fact=db.remember("owner","favorite_color",v("blue")).unwrap();
+    db.allow_voice("owner","favorite_color",fact.revision,3600).unwrap();
+    let identity=db.identity().clone();drop(db);
+    let raw=rusqlite::Connection::open(path.join("memory.db")).unwrap();
+    raw.execute_batch("DROP TRIGGER assertion_delete_source; DROP INDEX assertion_source; DROP INDEX assertion_supersedes; PRAGMA user_version=2;").unwrap();drop(raw);
+    assert!(matches!(open(&path,"demo"),Err(Error::UnsupportedSchema)));
+    assert!(matches!(SqliteMemory::migrate(&path,"wrong"),Err(Error::WrongOwner)));
+    SqliteMemory::migrate(&path,"demo").unwrap();
+    let mut db=open(&path,"demo").unwrap();
+    assert_eq!(db.identity(),&identity);
+    assert_eq!(open_reader(&path,"demo").unwrap().recall_voice("owner","favorite_color").unwrap(),Some(fact));
+    let raw=rusqlite::Connection::open(path.join("memory.db")).unwrap();
+    let n:i64=raw.query_row("SELECT count(*) FROM sqlite_master WHERE name IN ('assertion_source','assertion_supersedes','assertion_delete_source')",[],|r|r.get(0)).unwrap();
+    assert_eq!(n,3);
+    db.verify().unwrap();
+}
+#[test]
+fn targeted_forget_preserves_shared_and_unrelated_sources(){
+    let f=Fixture::new();let path=f.0.join("db");
+    let mut db=init(&path,"demo","Aster").unwrap();
+    let a=db.remember("owner","first",v("one")).unwrap();
+    let b=db.remember("owner","second",v("two")).unwrap();
+    let c=db.remember("owner","third",v("three")).unwrap();
+    // Synthetic imported/shared provenance fixture: public writer normally
+    // allocates one source per assertion. Preserve consistency of timestamps.
+    let raw=rusqlite::Connection::open(path.join("memory.db")).unwrap();
+    raw.execute("UPDATE assertion SET source_id=?1,recorded_at=?2 WHERE id=?3",rusqlite::params![a.source_id,a.recorded_at,b.revision]).unwrap();
+    raw.execute("DELETE FROM source WHERE id=?1",[b.source_id]).unwrap();
+    let source_exists=|id:i64|->bool{
+        raw.query_row("SELECT EXISTS(SELECT 1 FROM source WHERE id=?1)",[id],|r|r.get(0)).unwrap()
+    };
+    assert_eq!(db.forget("owner","first").unwrap(),1);
+    assert!(source_exists(a.source_id));assert!(source_exists(c.source_id));
+    assert_eq!(db.recall("owner","second").unwrap().unwrap().source_id,a.source_id);
+    assert_eq!(db.forget("owner","second").unwrap(),1);
+    assert!(!source_exists(a.source_id));assert!(source_exists(c.source_id));
+    assert!(db.search("one").unwrap().facts.is_empty());
+    assert!(db.search("two").unwrap().facts.is_empty());
+    assert_eq!(db.recall("owner","third").unwrap(),Some(c));
+    db.verify().unwrap();
 }

@@ -333,3 +333,7 @@ Schema v2 requires explicit migration of v1 stores; no auto-migration. Voice dem
 ### M1.4e active memory benchmark
 
 After provisioning dependencies, run `AMG_SAMPLES=100 bash scripts/benchmark-amg.sh 1000`. Manual scale workflow supports 1k/10k/100k synthetic entities. Reports reader/graph/context/durable write latency, correctness, context bytes, quiescent storage and same-binary CLI RSS. SQLite remains provisional; redb and CozoDB need equivalent adapters. See [protocol](docs/m1-amg-benchmark.md).
+
+### AMG schema v3 scale correction
+
+The first 1k active-store benchmark passed, but exposed a global orphan-source cleanup scan (forget p95 151.786 ms). Schema v3 indexes source/successor references and deletes only affected unreferenced sources transactionally. v1/v2 stores require explicit `atomos-memory DIR OWNER migrate` with runtime stopped and offline backup; v2 grants preserved. Restore initializes v3 with no grants. Benchmark stages now report progress and time out individually. See [benchmark investigation](docs/m1-amg-benchmark.md#scale-deletion-correction-schema-v3). Speedup and larger corpus measurements pending CI.

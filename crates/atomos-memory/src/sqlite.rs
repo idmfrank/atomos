@@ -11,7 +11,8 @@ use std::time::{Duration, Instant};
 mod recovery;
 const SCHEMA: &str = include_str!("schema.sql");
 const POLICY: &str = include_str!("voice-policy.sql");
-const VERSION: i64 = 2;
+const DELETION_INDEXES: &str = include_str!("deletion-indexes.sql");
+const VERSION: i64 = 3;
 const APP_ID: i64 = 0x414d4731;
 const MAX_RESULTS: usize = 50;
 const MAX_PAYLOAD: usize = 16384;
@@ -116,6 +117,7 @@ impl SqliteMemory {
         let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
         tx.execute_batch(SCHEMA)?;
         tx.execute_batch(POLICY)?;
+        tx.execute_batch(DELETION_INDEXES)?;
         tx.execute("INSERT INTO identity VALUES(1,lower(hex(randomblob(16))),?1,?2,unixepoch())", params![owner,name])?;
         tx.execute("INSERT INTO entity(owner_scope,entity_key,label,kind) VALUES(?1,'owner',?1,'person')", [owner])?;
         tx.pragma_update(None,"application_id", APP_ID)?;
@@ -189,7 +191,8 @@ impl MemoryStore for SqliteMemory {
         let tx=self.conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
         let sid=entity_id(&tx,o,s)?;
         let n=tx.execute("DELETE FROM assertion WHERE owner_scope=?1 AND subject_id=?2 AND predicate=?3",params![o,sid,p])?;
-        tx.execute("DELETE FROM source WHERE owner_scope=?1 AND NOT EXISTS(SELECT 1 FROM assertion WHERE assertion.source_id=source.id)",[o])?;
+        // Schema v3 trigger cleans only sources associated with deleted assertions.
+        // No global source scan; shared provenance survives until its final reference.
         tx.commit()?;
         Ok(n)
     }
@@ -413,22 +416,23 @@ impl SqliteReader {
 
 
 impl SqliteMemory {
-    /// Explicit migration only. The v1 database remains intact on failure.
-    /// All old facts default to local text; no voice grants are inherited.
+    /// Explicit migration only. v1 and v2 stores remain intact on failure.
+    /// v1 gains default-deny grants; existing v2 grants keep their expiration.
     pub fn migrate(dir:&Path, owner:&str)->Result<()> {
         key(owner)?;
         private_dir(dir)?;
         let mut conn=connect(&dir.join("memory.db"))?;
         let app:i64=conn.query_row("PRAGMA application_id",[],|r|r.get(0))?;
         let version:i64=conn.query_row("PRAGMA user_version",[],|r|r.get(0))?;
-        if app!=APP_ID || version!=1 {return Err(Error::UnsupportedSchema);}
+        if app!=APP_ID || !matches!(version,1|2) {return Err(Error::UnsupportedSchema);}
         let actual:String=conn.query_row("SELECT owner_scope FROM identity WHERE singleton=1",[],|r|r.get(0))?;
         if actual!=owner {return Err(Error::WrongOwner);}
         configure(&conn)?;
         let tx=conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
         let v:i64=tx.query_row("PRAGMA user_version",[],|r|r.get(0))?;
-        if v!=1 {return Err(Error::UnsupportedSchema);}
-        tx.execute_batch(POLICY)?;
+        if v!=version {return Err(Error::UnsupportedSchema);}
+        if v==1 {tx.execute_batch(POLICY)?;}
+        tx.execute_batch(DELETION_INDEXES)?;
         tx.pragma_update(None,"user_version",VERSION)?;
         recovery::check_integrity(&tx,owner)?;
         tx.commit()?;
