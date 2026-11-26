@@ -34,13 +34,14 @@ pub enum Event<'a>{
     Delta{turn:u64,text:&'a str},
     Completed{turn:u64,usage:Usage},
     Failed{turn:u64,kind:Failure},
+    FailedWithUsage{turn:u64,kind:Failure,usage:Usage},
     Cancelled{turn:u64},
 }
 impl Event<'_>{
     fn turn(&self)->u64{
         match *self {
             Self::Started{turn}|Self::Delta{turn,..}|Self::Completed{turn,..}|
-            Self::Failed{turn,..}|Self::Cancelled{turn}=>turn,
+            Self::Failed{turn,..}|Self::FailedWithUsage{turn,..}|Self::Cancelled{turn}=>turn,
         }
     }
 }
@@ -73,6 +74,10 @@ pub struct Broker {
     dispatches:u64,
     suspended:bool,
 }
+enum Admission {
+    Local(Answer),
+    Reserved { permit:governor::Reservation,input_bound:u64,reserved:u64 },
+}
 impl Broker {
     pub fn open(root:&Path,limits:Limits)->Result<Self,Error>{
         let governor=Governor::open(&root.join("synthetic-v1"),limits)
@@ -85,7 +90,7 @@ impl Broker {
     /// currently committed epoch; stale requests never reserve or dispatch.
     /// All text is buffered until terminal validation and durable settlement.
     /// No actual streaming TTS, concurrent cancellation or external egress.
-    pub fn run(&mut self,request:Request<'_>,active_turn:u64,events:&[Event<'_>])->Result<Answer,Error>{
+    fn admit(&mut self,request:&Request<'_>,active_turn:u64)->Result<Admission,Error>{
         if request.turn==0||request.task==0||request.text.trim().is_empty()
             ||request.text.len()>MAX_INPUT_BYTES||request.text.chars().any(char::is_control)
             ||request.max_output==0||request.max_output>MAX_OUTPUT_TOKENS{
@@ -93,7 +98,7 @@ impl Broker {
         }
         if request.turn!=active_turn{return Err(Error::StaleTurn);}
         if let Some(answer)=resolve_local(request.text){
-            return Ok(Answer{turn:request.turn,text:answer.into(),simulated:false,usage:None});
+            return Ok(Admission::Local(Answer{turn:request.turn,text:answer.into(),simulated:false,usage:None}));
         }
         if self.suspended{return Err(Error::Suspended);}
         // Conservative *fixture* estimate; not a tokenizer or provider quota.
@@ -106,6 +111,50 @@ impl Broker {
             _=>Error::LedgerUnavailable,
         })?;
         self.dispatches=self.dispatches.saturating_add(1);
+        Ok(Admission::Reserved{permit,input_bound,reserved})
+    }
+    pub fn run(&mut self,request:Request<'_>,active_turn:u64,events:&[Event<'_>])->Result<Answer,Error>{
+        let a=self.admit(&request,active_turn)?;
+        self.replay(request,a,events)
+    }
+    /// Offline byte replay. Admission precedes any input read. On malformed,
+    /// interrupted or unsupported input, retain the reservation and no text.
+    #[cfg(feature="responses-replay")]
+    pub fn run_sse(&mut self,request:Request<'_>,active_turn:u64,input:impl std::io::Read,cancelled:impl FnMut()->bool)->Result<Answer,Error>{
+        use crate::responses::{self,DecodeError,Terminal};
+        let a=self.admit(&request,active_turn)?;
+        if let Admission::Local(answer)=a{return Ok(answer);}
+        let d=responses::decode(input,cancelled).map_err(|e|match e{
+            DecodeError::Cancelled=>Error::Cancelled,
+            DecodeError::MissingTerminal|DecodeError::Io|DecodeError::Usage=>Error::UnknownUsage,
+            DecodeError::Unsupported=>Error::Provider(Failure::Unsupported),
+            _=>Error::InvalidStream,
+        })?;
+        let turn=request.turn;
+        match d.terminal{
+            Terminal::Completed(usage)=>self.replay(request,a,&[
+                Event::Started{turn},Event::Delta{turn,text:&d.text},Event::Completed{turn,usage}]),
+            Terminal::Failed(kind,Some(usage))=>self.replay(request,a,&[Event::FailedWithUsage{turn,kind,usage}]),
+            Terminal::Failed(kind,None)=>self.replay(request,a,&[Event::Failed{turn,kind}]),
+        }
+    }
+    fn settle_usage(&mut self,permit:governor::Reservation,usage:Usage,input_bound:u64,reserved:u64,max_output:u64)->Result<(),Error>{
+        let actual=usage.total().ok_or(Error::UnknownUsage)?;
+        if actual>1_000_000_000{return Err(Error::UnknownUsage);}
+        let overrun=actual>reserved||usage.input>input_bound||usage.output>max_output;
+        self.governor.settle_with_halt(permit,actual,overrun).map_err(|_|Error::LedgerUnavailable)?;
+        if overrun{self.suspended=true;return Err(Error::UsageOverrun);}
+        Ok(())
+    }
+    fn fail(&mut self,kind:Failure)->Error{
+        if matches!(kind,Failure::RateLimited|Failure::Authorization){self.suspended=true;}
+        Error::Provider(kind)
+    }
+    fn replay(&mut self,request:Request<'_>,admission:Admission,events:&[Event<'_>])->Result<Answer,Error>{
+        let (permit,input_bound,reserved)=match admission{
+            Admission::Local(answer)=>return Ok(answer),
+            Admission::Reserved{permit,input_bound,reserved}=>(permit,input_bound,reserved),
+        };
         // All ambiguous outcomes retain the full durable reservation.
         if events.len()>MAX_EVENTS{return Err(Error::InvalidStream);}
         let mut started=false;
@@ -123,25 +172,14 @@ impl Broker {
                     output.push_str(text);
                 }
                 Event::Completed{usage,..} if started&&last=>{
-                    let actual=usage.total().ok_or(Error::UnknownUsage)?;
-                    // Reject impossible fixture arithmetic before appending a
-                    // settlement that could make the journal unreplayable.
-                    if actual>1_000_000_000{return Err(Error::UnknownUsage);}
-                    let overrun=actual>reserved||usage.input>input_bound||usage.output>request.max_output;
-                    // A single durable record settles and latches a violation.
-                    self.governor.settle_with_halt(permit,actual,overrun).map_err(|_|Error::LedgerUnavailable)?;
-                    if overrun{
-                        self.suspended=true;
-                        return Err(Error::UsageOverrun);
-                    }
+                    self.settle_usage(permit,usage,input_bound,reserved,request.max_output)?;
                     if output.trim().is_empty()||usage.output==0{return Err(Error::InvalidStream);}
                     return Ok(Answer{turn:request.turn,text:output,simulated:true,usage:Some(usage)});
                 }
-                Event::Failed{kind,..} if last=>{
-                    if matches!(kind,Failure::RateLimited|Failure::Authorization){
-                        self.suspended=true;
-                    }
-                    return Err(Error::Provider(kind));
+                Event::Failed{kind,..} if last=>return Err(self.fail(kind)),
+                Event::FailedWithUsage{kind,usage,..} if last=>{
+                    self.settle_usage(permit,usage,input_bound,reserved,request.max_output)?;
+                    return Err(self.fail(kind));
                 }
                 Event::Cancelled{..} if last=>return Err(Error::Cancelled),
                 _=>return Err(Error::InvalidStream),

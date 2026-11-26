@@ -2,6 +2,8 @@
 
 pub mod audio;
 pub mod broker;
+#[cfg(feature = "responses-replay")]
+pub mod responses;
 pub mod governor;
 pub mod turn;
 pub mod voice;
