@@ -2,6 +2,8 @@
 # Explicit single-turn local audio spike. Never starts a continuous listener.
 set -euo pipefail
 umask 077
+# Preserve diagnostics even when stage stderr is redirected to private scratch.
+exec 3>&2
 cd "$(dirname "$0")/.."
 
 usage() {
@@ -55,14 +57,14 @@ ulimit -f 8192
 run_stage() {
   local stage="$1"; shift
   local start=$SECONDS
-  timeout --kill-after=2s 60s "$@" &
+  timeout --kill-after=2s 60s "$@" <&4 4<&- 3>&- &
   active=$!
   local status=0
   wait "$active" || status=$?
   active=
-  printf '%s elapsed_seconds_coarse=%s status=%s\n' "$stage" "$((SECONDS-start))" "$status" >&2
+  printf '%s elapsed_seconds_coarse=%s status=%s\n' "$stage" "$((SECONDS-start))" "$status" >&3
   return "$status"
-}
+} 4<&0
 
 if [[ "$mode" == record ]]; then
   seconds="${RECORD_SECONDS:-5}"
