@@ -1,5 +1,6 @@
 // Auth-only cold path. No inference or provider bearer request.
 import {randomBytes, randomUUID, createHash, timingSafeEqual, createPublicKey, verify} from 'node:crypto';
+import {strictJson} from './strict-json.mjs';
 export const ISSUER='https://auth.openai.com';
 export const RESOURCE='https://api.openai.com/v1';
 export const DISCOVERY=ISSUER+'/.well-known/openid-configuration';
@@ -32,6 +33,7 @@ export function begin(host,port,previous=null,now=Date.now()){
   const p=new URLSearchParams({client_id:previous?.client_id??'dynamic_agent_client',ext_agent_host_id:host,response_type:'code',redirect_uri:a.redirect,scope:SCOPES.join(' '),resource:RESOURCE,state:a.state,nonce:a.nonce,code_challenge_method:'S256',code_challenge:challenge(a.verifier)});
   if(!previous)p.set('agent_name_hint','AtomOS');
   else if(previous.id_token)p.set('id_token_hint',previous.id_token);
+  if(previous&&!planGranted(previous))p.set('prompt','consent');
   a.url=ENDPOINTS.authorization_endpoint+'?'+p;
   return a;
 }
@@ -56,7 +58,7 @@ function segment(s){
   require(b.toString('base64url')===s,'invalid_jwt_encoding');return b;
 }
 function object(s){
-  try{const v=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(segment(s)));require(v&&typeof v==='object'&&!Array.isArray(v),'invalid_jwt_object');return v;}
+  try{const v=strictJson(new TextDecoder('utf-8',{fatal:true}).decode(segment(s)));require(v&&typeof v==='object'&&!Array.isArray(v),'invalid_jwt_object');return v;}
   catch{throw new AuthError('invalid_jwt_object');}
 }
 // Restricted RS256 profile from discovery; native OpenSSL via Node crypto.
@@ -98,7 +100,7 @@ export function scopes(s){
   require(list.length<=64&&list.every(v=>/^[A-Za-z0-9._:-]+$/.test(v))&&new Set(list).size===list.length,'invalid_scopes');
   return list.sort();
 }
-export function planGranted(p){return p.status==='active'&&SCOPES.every(s=>p.scopes.includes(s));}
+export function planGranted(p){return p?.status==='active'&&Array.isArray(p.scopes)&&SCOPES.every(s=>p.scopes.includes(s));}
 export function tokenRecord(t,attempt,id,jwks,host,now=Math.floor(Date.now()/1000)){
   require(t&&typeof t==='object'&&opaque(t.id_token,MAX_TOKEN),'missing_identity_token');
   const identity=verifyIdentity(t.id_token,jwks,id,attempt.nonce,now,attempt.previous?.subject??null,t.access_token);
@@ -125,3 +127,20 @@ export function refreshed(p,t,jwks,now=Math.floor(Date.now()/1000)){
 }
 export function revokeForm(p){require(opaque(p.refresh_token,MAX_TOKEN)&&clientId(p.client_id),'revocation_unavailable');return new URLSearchParams({token:p.refresh_token,token_type_hint:'refresh_token',client_id:p.client_id});}
 export function signedOut(p){return {version:1,host:p.host,client_id:p.client_id,subject:p.subject,email:p.email,scopes:[],status:'signed_out',saved_at:p.saved_at};}
+
+export const MODEL_CATALOG=RESOURCE+'/models';
+export function catalog(value){
+  require(Array.isArray(value?.models)&&value.models.length<=256,'invalid_model_catalog');
+  const out=[],seen=new Set();
+  for(const m of value.models){
+    require(m&&typeof m==='object'&&!Array.isArray(m)&&typeof m.visibility==='string','invalid_model_entry');
+    if(m.visibility!=='list')continue;
+    require(typeof m.slug==='string'&&/^[A-Za-z0-9._:-]{1,128}$/.test(m.slug)&&typeof m.display_name==='string'&&m.display_name.length>0&&m.display_name.length<=128&&!/[\p{Cc}\p{Cf}]/u.test(m.display_name)&&!seen.has(m.slug),'invalid_model_entry');
+    seen.add(m.slug);out.push({slug:m.slug,display_name:m.display_name});
+  }
+  return out;
+}
+export function catalogAllowed(p,now=Math.floor(Date.now()/1000)){
+  require(planGranted(p)&&opaque(p.access_token,65536)&&Number.isSafeInteger(p.saved_at)&&Number.isSafeInteger(p.expires_at)&&now>=p.saved_at&&p.expires_at>now+5,'catalog_requires_current_grant');
+  return true;
+}

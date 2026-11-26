@@ -2,7 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {generateKeyPairSync,sign,createHash} from 'node:crypto';
 import {hostId,validHost,begin,challenge,callback,discovery,ENDPOINTS,SCOPES,ISSUER,RESOURCE,verifyIdentity,tokenRecord,planGranted,refreshForm,refreshed,revokeForm,signedOut} from './protocol.mjs';
-import {withStore} from './store.mjs';
+import {withStore as openStore} from './store.mjs';
+import {strictJson} from './strict-json.mjs';
+import {seal,unseal} from './vault.mjs';
+import {catalog,catalogAllowed} from './protocol.mjs';
+const pass=Buffer.from('synthetic only fixture passphrase 2026');
+const withStore=(dir,action)=>openStore(dir,pass,action);
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -125,4 +130,49 @@ test('pending refresh discards reusable credentials across reopen',async t=>{
   const dir=fixture(t);
   await withStore(dir,s=>{s.save(profile(s.host));s.save({...signedOut(s.profile),status:'pending'});});
   await withStore(dir,s=>{assert.equal(s.profile.status,'pending');assert.equal(s.profile.refresh_token,undefined);assert.equal(planGranted(s.profile),false);});
+});
+
+test('strict JSON rejects escaped duplicate keys, nested duplicates and structural excess',()=>{
+  assert.deepEqual(strictJson('{"a":[{"b":"\\\"x"}], "c":true}'),{a:[{b:'"x'}],c:true});
+  for(const s of ['{"a":1,"a":2}','{"a":1,"\\u0061":2}','{"a":[{"b":1,"b":2}]}','['.repeat(34)+'0'+']'.repeat(34),'[1,]'])assert.throws(()=>strictJson(s));
+});
+test('encrypted profile has no plaintext secrets, rejects wrong key, tag, host and legacy record',async t=>{
+  const dir=fixture(t);let saved;
+  await withStore(dir,s=>{saved=profile(s.host);s.save(saved);});
+  const file=path.join(dir,'profile.json'),raw=fs.readFileSync(file,'utf8');
+  assert.ok(!raw.includes('synthetic-access')&&!raw.includes('synthetic-refresh')&&!raw.includes('synthetic-subject'));
+  await assert.rejects(openStore(dir,Buffer.from('wrong synthetic fixture passphrase'),()=>{}),/vault_invalid_or_locked/);
+  const envelope=JSON.parse(raw);
+  assert.throws(()=>unseal(envelope,pass,hostId()),/vault_invalid_or_locked/);
+  const tampered={...envelope,tag:Buffer.alloc(16).toString('base64url')};
+  assert.throws(()=>unseal(tampered,pass,saved.host),/vault_invalid_or_locked/);
+  assert.notEqual(seal(saved,pass,saved.host).data,envelope.data);
+  fs.writeFileSync(file,JSON.stringify(saved));await assert.rejects(withStore(dir,()=>{}),/vault_invalid_or_locked/);
+});
+test('model catalog preserves listed ordering and denies duplicates, unsafe names and expired grants',()=>{
+  const p=profile();
+  assert.equal(catalogAllowed(p,now),true);
+  assert.throws(()=>catalogAllowed(p,now+3600),/catalog_requires_current_grant/);
+  assert.throws(()=>catalogAllowed(p,now-1),/catalog_requires_current_grant/);
+  assert.throws(()=>catalogAllowed(signedOut(p),now),/catalog_requires_current_grant/);
+  const a={visibility:'list',slug:'gpt-fixture',display_name:'Fixture'};
+  const b={visibility:'hidden',slug:'hidden',display_name:'Hidden'};
+  assert.deepEqual(catalog({models:[a,b,{...a,slug:'second'}]}),[{slug:'gpt-fixture',display_name:'Fixture'},{slug:'second',display_name:'Fixture'}]);
+  assert.throws(()=>catalog({models:[a,a]}),/invalid_model_entry/);
+  assert.throws(()=>catalog({models:[{...a,display_name:'bad\nname'}]}),/invalid_model_entry/);
+  assert.throws(()=>catalog({data:[]}),/invalid_model_catalog/);
+});
+
+test('signed duplicate claims and headers rejected even with valid RSA signature',()=>{
+  const a=begin(hostId(),1455);
+  const body=enc({alg:'RS256',kid:'synthetic'})+'.'+Buffer.from(JSON.stringify(claims(a)).replace(/}$/,',"sub":"other"}')).toString('base64url');
+  const token=body+'.'+sign('RSA-SHA256',Buffer.from(body),privateKey).toString('base64url');
+  assert.throws(()=>verifyIdentity(token,jwks,client,a.nonce,now),/invalid_jwt_object/);
+});
+test('explicit returning plan consent uses existing registration',()=>{
+  const a=begin(hostId(),1455,{client_id:client,subject,status:'signed_out',scopes:[]});
+  const u=new URL(a.url);
+  assert.equal(u.searchParams.get('prompt'),'consent');
+  assert.equal(u.searchParams.get('client_id'),client);
+  assert.equal(u.searchParams.has('agent_name_hint'),false);
 });

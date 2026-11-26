@@ -1,6 +1,6 @@
 # M2.3b — Official sign-in, auth-only utility
 
-Status: draft; CI and actual account registration pending. No inference
+Status: merged PR #15; offline CI and scale passed; actual account registration pending. No inference
 or model discovery requests. No OpenAI account accessed by CI or development.
 
 Official references checked 2026-11-26:
@@ -106,3 +106,5 @@ caps cannot guarantee provider generation bound. Require explicit design
 decision on that gate, qualified model event profile, transport deadlines,
 cancellation and real account-bound governor admission before inference.
 No paid fallback or unauthorized alternate route.
+
+[Post-merge CI](https://github.com/idmfrank/atomos/actions/runs/45862345791) passed 11 Node auth tests (108 distinct total); [scale](https://github.com/idmfrank/atomos/actions/runs/45862674857) passed. The original plaintext-file and native JSON limitations above describe M2.3b. M2.3c changes storage to an encrypted vault with strict JSON validation and adds read-only model discovery. Follow the updated [M2.3c specification](m2-auth-hardening.md) for deployment; no real account use before review.
