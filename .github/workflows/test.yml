@@ -18,6 +18,10 @@ jobs:
         run: |
           rustc --version
           cargo --version
+      - name: Provision locked build dependencies
+        run: |
+          pkg-config --modversion sqlite3
+          cargo fetch --locked
       - name: Test and smoke
         run: bash scripts/test.sh
       - name: Text-only benchmark
