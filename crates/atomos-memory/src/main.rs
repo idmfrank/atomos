@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 //! Explicit owner-operated memory administration; no voice authorization.
-use atomos_memory::{compile_context, init, open, Error, Fact, MemoryStore, Result, Value};
+use atomos_memory::{compile_context, init, open, Error, Fact, MemoryStore, Result, SqliteMemory, Value};
 use std::io::{self, Read};
 use std::path::Path;
 
@@ -33,8 +33,26 @@ fn run()->Result<()> {
         println!("agent_id={}",db.identity().agent_id);
         return Ok(());
     }
+    if rest.as_slice()==["migrate"] {
+        SqliteMemory::migrate(dir,owner)?;
+        println!("schema migrated");
+        return Ok(());
+    }
+    if let ["restore",path,"--accept-snapshot"] = rest.as_slice() {
+        let db=SqliteMemory::restore_logical(dir,owner,Path::new(path))?;
+        println!("restored agent_id={}",db.identity().agent_id);
+        return Ok(());
+    }
     let mut db=open(dir,owner)?;
     match rest.as_slice() {
+        ["verify"]=>{db.verify()?;println!("integrity ok");},
+        ["export",path]=>println!("exported_rows={}",db.export_logical(Path::new(path))?),
+        ["voice-allow",s,p,revision,ttl]=>{
+            db.allow_voice(s,p,revision.parse().map_err(|_|Error::Invalid("invalid revision"))?,
+                ttl.parse().map_err(|_|Error::Invalid("invalid grant duration"))?)?;
+            println!("voice grant saved");
+        },
+        ["voice-revoke",s,p]=>println!("revoked={}",db.revoke_voice(s,p)?),
         ["identity"]=>println!("agent_id={} name={:?}",db.identity().agent_id,db.identity().display_name),
         ["entity",k,label,kind]=>{ db.add_entity(k,label,kind)?; println!("saved"); },
         ["remember",s,p,k]=>show(&db.remember(s,p,input_value(k)?)?),
@@ -49,7 +67,7 @@ fn run()->Result<()> {
             let r=atomos_memory::Retrieval {facts,truncated:false,visited:0};
             print!("{}",compile_context(&r,4096)?);
         },
-        _=>return Err(Error::Invalid("commands: init NAME, identity, entity KEY LABEL KIND, remember SUBJECT PREDICATE TYPE, correct SUBJECT PREDICATE REVISION TYPE, recall SUBJECT PREDICATE, forget SUBJECT PREDICATE, history SUBJECT PREDICATE, search PHRASE, graph SUBJECT, context SUBJECT PREDICATE")),
+        _=>return Err(Error::Invalid("commands: init NAME, migrate, verify, export PATH, restore PATH --accept-snapshot, voice-allow SUBJECT PREDICATE REVISION TTL_SECONDS, voice-revoke SUBJECT PREDICATE, identity, entity KEY LABEL KIND, remember SUBJECT PREDICATE TYPE, correct SUBJECT PREDICATE REVISION TYPE, recall SUBJECT PREDICATE, forget SUBJECT PREDICATE, history SUBJECT PREDICATE, search PHRASE, graph SUBJECT, context SUBJECT PREDICATE")),
     }
     Ok(())
 }
