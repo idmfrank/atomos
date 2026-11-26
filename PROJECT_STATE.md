@@ -1,6 +1,6 @@
 # AtomOS — current engineering state
 
-Updated 2026-11-26. Verified executable baseline: `6dff9641f6a2ff91b0cd0ad5f4690d5cbbc20aa2` ([PR #19](https://github.com/idmfrank/atomos/pull/19)). This is the shared handoff between the ChatGPT AtomOS Project, Codex coding sessions and human maintainers. Read [AGENTS.md](AGENTS.md) first, then this file and the specific milestone documentation. Verify the actual checkout and latest CI before assuming this snapshot is current.
+Updated 2026-11-26 (owner WSL qualification findings). Verified executable baseline: `6dff9641f6a2ff91b0cd0ad5f4690d5cbbc20aa2` ([PR #19](https://github.com/idmfrank/atomos/pull/19)). This is the shared handoff between the ChatGPT AtomOS Project, Codex coding sessions and human maintainers. Read [AGENTS.md](AGENTS.md) first, then this file and the specific milestone documentation. Verify the actual checkout and latest CI before assuming this snapshot is current.
 
 ## Mission and architecture
 
@@ -24,8 +24,8 @@ Design details: [README](README.md), [resource budget](docs/resource-budget.md),
 | M2.2 | Offline bounded Responses SSE replay and strict lifecycle validation. |
 | M2.3a | Synthetic account-bound authorization and durable suspension. |
 | M2.3b–c | Official OAuth utility, encrypted vault, strict JSON and catalog support. |
-| M2.3d | Owner ran actual WSL sign-in, reopened vault, 18/18 local tests, retrieved 10 account-specific model identifiers. Owner screenshot showed enabled 50% personal app limit. Live refresh/revocation not tested. |
-| M2.4 | PR #19 merged, PR CI/post-merge CI/full scale all green. One-shot qualification harness ready for owner-run WSL build/preflight. **No live inference result yet.** |
+| M2.3d | Owner ran actual WSL sign-in, reopened vault, 18/18 local tests, retrieved 10 account-specific model identifiers. Owner screenshot showed enabled 50% personal app limit. Live refresh subsequently verified; revocation not tested. |
+| M2.4 | PR #19 merged, PR CI/post-merge CI/full scale all green. One-shot qualification harness ready for owner-run WSL build/preflight. Owner WSL build at 30df9b6 and 26/26 Node tests passed. First live attempt returned HTTP 200 but failed combined media/encoding validation; unknown usage retained, no successful inference validated. Owner refresh then succeeded and reservation remained present. |
 
 ## Latest verified test and benchmark baseline
 
@@ -57,7 +57,9 @@ Same-run no-store CLI RSS 2,588 KiB; 100K incremental 1,736 KiB (~1.70 MiB) vers
 - GitHub Actions: CI and scale. No credentials or provider inference in CI. Human reviews and merges runtime changes.
 - Existing owner vault: `$HOME/.config/atomos-auth` on WSL. Do not read/decrypt outside the existing owner-run utility, copy it, inspect secret-bearing files, print tokens/passphrase, or move it to another environment. Never commit local state. No new registration needed.
 
-## Immediate objective: M2.4 first live qualification
+## Immediate objective: M2.4 transport qualification recovery
+
+**Stop gate:** The original reservation is consumed. Owner reported state unknown, category probe_content_type, no reported usage, retained 1,024 planning units. Subsequent interactive refresh succeeded, active unexpired session and qualification_attempted:true. Exact response MIME and encoding were not recorded; root cause unknown. Do not run qualify-once again, delete the record, create another vault, or re-register to circumvent it. The diagnostic patch adds allowlisted HTTP status/media/encoding categories and bounded gzip handling; these changes are not proof of the actual root cause. A separate reviewed and explicitly owner-authorized qualification design is needed before any additional POST. The instructions below are historical preflight for the original attempt, not authority to repeat it.
 
 Codex can perform read-only environment checks, build and synthetic tests. It must not initiate a provider inference, prompt for secrets in agent chat, refresh/revoke tokens, delete reservations or change provider settings. The owner performs interactive commands in their terminal. Live execution needs specific owner acknowledgement even if earlier project discussion approved the milestone.
 
@@ -73,7 +75,7 @@ Codex can perform read-only environment checks, build and synthetic tests. It mu
    node --test scripts/auth/protocol.test.mjs scripts/auth/live-probe.test.mjs
    ```
 
-   Expect 26/26 Node tests at the verified baseline. Report exact commit, versions, counts, failures. No inference during these commands.
+   Expect 26/26 Node tests at the verified baseline; diagnostic patch adds 3 tests, pending CI. Report exact commit, versions, counts, failures. No inference during these commands.
 3. Owner runs `node scripts/auth/atomos-auth.mjs status "$HOME/.config/atomos-auth"` in interactive terminal and supplies sanitized status only. Require active grant, unexpired access, no pending registration, `qualification_attempted:false`. If expired, stop and review refresh separately. Do not re-register.
 4. Owner verifies saved app limit below 100% (last observed 50%) on eligible personal ChatGPT plan. Current documented route does not support `max_output_tokens`; a local response deadline or cap does not guarantee provider generation stops. Do not claim the 1,024-token reservation is a hard server ceiling or plan quota. Owner must accept this one-time exception explicitly. Follow [the exact owner-run qualification procedure](docs/m2-first-live-qualification.md); do not execute it unattended.
 5. Single fixed nonpersonal prompt, `gpt-6.2-sol`, official Responses endpoint, `store:false`, `stream:true`, fresh same-account catalog, no AMG, tools, retries, auto refresh or paid fallback. Durable intent in `m2-4-probe.json` before POST, bound to account/host/request hash, 30s HTTP deadline, 256 KiB body limit, 3s Rust decoder subprocess. One attempt per vault; unknown retains reservation, validated actual settles. No raw stream or output logged. Do not delete/reset marker or repeat after failure, including crash/overrun.
@@ -82,7 +84,7 @@ Codex can perform read-only environment checks, build and synthetic tests. It mu
 ## Outstanding gates and next direction
 
 - Live stream may contain reasoning items or event shapes unsupported by narrow Rust decoder. Investigate via safe sanitized categories and offline fixtures before separately approved future live calls.
-- Live token refresh/revocation, integrated account-bound admission, trusted time/rolling budgets, real usage reconciliation, hard provider generation ceiling or explicit acceptable replacement policy, secure credential boundary and production security review remain open. Same-UID/root tampering and vault rollback are not solved.
+- Live token revocation, integrated account-bound admission, trusted time/rolling budgets, real usage reconciliation, hard provider generation ceiling or explicit acceptable replacement policy, secure credential boundary and production security review remain open. Same-UID/root tampering and vault rollback are not solved.
 - M2.5 provisional: integrate safe transport with broker/Token Governor and natural conversation, then authorized minimal AMG context only after privacy/spending gates. M2.6: benchmark actual quality, token use, latency and energy; model routing based on evidence rather than slug names.
 - M3 prospective memory/scheduler, bounded autonomous tasks; M4 native bootable OS. Hardware voice wake/endpointing/AEC/barge-in, power/RSS and full speech tests pending. No assumption that WSL measures physical hardware efficiency.
 

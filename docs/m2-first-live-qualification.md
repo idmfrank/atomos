@@ -1,10 +1,9 @@
 # M2.4 — First live inference qualification
 
-Status: PR #19 merged at 6dff964; [post-merge tests](https://github.com/idmfrank/atomos/actions/runs/45874158043) and [full scale](https://github.com/idmfrank/atomos/actions/runs/45874467379) passed. Owner-run first inference still pending; no actual inference by development or CI. M2.3d owner-reported
+Status: PR #19 merged at 6dff964; [post-merge tests](https://github.com/idmfrank/atomos/actions/runs/45874158043) and [full scale](https://github.com/idmfrank/atomos/actions/runs/45874467379) passed. Owner subsequently ran first attempt: HTTP 200, media/encoding rejection, unknown usage. No completed inference validated; no actual inference by development or CI. M2.3d owner-reported
 WSL2 OAuth and persistent vault succeeded, 18 local auth tests passed, model
 catalog returned 10 listed models including gpt-6.2-sol. AtomOS enabled at
-50% in owner's connected-app settings screenshot. No actual token refresh
-or remote revoke tested. No private account details or credentials logged.
+50% in owner's connected-app settings screenshot. Owner later successfully refreshed and reopened the session; remote revoke not tested. No private account details or credentials logged.
 
 ## Contract and decision
 
@@ -43,8 +42,7 @@ deletion/rollback/alternate vault or same-user code tampering not protected.
 No global provider quota or cryptographic anti-rollback claim.
 
 HTTPS direct with TLS validation, no agent reuse or redirect/retry, 30 s
-absolute request deadline, HTTP 200 + SSE content type + identity encoding,
-256 KiB body cap. Response held in RAM only, then existing Rust text-only
+absolute request deadline, HTTP 200 + SSE content type; diagnostic revision supports identity or gzip with independent 256 KiB received and decompressed bounds. Unknown encodings and non-SSE remain rejected. Response held in RAM only, then existing Rust text-only
 Responses decoder via a separate local executable/stdin; no raw body
 logged or persisted, child receives no OAuth tokens or environment secrets.
 3 s decoder subprocess deadline. Strict text-only profile may reject
@@ -59,7 +57,9 @@ generation ceiling, or real usage/charge proof. No default CLI changes.
 Normal status live_inference_enabled:false refers to general runtime;
 qualification_attempted shows durable one-shot marker presence.
 
-## Owner-run WSL steps (only after CI passes and review)
+## Original owner-run WSL steps (historical; do not repeat)
+
+The first attempt is already consumed. These commands document the original procedure; they do not authorize a second attempt. See recovery below.
 
 Use existing local vault and a clean updated checkout, not /mnt/c or CI.
 Install Rust if absent from official rustup instructions; match CI stable
@@ -96,3 +96,7 @@ and provider usage first. The next PR can address actual response profile
 using offline fixtures; owner must separately approve any further
 qualification call. Integrated runtime admission and provider-side
 generation limit remain outstanding.
+
+## Transport recovery (owner report 2026-11-26)
+
+Owner verified 26 local tests and successful build at 30df9b6. Original probe ledger: unknown, unvalidated, probe_content_type, reported_tokens null, charged planning units 1024. In the original source this category is reached only after HTTP 200 and combines media-type and encoding checks. Exact header values and provider usage unknown; no claim that inference completed. Subsequent explicit live refresh succeeded; active unexpired session, plan scope granted, original attempt marker preserved. Do not delete the original ledger or rerun qualify-once. Diagnostic revision records only allowlisted HTTP status/media/encoding classes and bounded timings/byte counts; never raw headers/body, IDs or secrets. Accepts bounded gzip SSE (both compressed/decompressed 256 KiB, invalid compressed data denied), still refuses JSON/HTML/unknown types and unsupported encodings. Gzip is a hypothesis, not established cause. Three new synthetic tests cover header classification, compressed replay and durable unknown accounting. No new live command or authorization added; a separate reviewed and explicitly owner-authorized design is needed for any further live qualification.

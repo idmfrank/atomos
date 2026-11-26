@@ -6,6 +6,7 @@ import {fileURLToPath} from 'node:url';
 import {spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {performance} from 'node:perf_hooks';
+import {gunzipSync} from 'node:zlib';
 import {AuthError,require,catalogAllowed,RESOURCE} from './protocol.mjs';
 import {strictJson} from './strict-json.mjs';
 
@@ -30,38 +31,79 @@ export function resultRecord(pending,decoded,metrics){
   const actual=known?u.input+u.output:null;
   return {...pending,state:known?'settled':'unknown',outcome:complete?(actual>RESERVED?'overrun':decoded.expected_text?'qualified':'unexpected_text'):failed?'provider_failed':'unvalidated',reported_tokens:known?{input:u.input,output:u.output,cached_input:u.cached_input,reasoning_output:u.reasoning_output,total:actual}:null,charged_planning_units:known?actual:RESERVED,unknown_usage:!known,expected_text:complete?decoded.expected_text:null,category:failed?decoded.category:null,...metrics};
 }
+// Classify only allowlisted header categories. Never retain raw headers,
+// provider IDs, response bodies or arbitrary error messages in diagnostics.
+function mediaType(v){
+  if(v===undefined)return 'missing';
+  if(typeof v!=='string')return 'other';
+  const type=v.split(';',1)[0].trim().toLowerCase();
+  if(type==='text/event-stream')return 'sse';
+  if(type==='application/json'||type==='application/problem+json')return 'json';
+  if(type==='text/html')return 'html';
+  if(type==='text/plain')return 'plain';
+  return 'other';
+}
+function encodingType(v){
+  if(v===undefined)return 'missing';
+  if(typeof v!=='string')return 'other';
+  const e=v.trim().toLowerCase();
+  return ['identity','gzip','br','deflate'].includes(e)?e:'other';
+}
+class ProbeTransportError extends AuthError{
+  constructor(code,metrics){super(code);this.metrics=metrics;}
+}
 // Exactly one HTTP request, no redirect handling, agent reuse, retry,
 // SDK or API-key fallback. Absolute wall deadline includes connection/body.
+// Gzip is optional; both received and decompressed bodies have independent
+// 256 KiB ceilings. No MIME sniffing or acceptance of JSON as SSE.
 export function sendOnce(access,request=https.request){
   return new Promise((resolve,reject)=>{
     const payload=body(),start=performance.now();
     let timer,finished=false,req,res,first=null,headers=null,total=0,chunks=[];
-    const finish=(err,value)=>{
+    let status=null,media=null,encoding=null;
+    const metrics=()=>({http_status:status,content_type_class:media,content_encoding_class:encoding,headers_ms:headers===null?null:Math.round(headers),first_body_ms:first===null?null:Math.round(first),wire_bytes:total,elapsed_ms:Math.round(performance.now()-start)});
+    const finish=(code,value)=>{
       if(finished)return;finished=true;clearTimeout(timer);
-      if(err){res?.destroy();req?.destroy();reject(err);}else resolve(value);
+      if(code){const m=metrics();res?.destroy();req?.destroy();reject(new ProbeTransportError(code,m));}else resolve(value);
     };
     try{
       require(process.env.NODE_TLS_REJECT_UNAUTHORIZED!=='0','unsafe_tls');
-      req=request(ENDPOINT,{method:'POST',agent:false,rejectUnauthorized:true,headers:{authorization:'Bearer '+access,'content-type':'application/json','accept':'text/event-stream','accept-encoding':'identity','content-length':Buffer.byteLength(payload)}},r=>{
+      req=request(ENDPOINT,{method:'POST',agent:false,rejectUnauthorized:true,headers:{authorization:'Bearer '+access,'content-type':'application/json','accept':'text/event-stream','accept-encoding':'gzip, identity','content-length':Buffer.byteLength(payload)}},r=>{
+        if(finished){r.destroy();return;}
         res=r;headers=performance.now()-start;
-        if(r.statusCode!==200){finish(new AuthError('probe_http_'+r.statusCode));return;}
-        if(!/^text\/event-stream(?:\s*;|$)/i.test(r.headers['content-type']??'')||r.headers['content-encoding']&&r.headers['content-encoding']!=='identity'){finish(new AuthError('probe_content_type'));return;}
+        status=integer(r.statusCode,599)&&r.statusCode>=100?r.statusCode:null;
+        media=mediaType(r.headers['content-type']);
+        encoding=encodingType(r.headers['content-encoding']);
+        r.on('error',()=>finish('probe_stream_interrupted'));
+        r.on('aborted',()=>finish('probe_stream_interrupted'));
+        if(status!==200){finish(status===null?'probe_transport_error':'probe_http_'+status);return;}
+        if(media!=='sse'){finish('probe_content_type');return;}
+        if(!['missing','identity','gzip'].includes(encoding)){finish('probe_content_encoding');return;}
         r.on('data',b=>{
           if(finished)return;
           if(first===null)first=performance.now()-start;
           total+=b.length;
-          if(total>MAX){finish(new AuthError('probe_wire_limit'));return;}
+          if(total>MAX){finish('probe_wire_limit');return;}
           chunks.push(b);
           if(chunks.length>=1024)chunks=[Buffer.concat(chunks,total)];
         });
-        r.on('error',()=>finish(new AuthError('probe_stream_interrupted')));
-        r.on('aborted',()=>finish(new AuthError('probe_stream_interrupted')));
-        r.on('end',()=>finish(null,{wire:Buffer.concat(chunks,total),headers_ms:Math.round(headers),first_body_ms:first===null?null:Math.round(first),stream_end_ms:Math.round(performance.now()-start),wire_bytes:total}));
+        r.on('end',()=>{
+          if(finished)return;
+          const ended=performance.now()-start;
+          let wire=Buffer.concat(chunks,total);
+          if(encoding==='gzip'){
+            try{wire=gunzipSync(wire,{maxOutputLength:MAX});}
+            catch(e){finish(e?.code==='ERR_BUFFER_TOO_LARGE'?'probe_decoded_limit':'probe_invalid_compression');return;}
+          }
+          if(wire.length>MAX){finish('probe_decoded_limit');return;}
+          if(performance.now()-start>DEADLINE){finish('probe_deadline');return;}
+          finish(null,{wire,...metrics(),stream_end_ms:Math.round(ended),decoded_bytes:wire.length});
+        });
       });
-      req.on('error',()=>finish(new AuthError('probe_transport_error')));
-      timer=setTimeout(()=>finish(new AuthError('probe_deadline')),DEADLINE);
+      req.on('error',()=>finish('probe_transport_error'));
+      timer=setTimeout(()=>finish('probe_deadline'),DEADLINE);
       req.end(payload);
-    }catch{finish(new AuthError('probe_transport_error'));}
+    }catch{finish('probe_transport_error');}
   });
 }
 export function decoderPath(){
@@ -89,14 +131,14 @@ export async function qualify(store,available,{send=sendOnce,decode,now=()=>Date
   let result;
   try{
     const r=await send(p.access_token);
-    const metrics={headers_ms:r.headers_ms,first_body_ms:r.first_body_ms,stream_end_ms:r.stream_end_ms,wire_bytes:r.wire_bytes};
+    const metrics={http_status:r.http_status,content_type_class:r.content_type_class,content_encoding_class:r.content_encoding_class,headers_ms:r.headers_ms,first_body_ms:r.first_body_ms,stream_end_ms:r.stream_end_ms,wire_bytes:r.wire_bytes,decoded_bytes:r.decoded_bytes,elapsed_ms:r.elapsed_ms};
     let decoded;
     try{decoded=decode(r.wire);}catch{decoded=null;}
     result=resultRecord(pending,decoded,metrics);
     if(decoded?.terminal==='unvalidated'&&['Io','Limit','Framing','Json','Protocol','Unsupported','MissingTerminal','Usage','Cancelled'].includes(decoded.category))result.category=decoded.category;
   }catch(e){
-    result=resultRecord(pending,null,{});
-    result.category=e instanceof AuthError&&/^probe_(?:http_[1-5][0-9]{2}|content_type|wire_limit|stream_interrupted|transport_error|deadline)$/.test(e.message)?e.message:'probe_interrupted';
+    result=resultRecord(pending,null,e instanceof ProbeTransportError?e.metrics:{});
+    result.category=e instanceof AuthError&&/^probe_(?:http_[1-5][0-9]{2}|content_type|content_encoding|wire_limit|decoded_limit|invalid_compression|stream_interrupted|transport_error|deadline)$/.test(e.message)?e.message:'probe_interrupted';
   }
   store.finishProbe(pending,result);
   // Do not print the account binding, prompt hash, raw text or provider IDs.

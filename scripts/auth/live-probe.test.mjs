@@ -100,3 +100,71 @@ test('transport bounds body and accepts complete SSE without exposing token',asy
   await assert.rejects(sendOnce('fixture-access',fake([Buffer.alloc(256*1024+1)])),/probe_wire_limit/);
   await assert.rejects(sendOnce('fixture-access',fake([],'application/json')),/probe_content_type/);
 });
+
+
+test('transport classifies rejected headers without storing raw values or bodies',async()=>{
+  const {EventEmitter}=await import('node:events');
+  const request=(headers,statusCode=200)=> (_url,_opts,cb)=>{
+    const req=new EventEmitter();req.destroy=()=>{};
+    req.end=()=>queueMicrotask(()=>{
+      const r=new EventEmitter();r.statusCode=statusCode;r.headers=headers;r.destroy=()=>{};cb(r);
+      r.emit('data',Buffer.from('secret fixture body'));r.emit('end');
+    });return req;
+  };
+  for(const [h,category,media,encoding] of [
+    [{'content-type':'application/json; secret=fixture','content-encoding':'gzip'},'probe_content_type','json','gzip'],
+    [{'content-type':'text/event-stream','content-encoding':'br'},'probe_content_encoding','sse','br'],
+    [{'content-type':'text/event-stream','content-encoding':'gzip, secret-fixture'},'probe_content_encoding','sse','other'],
+    [{},'probe_content_type','missing','missing'],
+    [{'content-type':'secret-fixture'},'probe_content_type','other','missing']
+  ]){
+    await assert.rejects(sendOnce('fixture-access',request(h)),e=>{
+      assert.equal(e.message,category);assert.equal(e.metrics.http_status,200);
+      assert.equal(e.metrics.content_type_class,media);assert.equal(e.metrics.content_encoding_class,encoding);
+      assert.equal(e.metrics.wire_bytes,0);assert.ok(!JSON.stringify(e.metrics).includes('secret'));
+      return true;
+    });
+  }
+});
+test('gzip SSE is bounded before and after decompression and feeds existing decoder',async()=>{
+  const {gzipSync}=await import('node:zlib');
+  const {EventEmitter}=await import('node:events');
+  function fake(bytes){
+    return (_url,opts,cb)=>{
+      assert.equal(opts.headers['accept-encoding'],'gzip, identity');
+      const req=new EventEmitter();req.destroy=()=>{};
+      req.end=()=>queueMicrotask(()=>{
+        const r=new EventEmitter();r.statusCode=200;r.headers={'content-type':'text/event-stream; charset=utf-8','content-encoding':'GZip'};r.destroy=()=>{};
+        cb(r);for(let i=0;i<bytes.length;i+=19)r.emit('data',bytes.subarray(i,i+19));r.emit('end');
+      });return req;
+    };
+  }
+  const wire=fs.readFileSync(new URL('../../crates/atomos-core/tests/fixtures/responses-text.sse',import.meta.url));
+  const zipped=gzipSync(wire);
+  const r=await sendOnce('fixture-access',fake(zipped));
+  assert.deepEqual(r.wire,wire);assert.equal(r.wire_bytes,zipped.length);
+  assert.equal(r.decoded_bytes,wire.length);assert.equal(r.content_encoding_class,'gzip');
+  assert.deepEqual(decodeWire(decoderPath(),r.wire).usage,usage);
+  await assert.rejects(sendOnce('fixture-access',fake(gzipSync(Buffer.alloc(256*1024+1)))),/probe_decoded_limit/);
+  await assert.rejects(sendOnce('fixture-access',fake(Buffer.from('not gzip'))),/probe_invalid_compression/);
+  await assert.rejects(sendOnce('fixture-access',fake(Buffer.alloc(256*1024+1))),/probe_wire_limit/);
+});
+test('rejected media diagnostics settle unknown and persist without raw response',async t=>{
+  const {EventEmitter}=await import('node:events');
+  const dir=fixture(t);
+  const request=(_url,_opts,cb)=>{
+    const req=new EventEmitter();req.destroy=()=>{};
+    req.end=()=>queueMicrotask(()=>{
+      const r=new EventEmitter();r.statusCode=200;r.headers={'content-type':'text/html; secret=fixture'};r.destroy=()=>{};cb(r);
+      r.emit('data',Buffer.from('secret body'));r.emit('end');
+    });return req;
+  };
+  await withStore(dir,pass,async s=>{
+    s.save(profile(s.host));
+    const r=await qualify(s,available,{now:()=>now,send:access=>sendOnce(access,request),decode:()=>assert.fail('must not decode')});
+    assert.equal(r.state,'unknown');assert.equal(r.charged_planning_units,1024);assert.equal(r.http_status,200);
+    assert.equal(r.content_type_class,'html');assert.equal(r.content_encoding_class,'missing');
+  });
+  const raw=fs.readFileSync(path.join(dir,'m2-4-probe.json'),'utf8');assert.ok(!raw.includes('secret')&&!raw.includes('fixture-access'));
+  await withStore(dir,pass,async s=>assert.rejects(qualify(s,available,{now:()=>now,send:async()=>assert.fail('must not dispatch'),decode:()=>decoded}),/probe_already_attempted/));
+});
