@@ -1,6 +1,6 @@
 # M1.4d — Memory disclosure and logical recovery
 
-Status: development branch, automated validation pending. Synthetic data only.
+Status: merged in PR #8; locked offline post-merge CI passed. Synthetic data only.
 
 Schema v2 adds explicit revision-specific voice grants expiring after 1–86,400
 seconds (wall UTC, no clock tampering defense). Voice still requires opt-in
@@ -59,3 +59,5 @@ power-failure testing remain open. Tests exercise logical roundtrip, high
 water marks, grant expiration/revocation, correction, deletion, v1 migration,
 bad backup, inconsistent FTS and abrupt uncommitted SQLite writer exit.
 The crash test is process-exit simulation, not power-loss certification.
+
+[Post-merge CI 45798237897](https://github.com/idmfrank/atomos/actions/runs/45798237897): 44 Rust and 11 Python tests passed, including all four recovery tests and abrupt writer rollback. No-store release CLI 464,912 bytes, peak RSS 2,608 KiB. No actual power-loss or private-data certification.
