@@ -29,7 +29,7 @@ AtomOS is an experimental project to build a persistent, conversational AI agent
 | M2.3d | Owner WSL OAuth registration, encrypted session reopen and account-specific catalog succeeded; [PR #17](https://github.com/idmfrank/atomos/pull/17), [PR #18](https://github.com/idmfrank/atomos/pull/18). 50% app cap observed; live refresh verified, revocation untested. |
 | M2.4 | [Owner-run one-shot qualification](docs/m2-first-live-qualification.md), fixed prompt, separate durable reservation, existing Rust decoder, no automated/live CI calls. Merged [PR #19](https://github.com/idmfrank/atomos/pull/19); CI and scale passed; owner attempt unvalidated, unknown usage retained. |
 
-Latest verified executable baseline: [6dff964](https://github.com/idmfrank/atomos/commit/6dff9641f6a2ff91b0cd0ad5f4690d5cbbc20aa2), [Actions run 45874158043](https://github.com/idmfrank/atomos/actions/runs/45874158043). 86 distinct Rust, 11 Python and 26 Node tests passed (123 total). No real inference in CI. Rust/Cargo 1.100.0; locked dependencies provisioned before offline build/test.
+Latest verified executable baseline: [986b6bf](https://github.com/idmfrank/atomos/commit/986b6bf088b727d56223d2dab2289b6447b90a7d), [Actions run 45912523399](https://github.com/idmfrank/atomos/actions/runs/45912523399). 86 distinct Rust, 11 Python and 29 Node tests passed (126 total). No real inference in CI. Rust/Cargo 1.100.0; locked dependencies provisioned before offline build/test.
 
 ### Benchmark results
 
@@ -53,7 +53,7 @@ Latest verified executable baseline: [6dff964](https://github.com/idmfrank/atomo
 | M2.3c | 466,512 | 2,524 | 86 | 11 |
 | M2.4 | 466,512 | 2,588 (full-scale no-store baseline) | 86 | 11 |
 
-Each release CLI benchmark executes 1,000 local text interactions. Rust/Python test counts refer to the workspace suite, not benchmark samples. M2.4 passed 26 distinct Node tests (123 total); PR #18 passed 18 owner-local Node tests. Peak RSS is measured process memory; runner variation can affect comparisons. M2.1's broker is a separate synthetic replay example, not linked into the measured conversational CLI. Excludes OS, speech engines, Python adapter, active AMG, ledger and administration executable. See [resource budget and run links](docs/resource-budget.md).
+Each release CLI benchmark executes 1,000 local text interactions. Rust/Python test counts refer to the workspace suite, not benchmark samples. M2.4 diagnostic revision passed 29 distinct Node tests (126 total); PR #18 passed 18 owner-local Node tests. Peak RSS is measured process memory; runner variation can affect comparisons. M2.1's broker is a separate synthetic replay example, not linked into the measured conversational CLI. Excludes OS, speech engines, Python adapter, active AMG, ledger and administration executable. See [resource budget and run links](docs/resource-budget.md).
 
 **Active AMG scale — verified M2.4 [combined benchmark](https://github.com/idmfrank/atomos/actions/runs/45874467379)**
 
@@ -422,3 +422,5 @@ After locked provisioning, `bash scripts/test-responses.sh` exercises the option
 ### M2.4 first live qualification
 
 [Owner-run procedure](docs/m2-first-live-qualification.md). Separate one-attempt command, not conversational runtime integration. Provider does not support max_output_tokens on subscription route; explicit informed owner approval required. Local 1,024 planning-token reservation is not a provider limit. No live inference in development or CI. No private context, retries, automatic refresh or paid fallback. Keep the existing vault and consumed-attempt record; do not reset after a failed attempt.
+
+PR #21 validated bounded gzip SSE and sanitized diagnostics. The historical first attempt remains unknown. Proposed follow-up uses a separate durable record and explicit new owner acknowledgement, no third attempt; see [qualification procedure](docs/m2-first-live-qualification.md). Latest full-scale measurements and current gates: [PROJECT_STATE.md](PROJECT_STATE.md).

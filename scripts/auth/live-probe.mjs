@@ -13,6 +13,7 @@ import {strictJson} from './strict-json.mjs';
 export const MODEL='gpt-6.2-sol';
 export const PROMPT='Say exactly: Hello, world!';
 export const ACK='--confirm-personal-app-below-100-and-uncapped-single-request';
+export const FOLLOWUP_ACK='--confirm-personal-app-below-100-second-uncapped-request-retain-unknown-usage';
 const ENDPOINT=RESOURCE+'/responses';
 const DEADLINE=30000,MAX=256*1024,RESERVED=1024;
 export function body(){return JSON.stringify({model:MODEL,input:[{role:'user',content:PROMPT}],store:false,stream:true});}
@@ -119,15 +120,36 @@ export function decodeWire(exe,wire){
 }
 // Caller holds the existing exclusive vault lock throughout. The store
 // creates a durable, non-reusable reservation before the first POST.
-export async function qualify(store,available,{send=sendOnce,decode,now=()=>Date.now()}={}){
-  require(!store.probeExists,'probe_already_attempted');
+export function followupEligible(store,now=Date.now()){
+  require(!store.followupExists,'probe_followup_already_attempted');
+  require(store.probeExists,'probe_original_missing');
+  const first=store.originalProbe();
+  const p=store.profile;
+  // The only allowed follow-up is the specific historical v1 combined
+  // content-type/encoding failure. No quota/auth/timeout or generic retry.
+  require(p&&first?.version===1&&first.state==='unknown'&&first.outcome==='unvalidated'&&first.category==='probe_content_type'&&first.binding===binding(p)&&first.request_sha256===hash(body())&&first.model===MODEL&&Number.isSafeInteger(first.created_ms)&&first.created_ms>0&&first.created_ms<=now&&first.reserved_planning_tokens===RESERVED&&first.charged_planning_units===RESERVED&&first.reported_tokens===null&&first.unknown_usage===true&&first.expected_text===null&&!Object.hasOwn(first,'http_status'),'probe_original_not_eligible');
+  return first;
+}
+export async function qualify(store,available,options={}){
+  require(!store.probeExists&&!store.followupExists,'probe_already_attempted');
+  return runQualification(store,available,options,null);
+}
+export async function qualifyFollowup(store,available,options={}){
+  const first=followupEligible(store,(options.now??Date.now)());
+  return runQualification(store,available,options,first);
+}
+async function runQualification(store,available,{send=sendOnce,decode,now=()=>Date.now()}={},first){
+
   const p=store.profile;
   catalogAllowed(p,Math.floor(now()/1000));
   require(!store.pendingRegistration&&p.expires_at>Math.floor(now()/1000)+60,'probe_grant_expiring');
   require(Array.isArray(available)&&available.some(m=>m.slug===MODEL),'probe_model_unavailable');
   require(typeof decode==='function','build_decoder_first');
   const pending=intent(p,now());
-  store.reserveProbe(pending);
+  if(first){
+    Object.assign(pending,{attempt:2,previous_record_sha256:hash(JSON.stringify(first)),prior_retained_planning_units:RESERVED});
+    store.reserveFollowup(pending,first);
+  }else store.reserveProbe(pending);
   let result;
   try{
     const r=await send(p.access_token);
@@ -140,8 +162,12 @@ export async function qualify(store,available,{send=sendOnce,decode,now=()=>Date
     result=resultRecord(pending,null,e instanceof ProbeTransportError?e.metrics:{});
     result.category=e instanceof AuthError&&/^probe_(?:http_[1-5][0-9]{2}|content_type|content_encoding|wire_limit|decoded_limit|invalid_compression|stream_interrupted|transport_error|deadline)$/.test(e.message)?e.message:'probe_interrupted';
   }
-  store.finishProbe(pending,result);
+  if(first){
+    result.cumulative_planning_units=RESERVED+result.charged_planning_units;
+    result.prior_usage_unknown=true;
+    store.finishFollowup(pending,result,first);
+  }else store.finishProbe(pending,result);
   // Do not print the account binding, prompt hash, raw text or provider IDs.
-  const {binding:_,request_sha256:__,created_ms:___,version:____,...safe}=result;
+  const {binding:_,request_sha256:__,created_ms:___,version:____,previous_record_sha256:_____,...safe}=result;
   return safe;
 }

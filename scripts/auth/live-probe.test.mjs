@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {withStore} from './store.mjs';
 import {SCOPES,hostId} from './protocol.mjs';
-import {MODEL,body,qualify,intent,resultRecord,decodeWire,decoderPath,sendOnce} from './live-probe.mjs';
+import {MODEL,body,qualify,intent,resultRecord,decodeWire,decoderPath,sendOnce,qualifyFollowup,followupEligible} from './live-probe.mjs';
 const now=1700000000000;
 function profile(host=hostId()){return {version:1,host,client_id:'oaiapp_fixture',subject:'fixture',status:'active',scopes:SCOPES,access_token:'fixture-access',refresh_token:'fixture-refresh',id_token:'fixture-id',nonce:'fixture-nonce',saved_at:now/1000,expires_at:now/1000+3600};}
 const available=[{slug:MODEL}];
@@ -167,4 +167,88 @@ test('rejected media diagnostics settle unknown and persist without raw response
   });
   const raw=fs.readFileSync(path.join(dir,'m2-4-probe.json'),'utf8');assert.ok(!raw.includes('secret')&&!raw.includes('fixture-access'));
   await withStore(dir,pass,async s=>assert.rejects(qualify(s,available,{now:()=>now,send:async()=>assert.fail('must not dispatch'),decode:()=>decoded}),/probe_already_attempted/));
+});
+
+
+// Exact historical failure shape from the original combined header gate.
+// No actual owner data is used in these fixtures.
+function historical(s,overrides={}){
+  const p=intent(s.profile,now);
+  s.reserveProbe(p);
+  const r={...resultRecord(p,null,{}),category:'probe_content_type',...overrides};
+  s.finishProbe(p,r);
+  return r;
+}
+test('separately authorized follow-up reserves before send and preserves original bytes',async t=>{
+  const dir=fixture(t);let calls=0;
+  const firstPath=path.join(dir,'m2-4-probe.json');
+  let original;
+  await withStore(dir,pass,async s=>{
+    s.save(profile(s.host));historical(s);original=fs.readFileSync(firstPath);
+    const r=await qualifyFollowup(s,available,{now:()=>now+1000,send:async access=>{
+      calls++;assert.equal(access,'fixture-access');
+      const p=JSON.parse(fs.readFileSync(path.join(dir,'m2-4-followup.json')));
+      assert.equal(p.state,'pending');assert.equal(p.attempt,2);assert.equal(p.prior_retained_planning_units,1024);
+      assert.match(p.previous_record_sha256,/^[a-f0-9]{64}$/);
+      assert.deepEqual(fs.readFileSync(firstPath),original);
+      return {wire:Buffer.from('fixture')};
+    },decode:()=>decoded});
+    assert.equal(r.outcome,'qualified');assert.equal(r.charged_planning_units,47);
+    assert.equal(r.cumulative_planning_units,1071);assert.equal(r.prior_usage_unknown,true);
+    assert.equal(r.previous_record_sha256,undefined);
+  });
+  await withStore(dir,pass,async s=>{
+    const opts={now:()=>now+2000,send:async()=>assert.fail('no replay'),decode:()=>decoded};
+    await assert.rejects(qualifyFollowup(s,available,opts),/probe_followup_already_attempted/);
+    await assert.rejects(qualify(s,available,opts),/probe_already_attempted/);
+  });
+  assert.equal(calls,1);assert.deepEqual(fs.readFileSync(firstPath),original);
+});
+test('follow-up denies missing, pending, different failure and differently bound historical records',async t=>{
+  const opts={now:()=>now+1000,send:async()=>assert.fail('no dispatch'),decode:()=>decoded};
+  const cases=[
+    ['missing',null,/probe_original_missing/],
+    ['pending','pending',/probe_original_not_eligible/],
+    ['quota',{category:'probe_http_429'},/probe_original_not_eligible/],
+    ['new diagnostic',{http_status:200},/probe_original_not_eligible/],
+    ['account mismatch',{model:'other'},/probe_original_not_eligible/],
+    ['known',{state:'settled',reported_tokens:{total:47},unknown_usage:false},/probe_original_not_eligible/],
+    ['time',{created_ms:now+2000},/probe_original_not_eligible/]
+  ];
+  for(const [,variant,code] of cases){
+    const dir=fixture(t);
+    await withStore(dir,pass,async s=>{
+      s.save(profile(s.host));
+      if(variant==='pending')s.reserveProbe(intent(s.profile,now));
+      else if(variant)historical(s,variant);
+      await assert.rejects(qualifyFollowup(s,available,opts),code);
+      assert.equal(s.followupExists,false);
+    });
+  }
+});
+test('unknown follow-up retains both reservations and blocks any further attempt',async t=>{
+  const dir=fixture(t);
+  await withStore(dir,pass,async s=>{
+    s.save(profile(s.host));historical(s);
+    const r=await qualifyFollowup(s,available,{now:()=>now+1000,send:async()=>{throw Error('fixture');},decode:()=>decoded});
+    assert.equal(r.state,'unknown');assert.equal(r.cumulative_planning_units,2048);
+    assert.equal(r.prior_usage_unknown,true);assert.equal(s.followupExists,true);
+  });
+  await withStore(dir,pass,async s=>assert.rejects(qualifyFollowup(s,available,{now:()=>now+2000,send:async()=>assert.fail('no replay'),decode:()=>decoded}),/probe_followup_already_attempted/));
+});
+test('follow-up pending marker and original removal cannot permit another first attempt',async t=>{
+  const dir=fixture(t);
+  await withStore(dir,pass,async s=>{
+    s.save(profile(s.host));historical(s);
+    const first=followupEligible(s,now+1000);
+    const {createHash}=await import('node:crypto');
+    const p={...intent(s.profile,now+1000),attempt:2,prior_retained_planning_units:1024,previous_record_sha256:createHash('sha256').update(JSON.stringify(first)).digest('hex')};
+    s.reserveFollowup(p,first);
+  });
+  await withStore(dir,pass,async s=>{
+    const opts={now:()=>now+2000,send:async()=>assert.fail('no dispatch'),decode:()=>decoded};
+    await assert.rejects(qualifyFollowup(s,available,opts),/probe_followup_already_attempted/);
+  });
+  fs.unlinkSync(path.join(dir,'m2-4-probe.json')); // synthetic tamper
+  await withStore(dir,pass,async s=>assert.rejects(qualify(s,available,{now:()=>now+2000,send:async()=>assert.fail('no dispatch'),decode:()=>decoded}),/probe_already_attempted/));
 });
