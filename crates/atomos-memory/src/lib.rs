@@ -3,6 +3,8 @@
 use std::path::Path;
 
 mod sqlite;
+mod retrieval;
+pub use retrieval::{ContextRequest, RankedFact, RankedRetrieval, ContextPacket, compile_ranked_context};
 pub use sqlite::{SqliteMemory, SqliteReader};
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -97,6 +99,8 @@ pub fn open(dir: &Path, owner: &str) -> Result<SqliteMemory> {
 pub trait MemoryReader {
     fn identity(&self) -> &Identity;
     fn recall(&self, subject: &str, predicate: &str) -> Result<Option<Fact>>;
+    /// Explicit scoped context retrieval; caller authorizes disclosure.
+    fn retrieve(&self, request: &ContextRequest) -> Result<RankedRetrieval>;
 }
 pub fn open_reader(dir: &Path, owner: &str) -> Result<SqliteReader> {
     SqliteReader::open(dir, owner)

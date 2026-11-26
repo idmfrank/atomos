@@ -94,6 +94,17 @@ class ConversationMemory(unittest.TestCase):
         b.send("ARM")
         self.assertIn("specify", self.voice(b, "and favorite food"))
 
+    def test_scoped_context_preview_and_voice_denial(self):
+        self.admin("remember", "project", "note", "text", value="validation passed")
+        self.admin("remember", "owner", "unrelated", "text", value="validation confidential")
+        out = self.cli("context project what is the validation status?\n/quit\n")
+        self.assertIn("Local context preview", out)
+        self.assertIn("validation passed", out)
+        self.assertNotIn("confidential", out)
+        self.assertIn("Simulated inference calls: 0", out)
+        b = self.bridge()
+        self.assertIn("requires the local text interface", self.voice(b, "context project validation"))
+
     def test_unavailable_store_fails_closed(self):
         for directory, owner in ((self.db, "other"), (self.db / "missing", "demo")):
             p = subprocess.run([str(BIN), "--memory", str(directory), owner, "--single-turn"],

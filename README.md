@@ -4,7 +4,7 @@
 
 AtomOS is an experimental project to build a persistent, conversational AI agent that can operate continuously on inexpensive, low-power hardware. The agent owns its identity, memory, permissions and scheduled activities independently of the language model it uses. Reasoning is delegated to OpenAI only when necessary, with the goal of operating within an owner's existing ChatGPT Plus subscription without additional AI spending. The runtime remains useful offline and retains a narrow inference interface for optional self-hosted models.
 
-**Status:** M1.1–M1.4b merged and automated validation passed, including durable local identity, explicit memory administration and read-only conversational recall. Next: M1.4c retrieval and context compilation. Physical speech/model validation, wake word, authenticated private memory access, active-AMG resource measurements, live OpenAI inference and bootable OS remain outstanding.
+**Status:** M1.1–M1.4b merged and automated validation passed, including durable local identity, explicit memory administration and read-only conversational recall. M1.4c scoped retrieval and context compilation in development; CI pending. Physical speech/model validation, wake word, authenticated private memory access, active-AMG resource measurements, live OpenAI inference and bootable OS remain outstanding.
 
 ## Current implementation
 
@@ -15,6 +15,7 @@ AtomOS is an experimental project to build a persistent, conversational AI agent
 | M1.3 | Persistent Rust voice coordinator, streaming PCM protocol, RMS endpointing, follow-up window, AEC-gated cancellation, optional warm Sherpa-ONNX/Kokoro adapter, IPC startup/deadline fixes. [PR #4](https://github.com/idmfrank/atomos/pull/4) |
 | M1.4a | Initial SQLite-backed typed memory, explicit owner CLI and regression tests merged; locked offline CI passed. See [AMG foundation](docs/m1-amg-foundation.md). |
 | M1.4b | Opt-in read-only text and synthetic voice recall, persistent display name, bounded subject follow-up, live correction/deletion visibility. [PR #6](https://github.com/idmfrank/atomos/pull/6), [implementation](docs/m1-amg-conversation.md); locked offline CI passed. |
+| M1.4c | Scoped graph/FTS retrieval, deterministic ranking, required facts, connector evidence and bounded data-only context previews. [Implementation](docs/m1-amg-context.md); CI pending. |
 
 Latest verified executable baseline: [7e523bd](https://github.com/idmfrank/atomos/commit/7e523bdc1c139f3555fce39eda887b0655676d33), [Actions run 45755478646](https://github.com/idmfrank/atomos/actions/runs/45755478646). 35 Rust and 9 Python integration tests passed, plus CLI, stub audio and separate-process AMG lifecycle checks; zero remote inference. Rust/Cargo 1.100.0; locked dependencies provisioned before offline build/test.
 
@@ -178,7 +179,7 @@ M1.4a implements a stable local agent ID, owner scope and display name; M1.4b re
 
 Opt in with `atomos --memory DIR OWNER` (also before `--single-turn` or `--voice-events`). The existing database must be initialized by `atomos-memory`. The runtime uses a read-only SQLite connection and typed MemoryReader. Supported English grammar includes "what is your name?", "what is my favorite color?", "recall project status", and "and count" (previous subject). Exact values are re-read on each turn; only the subject key is retained in RAM. Clear it on unrelated or failed requests, mute, interruption, idle and restart. Missing facts or storage errors produce local status. Other open-ended questions still use mock reasoning. No model calls, automatic learning or voice mutations.
 
-Synthetic data only: voice recall is explicitly opt-in and restricted to owner favorite_color, favorite_food and favorite_music text values plus agent display name. Voice is not authentication; the allowlist is not a privacy classifier. Text administration assumes a trusted OS operator. See [M1.4b](docs/m1-amg-conversation.md) for commands and tests. Relevance ranking, retrieval fusion, policy-aware context compilation, authenticated owner controls and active-store benchmarks remain pending.
+Synthetic data only: voice recall is explicitly opt-in and restricted to owner favorite_color, favorite_food and favorite_music text values plus agent display name. Voice is not authentication; the allowlist is not a privacy classifier. Text administration assumes a trusted OS operator. See [M1.4b](docs/m1-amg-conversation.md) for commands and tests. M1.4c adds explicit text-only scoped previews (`context SUBJECT QUESTION`), deterministic graph/FTS ranking and a conservative byte-bounded data packet. No automatic model routing. Full policy-aware context compilation, authenticated owner controls and active-store benchmarks remain pending; see [M1.4c](docs/m1-amg-context.md).
 
 ## Technical approach
 
