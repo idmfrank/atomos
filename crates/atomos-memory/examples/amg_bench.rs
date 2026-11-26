@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 // Synthetic fixture only. Seed in bulk; time production APIs, not seed SQL.
 use atomos_memory::{compile_context,compile_ranked_context,init,open,open_reader,
-    ContextRequest,MemoryReader,MemoryStore,Retrieval,Value};
+    ContextRequest,MemoryReader,MemoryStore,Retrieval,SqliteMemory,Value};
 use rusqlite::{params,Connection};
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -69,7 +69,8 @@ fn read(dir:&Path,n:usize,count:usize)->bool {
     let first=r.recall(&node(i),"status").ok().flatten();
     let first_ok=first.as_ref().is_some_and(|f|f.value==Value::Text(status(i)));
     println!("metric=first_exact_process_cold samples=1 errors={} elapsed_ms={:.4}",usize::from(!first_ok),ms(t));
-    let mut exact=Stats::default();let mut retrieval=Stats::default();let mut context=Stats::default();let mut broad=Stats::default();
+    let mut exact=Stats::default();let mut retrieval=Stats::default();let mut context=Stats::default();let mut broad=Stats::default();let mut reference_broad=Stats::default();
+    let mut parity_checked=0usize;let mut mismatches=0usize;let mut reference_errors=0usize;
     let (mut hits,mut returned,mut wanted,mut compiled,mut context_bytes,mut full_bytes)=(0usize,0usize,0usize,0usize,0usize,0usize);
     for j in 0..count {
         let i=sample(j,n);let root=node(i);let peer=node(i+1);
@@ -109,14 +110,35 @@ fn read(dir:&Path,n:usize,count:usize)->bool {
         if j<30 {
             let q=ContextRequest::new(&root,"status");
             let t=Instant::now();
-            let good=r.retrieve(&q).ok().and_then(|v|compile_ranked_context(&v,4096).ok()).is_some_and(|p|p.facts==3);
-            broad.add(ms(t),good);
+            let candidate=r.retrieve(&q);
+            let packet=candidate.as_ref().ok().and_then(|v|compile_ranked_context(v,4096).ok());
+            let candidate_time=ms(t);
+            let good=candidate.as_ref().is_ok_and(|v| {
+                v.facts.len()==3 && v.facts.iter().map(|f|(f.fact.subject.clone(),f.fact.predicate.clone())).collect::<BTreeSet<_>>()==expected(i)
+            }) && packet.is_some();
+            broad.add(candidate_time,good);
+            let t=Instant::now();
+            let reference=r.retrieve_reference(&q);
+            let old_packet=reference.as_ref().ok().and_then(|v|compile_ranked_context(v,4096).ok());
+            reference_broad.add(ms(t),old_packet.is_some());
+            match (&reference,&candidate) {
+                (Ok(a),Ok(b))=>{
+                    parity_checked+=1;
+                    if a!=b || old_packet!=packet {
+                        mismatches+=1;
+                        eprintln!("parity_mismatch stage=ranked_context reference_facts={} candidate_facts={}",a.facts.len(),b.facts.len());
+                    }
+                }
+                (Ok(_),Err(_))=>{mismatches+=1;eprintln!("parity_mismatch stage=candidate_rejected");}
+                (Err(_),_)=>{reference_errors+=1;eprintln!("parity_reference_unavailable stage=reference_query");}
+            }
         }
     }
-    exact.report("exact_warm");retrieval.report("scoped_graph_fts_warm");context.report("context_end_to_end_warm");broad.report("common_term_context");
+    exact.report("exact_warm");retrieval.report("scoped_graph_fts_warm");context.report("context_end_to_end_warm");broad.report("common_term_context");reference_broad.report("common_term_reference");
+    println!("parity compared={parity_checked} mismatches={mismatches} reference_errors={reference_errors}");
     println!("quality expected_facts={wanted} returned_facts={returned} matched_facts={hits} complete_packets={compiled} requests={count} precision={:.4} recall={:.4}",if returned==0{0.0}else{hits as f64/returned as f64},hits as f64/wanted as f64);
     println!("context_bytes successful_packets={compiled} ranked_total={context_bytes} same_scope_all_facts_total={full_bytes} remote_calls=0");
-    first_ok&&exact.errors==0&&retrieval.errors==0&&context.errors==0
+    first_ok&&exact.errors==0&&retrieval.errors==0&&context.errors==0&&broad.errors==0&&mismatches==0&&parity_checked>0
 }
 fn graph(dir:&Path,n:usize,count:usize)->bool {
     let db=open(dir,"bench").unwrap();let mut stats=Stats::default();
@@ -148,11 +170,33 @@ fn write(dir:&Path,n:usize,count:usize)->bool {
     println!("metric=verify_after_writes samples=1 errors={} elapsed_ms={:.4}",usize::from(!integrity),ms(t));
     ok&&integrity&&db.identity()==&identity&&add.errors==0&&correct.errors==0&&forget.errors==0
 }
+fn recovery(dir:&Path,n:usize)->bool {
+    // Only benchmark-owned temporary stores and exports.
+    let mut db=open(dir,"bench").unwrap();
+    let parent=dir.parent().expect("benchmark parent");
+    let backup=parent.join(format!("backup-{n}.amg"));
+    let restored=parent.join(format!("restored-{n}"));
+    let identity=db.identity().clone();
+    let t=Instant::now();let rows=db.export_logical(&backup).unwrap();
+    println!("metric=logical_export elapsed_ms={:.4} rows={rows} bytes={}",ms(t),std::fs::metadata(&backup).unwrap().len());
+    let t=Instant::now();let mut recovered=SqliteMemory::restore_logical(&restored,"bench",&backup).unwrap();
+    println!("metric=logical_restore elapsed_ms={:.4} bytes={}",ms(t),std::fs::metadata(restored.join("memory.db")).unwrap().len());
+    let mut ok=recovered.identity()==&identity;
+    for i in [0,n/2,n-1] {
+        ok &= recovered.recall(&node(i),"status").unwrap()==db.recall(&node(i),"status").unwrap();
+        ok &= recovered.recall(&node(i),"note").unwrap()==db.recall(&node(i),"note").unwrap();
+    }
+    let t=Instant::now();ok &= recovered.verify().is_ok();
+    println!("metric=logical_restore_verify elapsed_ms={:.4} errors={}",ms(t),usize::from(!ok));
+    drop(recovered);drop(db);
+    std::fs::remove_file(backup).unwrap();std::fs::remove_dir_all(restored).unwrap();
+    ok
+}
 fn main(){
     let a:Vec<String>=std::env::args().collect();
-    if a.len()!=5 {eprintln!("usage: amg_bench seed|read|graph|write DIR ENTITY_COUNT SAMPLES");std::process::exit(2);}
+    if a.len()!=5 {eprintln!("usage: amg_bench seed|read|graph|write|recovery DIR ENTITY_COUNT SAMPLES");std::process::exit(2);}
     let dir=Path::new(&a[2]);let n:usize=a[3].parse().expect("entity count");let count:usize=a[4].parse().expect("samples");
     assert!((100..=100_000).contains(&n)&&n%2==0&&(1..=1000).contains(&count));
-    let ok=match a[1].as_str(){"seed"=>{seed(dir,n);true},"read"=>read(dir,n,count),"graph"=>graph(dir,n,count),"write"=>write(dir,n,count),_=>false};
+    let ok=match a[1].as_str(){"seed"=>{seed(dir,n);true},"read"=>read(dir,n,count),"graph"=>graph(dir,n,count),"write"=>write(dir,n,count),"recovery"=>recovery(dir,n),_=>false};
     if !ok {std::process::exit(1);}
 }

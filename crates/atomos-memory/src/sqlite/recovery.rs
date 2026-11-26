@@ -2,12 +2,12 @@
 //! statements can restore records. Grants are intentionally not exported.
 use super::*;
 use rusqlite::types::{Value as SqlValue, ValueRef};
-use std::io::{Read,Write};
+use std::io::{BufRead,BufReader,BufWriter,Read,Seek,SeekFrom,Write};
 use std::fs::File;
 
 const MAGIC:&str="ATOMOS-AMG-LOGICAL-1";
-const MAX_EXPORT:usize=8*1024*1024;
-const MAX_ROWS:usize=20_000;
+const MAX_EXPORT:usize=256*1024*1024;
+const MAX_ROWS:usize=1_000_000;
 const MAX_LINE:usize=4096;
 const BAD:Error=Error::Invalid("invalid or oversized logical backup");
 struct Table {
@@ -85,9 +85,10 @@ fn validate(tag:&str,v:&[SqlValue],owner:&str)->Result<()>{
     }
     Ok(())
 }
-fn append(out:&mut Vec<u8>,line:&str)->Result<()>{
-    if line.len()>MAX_LINE||out.len()+line.len()+1>MAX_EXPORT{return Err(BAD);}
-    out.extend_from_slice(line.as_bytes());out.push(b'\n');Ok(())
+fn append(out:&mut impl Write,total:&mut usize,line:&str)->Result<()>{
+    if line.len()>MAX_LINE||*total+line.len()+1>MAX_EXPORT{return Err(BAD);}
+    out.write_all(line.as_bytes())?;out.write_all(b"\n")?;
+    *total+=line.len()+1;Ok(())
 }
 /// Check logical and physical consistency before export/after restore/migration.
 /// FTS integrity-check verifies index structure; compare content to authoritative rows.
@@ -112,42 +113,56 @@ pub(super) fn check_integrity(c:&Connection,owner:&str)->Result<()> {
     c.execute("INSERT INTO fact_search(fact_search) VALUES('integrity-check')",[])?;
     Ok(())
 }
-fn load(path:&Path,owner:&str)->Result<Vec<(usize,Vec<SqlValue>)>>{
-    private_file(path)?;
-    let mut bytes=Vec::new();
-    File::open(path)?.take((MAX_EXPORT+1) as u64).read_to_end(&mut bytes)?;
-    if bytes.len()>MAX_EXPORT||bytes.last()!=Some(&b'\n'){return Err(BAD);}
-    let s=std::str::from_utf8(&bytes).map_err(|_|BAD)?;
-    let mut lines=s.lines();
-    if lines.next()!=Some(MAGIC){return Err(BAD);}
-    let mut rows=Vec::new();
+// Bounded line reader: a malformed line cannot force unbounded allocation.
+// Export uses canonical LF-delimited ASCII fields; hex contains UTF-8 values.
+fn next_line(reader:&mut impl BufRead,total:&mut usize,line:&mut Vec<u8>)->Result<bool>{
+    line.clear();
+    let n=(&mut *reader).take((MAX_LINE+2) as u64).read_until(b'\n',line)?;
+    if n==0{return Ok(false);}
+    *total+=n;
+    if *total>MAX_EXPORT||n>MAX_LINE+1||line.pop()!=Some(b'\n'){return Err(BAD);}
+    Ok(true)
+}
+// Stream validate ordered records; the caller either discards them in a
+// preflight pass or applies fixed prepared inserts inside a transaction.
+fn parse(reader:&mut impl BufRead,owner:&str,mut consume:impl FnMut(usize,Vec<SqlValue>)->Result<()>)->Result<usize>{
+    let mut bytes=0usize;
+    let mut line=Vec::with_capacity(MAX_LINE+1);
+    if !next_line(reader,&mut bytes,&mut line)?||line!=MAGIC.as_bytes(){return Err(BAD);}
     let mut last=0usize;
-    let mut ids=BTreeSet::new();
+    let mut last_id=0i64;
+    let mut count=0usize;
     let mut identity_count=0;
     let mut sequence_names=BTreeSet::new();
     let mut end=false;
-    for line in lines {
-        if end||line.len()>MAX_LINE{return Err(BAD);}
+    while next_line(reader,&mut bytes,&mut line)? {
+        if end{return Err(BAD);}
+        let line=std::str::from_utf8(&line).map_err(|_|BAD)?;
         let mut fields=line.split('\t');
         let tag=fields.next().ok_or(BAD)?;
         if tag=="END" {
-            if fields.next().and_then(|x|x.parse::<usize>().ok())!=Some(rows.len())||fields.next().is_some(){return Err(BAD);}
+            if fields.next().and_then(|x|x.parse::<usize>().ok())!=Some(count)||fields.next().is_some(){return Err(BAD);}
             end=true;continue;
         }
         let index=TABLES.iter().position(|t|t.tag==tag).ok_or(BAD)?;
-        if index<last||rows.len()>=MAX_ROWS{return Err(BAD);}
-        if index!=last{ids.clear();last=index;}
+        if index<last||count>=MAX_ROWS{return Err(BAD);}
+        if index!=last{last_id=0;last=index;}
         let t=&TABLES[index];
         let values=t.types.bytes().map(|k|decode(fields.next().ok_or(BAD)?,k)).collect::<Result<Vec<_>>>()?;
         if fields.next().is_some(){return Err(BAD);}
         validate(tag,&values,owner)?;
         if tag=="I"{identity_count+=1;if identity_count!=1{return Err(BAD);}}
-        if matches!(tag,"E"|"S"|"A")&&!ids.insert(as_int(&values[0])?){return Err(BAD);}
+        if matches!(tag,"E"|"S"|"A"){
+            let id=as_int(&values[0])?;
+            if id<=last_id{return Err(BAD);}
+            last_id=id;
+        }
         if tag=="Q"&&!sequence_names.insert(as_text(&values[0])?.to_string()){return Err(BAD);}
-        rows.push((index,values));
+        consume(index,values)?;
+        count+=1;
     }
     if !end||identity_count!=1{return Err(BAD);}
-    Ok(rows)
+    Ok(count)
 }
 impl SqliteMemory {
     pub fn verify(&mut self)->Result<()> {
@@ -161,32 +176,52 @@ impl SqliteMemory {
     pub fn export_logical(&mut self,path:&Path)->Result<usize>{
         let parent=path.parent().filter(|p|!p.as_os_str().is_empty()).unwrap_or(Path::new("."));
         private_dir(parent)?;
+        let db_path=Path::new(self.conn.path().ok_or(Error::Invalid("missing database path"))?);
+        let store=fs::canonicalize(db_path)?.parent().ok_or(Error::Invalid("missing store directory"))?.to_path_buf();
+        if fs::canonicalize(parent)?.starts_with(&store){
+            return Err(Error::Invalid("backup must be outside the active store directory"));
+        }
         let tx=self.conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
         check_integrity(&tx,&self.identity.owner_scope)?;
-        let mut out=Vec::new();
-        append(&mut out,MAGIC)?;
-        let mut count=0usize;
-        for t in &TABLES {
-            let mut stmt=tx.prepare(t.select)?;
-            let mut rows=stmt.query([])?;
-            while let Some(r)=rows.next()?{
-                count+=1;if count>MAX_ROWS{return Err(BAD);}
-                let mut line=t.tag.to_owned();
-                for i in 0..t.types.len(){line.push('\t');line.push_str(&encode(r.get_ref(i)?)?);}
-                append(&mut out,&line)?;
+        let file=OpenOptions::new().write(true).create_new(true).mode(0o600).open(path)?;
+        let result=(||->Result<usize>{
+            let mut out=BufWriter::with_capacity(64*1024,file);
+            let mut bytes=0usize;
+            append(&mut out,&mut bytes,MAGIC)?;
+            let mut count=0usize;
+            for t in &TABLES {
+                let mut stmt=tx.prepare(t.select)?;
+                let mut rows=stmt.query([])?;
+                while let Some(r)=rows.next()?{
+                    count+=1;if count>MAX_ROWS{return Err(BAD);}
+                    let mut line=t.tag.to_owned();
+                    for i in 0..t.types.len(){line.push('\t');line.push_str(&encode(r.get_ref(i)?)?);}
+                    append(&mut out,&mut bytes,&line)?;
+                }
             }
-        }
-        append(&mut out,&format!("END\t{count}"))?;
-        tx.commit()?;
-        let mut file=OpenOptions::new().write(true).create_new(true).mode(0o600).open(path)?;
-        file.write_all(&out)?;file.sync_all()?;File::open(parent)?.sync_all()?;
-        Ok(count)
+            append(&mut out,&mut bytes,&format!("END\t{count}"))?;
+            out.flush()?;out.get_ref().sync_all()?;
+            drop(out);
+            tx.commit()?;
+            File::open(parent)?.sync_all()?;
+            Ok(count)
+        })();
+        // Never remove a pre-existing file: create_new succeeded above.
+        // A crash can still leave an incomplete file; parser rejects it.
+        if result.is_err(){let _=fs::remove_file(path);}
+        result
     }
     /// Explicit disaster-recovery operation only. Never merge or overwrite.
     /// Older exports may contain deleted data; caller must reconcile retention.
     pub fn restore_logical(dir:&Path,owner:&str,path:&Path)->Result<Self>{
         key(owner)?;
-        let rows=load(path,owner)?;
+        private_file(path)?;
+        let mut input=File::open(path)?;
+        if input.metadata()?.len()>MAX_EXPORT as u64{return Err(BAD);}
+        // Preflight format/scope before creating the destination. Parse again
+        // during insertion using the same open file (trusted local operator).
+        let expected=parse(&mut BufReader::new(&mut input),owner,|_,_|Ok(()))?;
+        input.seek(SeekFrom::Start(0))?;
         DirBuilder::new().mode(0o700).create(dir)?;
         let db=dir.join("memory.db");
         OpenOptions::new().write(true).create_new(true).mode(0o600).open(&db)?;
@@ -200,10 +235,12 @@ impl SqliteMemory {
         // The assertion insertion triggers rebuild the active FTS index.
         // Restore AUTOINCREMENT high water marks, not just surviving IDs.
         let mut reset=false;
-        for (index,values) in rows {
+        let restored=parse(&mut BufReader::new(&mut input),owner,|index,values|{
             if index==4&&!reset {tx.execute("DELETE FROM sqlite_sequence",[])?;reset=true;}
-            tx.execute(TABLES[index].insert,rusqlite::params_from_iter(values.iter()))?;
-        }
+            tx.prepare_cached(TABLES[index].insert)?.execute(rusqlite::params_from_iter(values.iter()))?;
+            Ok(())
+        })?;
+        if restored!=expected{return Err(BAD);}
         for table in ["entity","source","assertion"]{
             let max:i64=tx.query_row(&format!("SELECT COALESCE(max(id),0) FROM {table}"),[],|r|r.get(0))?;
             let seq:Option<i64>=tx.query_row("SELECT seq FROM sqlite_sequence WHERE name=?1",[table],|r|r.get(0)).optional()?;

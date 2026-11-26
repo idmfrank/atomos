@@ -144,3 +144,58 @@ fn targeted_forget_preserves_shared_and_unrelated_sources(){
     assert_eq!(db.recall("owner","third").unwrap(),Some(c));
     db.verify().unwrap();
 }
+
+
+#[test]
+fn streaming_logical_backup_exceeds_old_record_and_byte_caps(){
+    let f=Fixture::new();let path=f.0.join("db");let backup=f.0.join("large.amg");
+    drop(init(&path,"demo","Aster").unwrap());
+    // Bulk synthetic fixture using the actual schema and insert triggers.
+    let mut raw=rusqlite::Connection::open(path.join("memory.db")).unwrap();
+    raw.execute_batch("PRAGMA foreign_keys=ON; PRAGMA synchronous=FULL;").unwrap();
+    let tx=raw.transaction().unwrap();
+    {
+        let mut source=tx.prepare("INSERT INTO source(id,owner_scope,kind,recorded_at) VALUES(?1,'demo','owner_local',1700000000)").unwrap();
+        let mut fact=tx.prepare("INSERT INTO assertion(id,owner_scope,subject_id,predicate,value_kind,text_value,source_id,recorded_at) VALUES(?1,'demo',1,?2,'text',?3,?1,1700000000)").unwrap();
+        let content="synthetic narrative ".repeat(25);
+        for i in 1..=10500i64 {
+            source.execute([i]).unwrap();
+            fact.execute(rusqlite::params![i,format!("note{i}"),&content]).unwrap();
+        }
+    }
+    tx.commit().unwrap();drop(raw);
+    let mut db=open(&path,"demo").unwrap();
+    let rows=db.export_logical(&backup).unwrap();
+    assert!(rows>20_000);
+    assert!(std::fs::metadata(&backup).unwrap().len()>8*1024*1024);
+    let dest=f.0.join("restored");
+    let mut recovered=SqliteMemory::restore_logical(&dest,"demo",&backup).unwrap();
+    assert_eq!(recovered.identity(),db.identity());
+    for p in ["note1","note5250","note10500"] {
+        assert_eq!(recovered.recall("owner",p).unwrap(),db.recall("owner",p).unwrap());
+    }
+    recovered.verify().unwrap();
+}
+#[test]
+fn oversized_line_is_rejected_before_restore_creation(){
+    let f=Fixture::new();
+    let path=f.0.join("db");let backup=f.0.join("large.amg");
+    let mut db=init(&path,"demo","Aster").unwrap();
+    db.export_logical(&backup).unwrap();
+    let mut data=std::fs::read(&backup).unwrap();
+    data.extend_from_slice(&vec![b'x';5000]);data.push(b'\n');
+    std::fs::write(&backup,data).unwrap();
+    let dest=f.0.join("bad");
+    assert!(SqliteMemory::restore_logical(&dest,"demo",&backup).is_err());
+    assert!(!dest.exists());
+}
+
+#[test]
+fn export_cannot_consume_active_store_budget(){
+    let f=Fixture::new();let path=f.0.join("db");
+    let mut db=init(&path,"demo","Aster").unwrap();
+    let inside=path.join("backup.amg");
+    assert!(db.export_logical(&inside).is_err());
+    assert!(!inside.exists());
+    db.export_logical(&f.0.join("outside.amg")).unwrap();
+}

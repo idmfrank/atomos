@@ -3,6 +3,7 @@
 use atomos_memory::{compile_context, init, open, Error, Fact, MemoryStore, Result, SqliteMemory, Value};
 use std::io::{self, Read};
 use std::path::Path;
+use std::os::unix::fs::MetadataExt;
 
 fn input_value(kind: &str) -> Result<Value> {
     // Fact values enter via stdin, not process arguments or shell history.
@@ -22,6 +23,22 @@ fn input_value(kind: &str) -> Result<Value> {
 fn show(f:&Fact) {
     println!("revision={} source={} recorded_at={} subject={} predicate={} value={:?} superseded_at={:?}",
         f.revision,f.source_id,f.recorded_at,f.subject,f.predicate,f.value,f.superseded_at);
+}
+// Quiescent accounting, not a hard filesystem quota. Count all regular
+// files in the dedicated store, including rollback journal and sidecars.
+fn storage_report(dir:&Path)->Result<()>{
+    const BUDGET:u64=256*1024*1024;
+    let mut apparent=0u64;let mut allocated=0u64;let mut main=0u64;
+    for item in std::fs::read_dir(dir)?{
+        let item=item?;
+        let m=std::fs::symlink_metadata(item.path())?;
+        if !m.is_file()||m.nlink()!=1{return Err(Error::Invalid("unexpected store directory entry"));}
+        apparent=apparent.checked_add(m.len()).ok_or(Error::Invalid("storage size overflow"))?;
+        allocated=allocated.checked_add(m.blocks().checked_mul(512).ok_or(Error::Invalid("storage size overflow"))?).ok_or(Error::Invalid("storage size overflow"))?;
+        if item.file_name()=="memory.db"{main=m.len();}
+    }
+    println!("main_bytes={main} aggregate_apparent_bytes={apparent} aggregate_allocated_bytes={allocated} target_bytes={BUDGET} over_target={} hard_quota_verified=false",apparent.max(allocated)>BUDGET);
+    Ok(())
 }
 fn run()->Result<()> {
     let args:Vec<String>=std::env::args().skip(1).collect();
@@ -45,6 +62,7 @@ fn run()->Result<()> {
     }
     let mut db=open(dir,owner)?;
     match rest.as_slice() {
+        ["storage"]=>storage_report(dir)?,
         ["verify"]=>{db.verify()?;println!("integrity ok");},
         ["export",path]=>println!("exported_rows={}",db.export_logical(Path::new(path))?),
         ["voice-allow",s,p,revision,ttl]=>{
@@ -67,7 +85,7 @@ fn run()->Result<()> {
             let r=atomos_memory::Retrieval {facts,truncated:false,visited:0};
             print!("{}",compile_context(&r,4096)?);
         },
-        _=>return Err(Error::Invalid("commands: init NAME, migrate, verify, export PATH, restore PATH --accept-snapshot, voice-allow SUBJECT PREDICATE REVISION TTL_SECONDS, voice-revoke SUBJECT PREDICATE, identity, entity KEY LABEL KIND, remember SUBJECT PREDICATE TYPE, correct SUBJECT PREDICATE REVISION TYPE, recall SUBJECT PREDICATE, forget SUBJECT PREDICATE, history SUBJECT PREDICATE, search PHRASE, graph SUBJECT, context SUBJECT PREDICATE")),
+        _=>return Err(Error::Invalid("commands: init NAME, migrate, verify, storage, export PATH, restore PATH --accept-snapshot, voice-allow SUBJECT PREDICATE REVISION TTL_SECONDS, voice-revoke SUBJECT PREDICATE, identity, entity KEY LABEL KIND, remember SUBJECT PREDICATE TYPE, correct SUBJECT PREDICATE REVISION TYPE, recall SUBJECT PREDICATE, forget SUBJECT PREDICATE, history SUBJECT PREDICATE, search PHRASE, graph SUBJECT, context SUBJECT PREDICATE")),
     }
     Ok(())
 }

@@ -1,6 +1,6 @@
 # M1.4e — Active AMG benchmark and engine evaluation
 
-Status: SQLite reference harness on development branch; CI and scale measurements pending. No final engine selection or measured token savings.
+Status: SQLite reference harness and schema v3 deletion fix merged; individual and combined scale runs passed. Retain SQLite for M2 development pending owner review of deferral; no equivalent-engine ranking or measured token savings.
 
 ## Reproduce
 
@@ -38,3 +38,5 @@ SQLite remains provisional. M1.4e not complete until equivalent candidates are t
 ## Scale deletion correction (schema v3)
 
 The original 1k post-merge [run 45800257830](https://github.com/idmfrank/atomos/actions/runs/45800257830) measured p95 exact 0.0288 ms, graph 0.0947 ms, context 0.2352 ms, forget 151.7860 ms; the full write phase took 14.10 s. The original forget statement scanned every source and repeatedly looked up an unindexed assertion.source_id. Missing successor-reference indexes also make deletion/history checks expensive. Schema v3 adds reference indexes and an assertion-delete trigger to remove only the affected source when no assertion still refers to it. The previous all-store orphan sweep is removed. Existing unrelated orphan sources, if present in imported stores, are not globally purged by forget. This is an algorithmic correction; rerun before claiming measured speedups. v1/v2 databases require explicit offline migration; existing v2 grants preserved, v1 gains default-deny policy. Logical backup format unchanged, restore initializes v3. Stage timeout defaults to 180 s (AMG_STAGE_SECONDS), and progress markers identify seed, write and verify phases. A stage timeout/failure is reported, not treated as a successful sample. CI retains its stricter overall timeout. The original scale job's live logs were unavailable through the connector, so the precise stalled stage was not independently observed.
+
+Verified combined scale results and original failure analysis: [M1.4f baseline](m1-amg-optimization.md#reference-baseline-and-decision). M1.4f adds compact-scope FTS range optimization and reference parity, plus optional streaming backup/restore benchmark. See that specification for updated bounds and limitations.
