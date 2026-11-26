@@ -21,6 +21,9 @@ jobs:
       - name: Provision locked build dependencies
         run: |
           pkg-config --modversion sqlite3
+          # Temporary draft-only dependency lock bootstrap; remove before merge.
+          cargo fetch
+          cat Cargo.lock
           cargo fetch --locked
       - name: Test and smoke
         run: bash scripts/test.sh

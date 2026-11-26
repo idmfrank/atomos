@@ -5,3 +5,15 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+
+[features]
+default = []
+responses-replay = ["dep:serde", "dep:serde_json"]
+
+[dependencies.serde]
+version = "=1.0.228"
+optional = true
+
+[dependencies.serde_json]
+version = "=1.0.145"
+optional = true
