@@ -22,7 +22,11 @@ MAX_REPLY = 10 * MAX_LINE
 class Bridge:
     """Private bounded stdio client for the Rust voice coordinator."""
 
-    def __init__(self, binary, aec=False):
+    def __init__(self, binary, aec=False, request_timeout=3.0):
+        if not 0 < request_timeout <= 30:
+            raise ValueError("invalid IPC deadline")
+        self.request_timeout = request_timeout
+        self.failed = False
         args = [str(binary), "--voice-events"]
         if aec:
             args.append("--aec-verified")
@@ -34,10 +38,23 @@ class Bridge:
         self.pending = bytearray()
 
     def send(self, command):
+        if self.failed:
+            raise RuntimeError("IPC connection already failed")
+        try:
+            return self._exchange(command)
+        except (OSError, RuntimeError, ValueError, TimeoutError):
+            # A partial write/read makes the protocol unsynchronizable.
+            self.failed = True
+            self.close()
+            raise
+
+    def _exchange(self, command):
+        if "\n" in command or "\r" in command:
+            raise ValueError("multiline IPC command")
         data = (command + "\n").encode("ascii")
         if len(data) > MAX_LINE:
             raise ValueError("oversized command")
-        deadline = time.monotonic() + 3
+        deadline = time.monotonic() + self.request_timeout
         while data:
             remaining = deadline - time.monotonic()
             if remaining <= 0 or not select.select([], [self.in_fd], [], remaining)[1]:

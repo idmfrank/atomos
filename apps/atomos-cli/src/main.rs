@@ -30,11 +30,6 @@ fn answer(provider: &mut MockInference, turns: &mut TurnManager, line: &str) -> 
 }
 
 fn main() -> io::Result<()> {
-    let mut provider = MockInference::default();
-    let mut turns = TurnManager::default();
-    let stdin = io::stdin();
-    let mut input = stdin.lock();
-    let mut out = io::stdout().lock();
     let args: Vec<_> = std::env::args_os().skip(1).collect();
 
     if args.len() == 1 && args[0] == "--voice-events" {
@@ -43,6 +38,14 @@ fn main() -> io::Result<()> {
     if args.len() == 2 && args[0] == "--voice-events" && args[1] == "--aec-verified" {
         return voice_events::run(true);
     }
+
+    // Each mode owns its stdio locks. Dispatch voice mode before acquiring
+    // any locks here: the voice coordinator reads stdin itself.
+    let mut provider = MockInference::default();
+    let mut turns = TurnManager::default();
+    let stdin = io::stdin();
+    let mut input = stdin.lock();
+    let mut out = io::stdout().lock();
 
     // Plain response only: the local audio harness uses this interface.
     if args.len() == 1 && args[0] == "--single-turn" {

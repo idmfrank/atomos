@@ -110,7 +110,17 @@ impl Governor {
         if !log.is_empty() && !log.ends_with('\n') {
             return Err(Error::Corrupt);
         }
-        let instance = NEXT_INSTANCE.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |n| n.checked_add(1)).map_err(|_| Error::Unavailable)?;
+        // Use a CAS loop compatible with Rust 1.75 and newer toolchains.
+        let mut instance = NEXT_INSTANCE.load(Ordering::Relaxed);
+        loop {
+            let next = instance.checked_add(1).ok_or(Error::Unavailable)?;
+            match NEXT_INSTANCE.compare_exchange_weak(
+                instance, next, Ordering::Relaxed, Ordering::Relaxed,
+            ) {
+                Ok(_) => break,
+                Err(observed) => instance = observed,
+            }
+        }
         let mut governor = Self {
             instance,
             file,
