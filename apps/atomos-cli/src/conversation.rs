@@ -1,6 +1,6 @@
 //! Local read-only recall. Explicit grammar; no automatic learning or model routing.
 use atomos_core::{respond, MockInference};
-use atomos_memory::{MemoryReader, Value};
+use atomos_memory::{MemoryReader, Value, ContextRequest, compile_ranked_context};
 
 #[derive(Clone,Copy,PartialEq,Eq)]
 pub enum Channel { Text, Voice }
@@ -61,6 +61,26 @@ impl Conversation {
         if ["remember","forget","correct","delete","learn"].iter().any(|w| s==*w||s.strip_prefix(*w).is_some_and(|tail|tail.starts_with(' '))) {
             self.clear();
             return "Use the local memory administration interface to change stored facts.".into();
+        }
+        // Broad retrieval and context previews are explicitly local-text only.
+        // Do not normalize the actual question to lower case before validation.
+        if s=="context" || s.starts_with("context ") {
+            self.clear();
+            if self.channel==Channel::Voice { return VOICE_DENIED.into(); }
+            let Some((anchor,question))=input.trim().split_once(' ').and_then(|(_,rest)|rest.trim().split_once(' ')) else {
+                return "Use context SUBJECT QUESTION in the local text interface.".into();
+            };
+            let anchor=anchor.to_ascii_lowercase();
+            let request=ContextRequest::new(&anchor,question.trim());
+            let reader=self.reader.as_ref().expect("reader checked");
+            return match reader.retrieve(&request) {
+                Ok(r) if r.facts.is_empty() && !r.incomplete && r.missing_required.is_empty()=>NO_FACT.into(),
+                Ok(r)=>match compile_ranked_context(&r,4096) {
+                    Ok(packet)=>format!("Local context preview ({} facts, {} bytes; no inference):\n{}",packet.facts,packet.bytes,packet.data.trim_end()),
+                    Err(_)=>"Context is incomplete or exceeds its budget. Narrow the question or use exact recall.".into(),
+                },
+                Err(_)=>"Unable to retrieve scoped context. Check the subject and question.".into(),
+            };
         }
         let query=if let Some(rest)=s.strip_prefix("recall ") {
             let mut parts=rest.splitn(2,' ');
