@@ -21,3 +21,7 @@ optional = true
 [[example]]
 name = "responses_bench"
 required-features = ["responses-replay"]
+
+[[example]]
+name = "responses_qualify"
+required-features = ["responses-replay"]

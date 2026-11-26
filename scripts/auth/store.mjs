@@ -1,4 +1,4 @@
-// Single local registration. Protected files, not encrypted storage.
+// Single local registration, encrypted profile and one-shot qualification ledger.
 import fs from 'node:fs';
 import path from 'node:path';
 import {randomBytes} from 'node:crypto';
@@ -49,7 +49,8 @@ export function withStore(dir,pass,action){ // synchronous acquisition, async li
       if(profile)require(profile.version===1&&profile.host===host&&clientId(profile.client_id)&&opaque(profile.subject,1024)&&['active','signed_out','pending'].includes(profile.status)&&Array.isArray(profile.scopes),'invalid_profile');
       if(profile?.status==='active')require(planGranted(profile)&&opaque(profile.access_token,65536)&&opaque(profile.refresh_token,65536)&&opaque(profile.id_token,65536)&&opaque(profile.nonce,128)&&Number.isSafeInteger(profile.expires_at),'invalid_active_profile');
       const pending=path.join(dir,'registration-pending.json');
-      const store={host,get profile(){return profile;},get pendingRegistration(){return exists(pending);},markRegistration(id){require(clientId(id)&&!exists(pending),'registration_pending');atomic(dir,'registration-pending.json',{client_id:id});},finishRegistration(){if(exists(pending)){fs.unlinkSync(pending);syncDir(dir);}},save(p){require(p.host===host&&clientId(p.client_id)&&opaque(p.subject,1024)&&(!profile||(p.client_id===profile.client_id&&p.subject===profile.subject)),'profile_binding');atomic(dir,'profile.json',seal(p,pass,host));profile=p;}};
+      const probe=path.join(dir,'m2-4-probe.json');
+      const store={host,get probeExists(){return exists(probe);},reserveProbe(p){require(!exists(probe)&&p.state==='pending','probe_already_attempted');atomic(dir,'m2-4-probe.json',p);},finishProbe(p,r){const prior=openRead(probe);require(prior.state==='pending'&&JSON.stringify(prior)===JSON.stringify(p)&&r.binding===p.binding&&r.request_sha256===p.request_sha256&&['settled','unknown'].includes(r.state),'probe_ledger_mismatch');atomic(dir,'m2-4-probe.json',r);},get profile(){return profile;},get pendingRegistration(){return exists(pending);},markRegistration(id){require(clientId(id)&&!exists(pending),'registration_pending');atomic(dir,'registration-pending.json',{client_id:id});},finishRegistration(){if(exists(pending)){fs.unlinkSync(pending);syncDir(dir);}},save(p){require(p.host===host&&clientId(p.client_id)&&opaque(p.subject,1024)&&(!profile||(p.client_id===profile.client_id&&p.subject===profile.subject)),'profile_binding');atomic(dir,'profile.json',seal(p,pass,host));profile=p;}};
       return await action(store);
     }finally{fs.rmdirSync(lock);syncDir(dir);}
   })();

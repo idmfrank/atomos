@@ -1,11 +1,12 @@
 #!/usr/bin/env node
-// Explicit owner-run auth and model catalog utility. Never calls inference.
+// Explicit owner-run auth, catalog and isolated one-shot inference qualification.
 import http from 'node:http';
 import {spawnSync} from 'node:child_process';
 import {readJsonBody} from './response-json.mjs';
 import {randomBytes} from 'node:crypto';
 import {require,AuthError,DISCOVERY,ENDPOINTS,discovery,begin,callback,tokenRecord,refreshForm,refreshed,revokeForm,signedOut,planGranted,MODEL_CATALOG,catalog,catalogAllowed} from './protocol.mjs';
 import {withStore} from './store.mjs';
+import {ACK,decoderPath,decodeWire,qualify} from './live-probe.mjs';
 const ALLOWED=new Set([DISCOVERY,ENDPOINTS.jwks_uri,ENDPOINTS.token_endpoint,ENDPOINTS.revocation_endpoint]);
 async function request(url,form=null,empty=false,bearer=null){
   require((ALLOWED.has(url)&&bearer===null||url===MODEL_CATALOG&&bearer!==null&&!form&&!empty)&&process.env.NODE_TLS_REJECT_UNAUTHORIZED!=='0','unsafe_endpoint_or_tls');
@@ -104,8 +105,8 @@ async function models(store){
 }
 async function main(){
   const [cmd,dir,consent,...extra]=process.argv.slice(2);
-  require(!extra.length&&['status','sign-in','refresh','sign-out','models'].includes(cmd)&&dir,'usage: node scripts/auth/atomos-auth.mjs status|sign-in|refresh|sign-out|models ABSOLUTE_PRIVATE_DIR [--confirm-eligible-auth-only]');
-  require(cmd==='status'?consent===undefined:consent==='--confirm-eligible-auth-only','explicit_owner_confirmation_required');
+  require(!extra.length&&['status','sign-in','refresh','sign-out','models','qualify-once'].includes(cmd)&&dir,'usage: node scripts/auth/atomos-auth.mjs status|sign-in|refresh|sign-out|models|qualify-once ABSOLUTE_PRIVATE_DIR [confirmation]');
+  require(cmd==='status'?consent===undefined:cmd==='qualify-once'?consent===ACK:consent==='--confirm-eligible-auth-only','explicit_owner_confirmation_required');
   const pass=unlock('AtomOS vault passphrase (at least 20 characters):');
   try{
   await withStore(dir,pass,async store=>{
@@ -113,12 +114,21 @@ async function main(){
       const second=unlock('Confirm new AtomOS vault passphrase:');
       try{require(pass.equals(second),'vault_passphrase_mismatch');}finally{second.fill(0);}
     }
+    if(cmd==='qualify-once'){
+      require(!store.probeExists,'probe_already_attempted');
+      const exe=decoderPath();const p=store.profile;catalogAllowed(p);
+      const available=catalog(await request(MODEL_CATALOG,null,false,p.access_token));
+      const result=await qualify(store,available,{decode:wire=>decodeWire(exe,wire)});
+      console.log(JSON.stringify(result,null,2));
+      if(result.outcome!=='qualified')process.exitCode=1;
+      return;
+    }
     if(cmd==='models')return models(store);
     if(cmd==='sign-in')return signIn(store);
     if(cmd==='refresh')return refresh(store);
     if(cmd==='sign-out')return signOut(store);
     const p=store.profile;
-    console.log(JSON.stringify({registration:!!p,pending_registration:store.pendingRegistration,status:p?.status??'unregistered',plan_scope_granted:!!p&&planGranted(p),access_expired:p?.status==='active'?p.expires_at<=Math.floor(Date.now()/1000):null,live_inference_enabled:false}));
+    console.log(JSON.stringify({registration:!!p,pending_registration:store.pendingRegistration,status:p?.status??'unregistered',plan_scope_granted:!!p&&planGranted(p),access_expired:p?.status==='active'?p.expires_at<=Math.floor(Date.now()/1000):null,qualification_attempted:store.probeExists,live_inference_enabled:false}));
   });
   }finally{pass.fill(0);}
 }
