@@ -26,6 +26,11 @@ jobs:
         run: bash scripts/test.sh
       - name: Responses replay tests and parser benchmark
         run: timeout --kill-after=5s 120s bash scripts/test-responses.sh
+      - name: Offline authentication protocol and storage tests
+        run: |
+          node --version
+          timeout --kill-after=5s 30s node --test scripts/auth/protocol.test.mjs
+          node --check scripts/auth/atomos-auth.mjs
       - name: Text-only benchmark
         run: bash scripts/benchmark.sh
 
