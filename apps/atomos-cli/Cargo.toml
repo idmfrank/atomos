@@ -1,0 +1,12 @@
+[package]
+name = "atomos-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "atomos"
+path = "src/main.rs"
+
+[dependencies]
+atomos-core = { path = "../../crates/atomos-core" }
