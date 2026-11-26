@@ -144,10 +144,40 @@ fn incomplete_eof_cancel_and_io_retain_reservation(){
 #[test]
 fn byte_event_output_and_depth_limits_fail_closed(){
     let long=format!(": {}\n\n","x".repeat(32769));assert_eq!(bad(&long),DecodeError::Limit);
-    let total=": comment\n".repeat(25000);assert_eq!(bad(&total),DecodeError::Limit);
+    let total=": comment\n".repeat(30000);assert_eq!(bad(&total),DecodeError::Limit);
     let s=change("\"delta\":\"Café 🚀\"",&format!("\"delta\":\"{}\"","x".repeat(4097)));assert_eq!(bad(&s),DecodeError::Limit);
     let mut s=wire().split("\n\n").take(4).collect::<Vec<_>>().join("\n\n")+"\n\n";
     for seq in 4..129{s+=&frame(serde_json::json!({"type":"response.output_text.delta","sequence_number":seq,"item_id":"msg_synthetic","output_index":0,"content_index":0,"delta":"x"}));}
     assert_eq!(bad(&s),DecodeError::Limit);
     let depth=format!("data: {}0{}\n\n","[".repeat(150),"]".repeat(150));assert_eq!(bad(&depth),DecodeError::Json);
+}
+
+
+#[test]
+fn terminal_snapshot_and_framing_are_independently_checked(){
+    let s=wire();let at=s.rfind("\"text\":\"Café 🚀\\nReady.\"").unwrap();
+    let mut bad_final=s.clone();
+    bad_final.replace_range(at..at+"\"text\":\"Café 🚀\\nReady.\"".len(),"\"text\":\"other\"");
+    assert_eq!(bad(&bad_final),DecodeError::Protocol);
+    assert_eq!(bad(&format!("event: response.created\n{s}")),DecodeError::Framing);
+    let frame_limit=format!("data: {}\ndata: {}\n\n","x".repeat(20_000),"x".repeat(20_000));
+    assert_eq!(bad(&frame_limit),DecodeError::Limit);
+    let mut invalid=s.clone();invalid.push_str("data: [DONE]\n\n");
+    assert_eq!(bad(&invalid),DecodeError::Protocol);
+    assert_eq!(bad(&s.replace("\"output_tokens\":12","\"output_tokens\":12.0")),DecodeError::Usage);
+}
+#[test]
+fn response_failure_known_usage_is_settled_and_authorization_suspends(){
+    let f=Fixture::new();let mut b=f.open();
+    let s=created()+&frame(serde_json::json!({"type":"response.failed","sequence_number":1,"response":{"id":"resp_synthetic","object":"response","status":"failed","error":{"code":"invalid_api_key","message":"synthetic"},"usage":{"input_tokens":35,"output_tokens":0,"total_tokens":35,"input_tokens_details":{"cached_tokens":10},"output_tokens_details":{"reasoning_tokens":0}}}}));
+    assert_eq!(b.run_sse(req("question"),1,s.as_bytes(),||false),Err(Error::Provider(Failure::Authorization)));
+    assert_eq!(b.charged(),35);
+    assert_eq!(b.run_sse(req("question"),1,WIRE,||false),Err(Error::Suspended));
+    assert!(b.run_sse(req("help"),1,WIRE,||false).is_ok());
+}
+#[test]
+fn escaped_unicode_and_data_only_events_match_literal_fixture(){
+    let escaped=wire().replace("é","\\u00e9").replace("🚀","\\ud83d\\ude80");
+    let data_only=escaped.lines().filter(|l|!l.starts_with("event: ")).collect::<Vec<_>>().join("\n")+"\n";
+    assert_eq!(decode(data_only.as_bytes(),||false).unwrap().text,TEXT);
 }

@@ -4,7 +4,7 @@
 
 AtomOS is an experimental project to build a persistent, conversational AI agent that can operate continuously on inexpensive, low-power hardware. The agent owns its identity, memory, permissions and scheduled activities independently of the language model it uses. Reasoning is delegated to OpenAI only when necessary, with the goal of operating within an owner's existing ChatGPT Plus subscription without additional AI spending. The runtime remains useful offline and retains a narrow inference interface for optional self-hosted models.
 
-**Status:** M1.1–M1.4b merged and automated validation passed, including durable local identity, explicit memory administration and read-only conversational recall. M1.4c and M1.4d merged and CI passed; M1.4e SQLite scale benchmark passed through 100k entities; M1.4f retrieval optimization and streaming recovery merged and scale-tested; M2.1 offline inference broker merged and regression-tested; M2.2 bounded Responses stream parsing is next. Physical speech/model validation, wake word, authenticated private memory access, reference-device AMG resource measurements, live OpenAI inference and bootable OS remain outstanding.
+**Status:** M1.1–M1.4b merged and automated validation passed, including durable local identity, explicit memory administration and read-only conversational recall. M1.4c and M1.4d merged and CI passed; M1.4e SQLite scale benchmark passed through 100k entities; M1.4f retrieval optimization and streaming recovery merged and scale-tested; M2.1 offline inference broker merged and regression-tested; M2.2 bounded offline Responses replay is in development. Physical speech/model validation, wake word, authenticated private memory access, reference-device AMG resource measurements, live OpenAI inference and bootable OS remain outstanding.
 
 ## Current implementation
 
@@ -20,6 +20,7 @@ AtomOS is an experimental project to build a persistent, conversational AI agent
 | M1.4e | Active SQLite benchmark and alternative-engine qualification. [Implementation](docs/m1-amg-benchmark.md); scale CI passed after [PR #10](https://github.com/idmfrank/atomos/pull/10). |
 | M1.4f | Compact-scope FTS optimization, reference verification, streaming logical backup and storage accounting. [Implementation](docs/m1-amg-optimization.md); CI and scale validation passed. |
 | M2.1 | Offline inference broker, durable admission, typed synthetic response replay and usage reconciliation. [Implementation](docs/m2-inference-broker.md); locked offline CI passed. |
+| M2.2 | Optional bounded Responses SSE/JSON decoder, strict text lifecycle, governor-gated byte replay and differential tests. [Implementation](docs/m2-responses-replay.md); CI pending. |
 
 Latest verified executable baseline: [f0815cb](https://github.com/idmfrank/atomos/commit/f0815cb9a72f7d915fe3ca0a6983290f51ce2fc8), [Actions run 45833540395](https://github.com/idmfrank/atomos/actions/runs/45833540395). 61 Rust and 11 Python integration tests passed, plus CLI, stub audio, separate-process AMG lifecycle and synthetic broker smoke checks; zero real provider calls. Rust/Cargo 1.100.0; locked dependencies provisioned before offline build/test.
 
@@ -297,7 +298,7 @@ Targets must be validated end to end; network latency is variable. A text-mediat
 | M8 — Distributed agent | Optional authorized node discovery, encrypted synchronization, conflict resolution and inference routing. Evaluate Nostr as an optional transport. |
 | M9 — OS specialization | Compare optimized Linux, RTOS and custom kernel approaches using equivalent workloads. Proceed only with demonstrated benefits. |
 
-M1 slices: M1.1 offline core, M1.2 audio smoke harness, M1.3 persistent voice coordinator, M1.4a durable AMG, M1.4b read-only recall, M1.4c scoped retrieval and M1.4d disclosure/recovery are merged and CI-tested. M1.4e: active SQLite scale benchmark passed; M1.4f: optimization and streaming recovery passed. Retain SQLite + FTS5 for M2; alternate adapters deferred, not measured. M2.1 offline broker merged and tested; M2.2 bounded Responses stream parsing and replay is next. M1 exit still requires real model/device validation, measured acoustic interruption, activation evaluation and the remaining AMG acceptance gates. M2 requires official provider eligibility and spending controls. M3 expands memory management, scheduling and approved workflows rather than duplicating M1.4.
+M1 slices: M1.1 offline core, M1.2 audio smoke harness, M1.3 persistent voice coordinator, M1.4a durable AMG, M1.4b read-only recall, M1.4c scoped retrieval and M1.4d disclosure/recovery are merged and CI-tested. M1.4e: active SQLite scale benchmark passed; M1.4f: optimization and streaming recovery passed. Retain SQLite + FTS5 for M2; alternate adapters deferred, not measured. M2.1 offline broker merged and tested; M2.2 bounded Responses stream parsing and replay in development. M1 exit still requires real model/device validation, measured acoustic interruption, activation evaluation and the remaining AMG acceptance gates. M2 requires official provider eligibility and spending controls. M3 expands memory management, scheduling and approved workflows rather than duplicating M1.4.
 
 Security requirements apply from M1; M6 expands and verifies the tool execution surface rather than deferring basic security until then.
 
@@ -381,3 +382,7 @@ The first 1k active-store benchmark passed, but exposed a global orphan-source c
 ### Verified M1.4f and M2.1
 
 [Combined scale validation](https://github.com/idmfrank/atomos/actions/runs/45807347862): 100k entities, 250k assertions, common-term p95 5.9669 ms vs 60.7457 ms reference (same run), zero mismatches across 90 comparisons, active CLI 4,152 KiB RSS vs 2,568 KiB without store, 466,464-byte executable. Streaming export 600,005 records / 85,222,570 bytes, restore 18.20 s, recovery peak RSS 9,156 KiB; all integrity checks passed. Synthetic corpus only; no token savings or device certification. M2.1 merged and passed locked offline CI with a separate broker example and synthetic usage ledger; current conversation and AMG remain offline, no credentials or HTTP. See [M2.1](docs/m2-inference-broker.md).
+
+### M2.2 offline Responses replay
+
+After locked provisioning, `bash scripts/test-responses.sh` exercises the optional `responses-replay` feature (pinned serde/serde_json), compares wire and typed broker behavior and benchmarks the decoder. No default CLI networking or JSON dependency, credentials, real provider calls or private AMG disclosure. Narrow single-message text profile; unsupported event types fail closed. See [M2.2](docs/m2-responses-replay.md). Actual feature-enabled results pending CI.
