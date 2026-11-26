@@ -31,3 +31,7 @@ The current journal is a fixed budget experiment: no calendar rollover, rolling 
 The scripts exercise Rust state, local/mock resolution, queue bounds, stale speech suppression, mute, journal reopen, concurrent admission, quotas, duplicate settlement and corruption. The benchmark measures only text simulation and binary/RSS, not acoustic latency. Actual microphone/speaker cancellation must be independently measured at the audio device.
 
 Next: wire one physical audio input/output backend, add local streaming ASR and TTS, replay consented or synthetic speech fixtures, record timing from speech end to audible response and barge-in to actual playback stop. Add durable identity/memory, then integrate the governor with a real broker only after official OpenAI eligibility and spending assurance are established. See [issue #1](https://github.com/idmfrank/atomos/issues/1).
+
+## Baseline verification
+
+PR #2 was merged and its GitHub Actions run passed all 15 tests, CLI smoke and release benchmark. Executable 296,824 bytes; peak RSS 2,068 KiB for 1,000 text-only interactions (no ASR/TTS or ledger in the benchmark). See [run 45744009330](https://github.com/idmfrank/atomos/actions/runs/45744009330). The next experimental slice is described in [local voice spike](local-voice-spike.md).

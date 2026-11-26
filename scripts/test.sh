@@ -10,3 +10,4 @@ grep -Fxq 'I am AtomOS.' <<< "$output"
 grep -Fxq 'Mock response: explain entropy' <<< "$output"
 grep -Fxq 'Simulated inference calls: 1' <<< "$output"
 echo 'PASS: workspace tests and offline CLI smoke test'
+bash scripts/test-voice.sh

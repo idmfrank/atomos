@@ -4,6 +4,9 @@ use std::collections::BTreeMap;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
+
+static NEXT_INSTANCE: AtomicU64 = AtomicU64::new(1);
 
 const MAX_LEDGER_BYTES: u64 = 4 * 1024 * 1024;
 
@@ -49,7 +52,10 @@ impl From<io::Error> for Error {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Reservation(u64);
+pub struct Reservation {
+    instance: u64,
+    id: u64,
+}
 
 struct Entry {
     priority: Priority,
@@ -67,6 +73,7 @@ impl Drop for Lock {
 }
 
 pub struct Governor {
+    instance: u64,
     file: File,
     _lock: Lock,
     limits: Limits,
@@ -103,7 +110,9 @@ impl Governor {
         if !log.is_empty() && !log.ends_with('\n') {
             return Err(Error::Corrupt);
         }
+        let instance = NEXT_INSTANCE.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |n| n.checked_add(1)).map_err(|_| Error::Unavailable)?;
         let mut governor = Self {
+            instance,
             file,
             _lock: lock,
             limits,
@@ -212,7 +221,7 @@ impl Governor {
         let id = self.next_id;
         let p = if priority == Priority::Interactive { "I" } else { "B" };
         self.persist(&format!("R {id} {p} {amount}"))?;
-        Ok(Reservation(id))
+        Ok(Reservation { instance: self.instance, id })
     }
 
     /// Only authoritative, final usage may settle a reservation.
@@ -222,10 +231,13 @@ impl Governor {
         if !self.healthy {
             return Err(Error::Unavailable);
         }
-        let entry = self.entries.get(&reservation.0).ok_or(Error::Unknown)?;
+        if reservation.instance != self.instance {
+            return Err(Error::Unknown);
+        }
+        let entry = self.entries.get(&reservation.id).ok_or(Error::Unknown)?;
         if entry.settled {
             return Err(Error::Unknown);
         }
-        self.persist(&format!("S {} {actual}", reservation.0))
+        self.persist(&format!("S {} {actual}", reservation.id))
     }
 }

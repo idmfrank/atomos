@@ -100,3 +100,20 @@ fn serialized_concurrent_admission_cannot_overspend() {
     assert_eq!(accepted, 4);
     assert_eq!(g.lock().unwrap().charged(), 100);
 }
+
+#[test]
+fn reservation_cannot_settle_another_ledger_or_reopened_instance() {
+    let a = Fixture::new();
+    let b = Fixture::new();
+    let mut ga = Governor::open(&a.0, limits()).unwrap();
+    let mut gb = Governor::open(&b.0, limits()).unwrap();
+    let ra = ga.reserve(Priority::Interactive, 40).unwrap();
+    let rb = gb.reserve(Priority::Interactive, 50).unwrap();
+    assert!(matches!(gb.settle(ra, 0), Err(Error::Unknown)));
+    assert_eq!(gb.charged(), 50);
+    gb.settle(rb, 10).unwrap();
+    drop(ga);
+    let mut ga = Governor::open(&a.0, limits()).unwrap();
+    assert!(matches!(ga.settle(ra, 0), Err(Error::Unknown)));
+    assert_eq!(ga.charged(), 40);
+}
