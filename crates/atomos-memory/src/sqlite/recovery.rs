@@ -196,6 +196,7 @@ impl SqliteMemory {
         let tx=conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
         tx.execute_batch(SCHEMA)?;
         tx.execute_batch(POLICY)?;
+        tx.execute_batch(DELETION_INDEXES)?;
         // The assertion insertion triggers rebuild the active FTS index.
         // Restore AUTOINCREMENT high water marks, not just surviving IDs.
         let mut reset=false;

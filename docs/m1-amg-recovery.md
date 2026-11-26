@@ -61,3 +61,5 @@ bad backup, inconsistent FTS and abrupt uncommitted SQLite writer exit.
 The crash test is process-exit simulation, not power-loss certification.
 
 [Post-merge CI 45798237897](https://github.com/idmfrank/atomos/actions/runs/45798237897): 44 Rust and 11 Python tests passed, including all four recovery tests and abrupt writer rollback. No-store release CLI 464,912 bytes, peak RSS 2,608 KiB. No actual power-loss or private-data certification.
+
+Schema v3 follows v2 with indexed provenance cleanup and successor references. Explicit migration accepts v1/v2; v2 permissions retain their expiry, v1 receives default-deny policy. Restore uses current schema and still omits grants. Stop sessions and make offline backup before migration. Logical export format remains unchanged.

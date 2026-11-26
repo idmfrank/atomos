@@ -34,12 +34,16 @@ fn seed(dir:&Path,n:usize) {
     let tx=c.transaction().unwrap();
     {
         let mut entity=tx.prepare("INSERT INTO entity(id,owner_scope,entity_key,label,kind) VALUES(?1,'bench',?2,?2,'project')").unwrap();
-        for i in 0..n {entity.execute(params![i as i64+2,node(i)]).unwrap();}
+        for i in 0..n {
+            entity.execute(params![i as i64+2,node(i)]).unwrap();
+            if (i+1)%10000==0 {eprintln!("progress stage=seed_entities completed={} total={n}",i+1);}
+        }
         let mut source=tx.prepare("INSERT INTO source(id,owner_scope,kind,recorded_at) VALUES(?1,'bench','owner_local',1700000000)").unwrap();
         let mut fact=tx.prepare("INSERT INTO assertion(id,owner_scope,subject_id,predicate,value_kind,text_value,target_id,source_id,recorded_at) VALUES(?1,'bench',?2,?3,?4,?5,?6,?1,1700000000)").unwrap();
         let filler="synthetic unrelated narrative ".repeat(6);
         let mut id=0i64;
         for i in 0..n {
+            if i%10000==0 {eprintln!("progress stage=seed_assertions completed={i} total={n}");}
             let subject=i as i64+2;
             for (p,value) in [("status",status(i)),("note",filler.clone())] {
                 id+=1;source.execute([id]).unwrap();
@@ -128,6 +132,7 @@ fn write(dir:&Path,n:usize,count:usize)->bool {
     let mut db=open(dir,"bench").unwrap();
     let mut add=Stats::default();let mut correct=Stats::default();let mut forget=Stats::default();let mut ok=true;
     for j in 0..count {
+        if j%10==0 {eprintln!("progress stage=write completed={j} total={count}");}
         let key=node(sample(j,n));let p=format!("benchwrite{j}");
         let t=Instant::now();let a=db.remember(&key,&p,Value::Text("before".into()));add.add(ms(t),a.is_ok());
         let Ok(a)=a else{ok=false;continue;};
@@ -138,6 +143,7 @@ fn write(dir:&Path,n:usize,count:usize)->bool {
     }
     add.report("durable_remember");correct.report("durable_correct");forget.report("durable_forget");
     let identity=db.identity().clone();drop(db);
+    eprintln!("progress stage=verify_after_writes");
     let mut db=open(dir,"bench").unwrap();let t=Instant::now();let integrity=db.verify().is_ok();
     println!("metric=verify_after_writes samples=1 errors={} elapsed_ms={:.4}",usize::from(!integrity),ms(t));
     ok&&integrity&&db.identity()==&identity&&add.errors==0&&correct.errors==0&&forget.errors==0
