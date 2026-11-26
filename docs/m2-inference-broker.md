@@ -1,6 +1,6 @@
 # M2.1 — Offline inference broker and governor integration
 
-Status: development, CI pending. No live inference, credentials, network transport,
+Status: merged in PR #12; locked offline post-merge CI passed. No live inference, credentials, network transport,
 provider registration, or remote AMG disclosure.
 
 ## Official integration boundary (2026-11-26)
@@ -98,3 +98,7 @@ text smoke test only after all gates, then local voice and memory disclosure
 integration. No private AMG data until authenticated disclosure/security
 controls; no live model traffic in CI. Physical voice/AEC and reference-device
 power, hard storage quotas, encryption, deletion reconciliation remain open.
+
+## Verified results
+
+[PR CI 45808715905](https://github.com/idmfrank/atomos/actions/runs/45808715905) and [post-merge CI 45833540395](https://github.com/idmfrank/atomos/actions/runs/45833540395) passed on merge f0815cb9a72f7d915fe3ca0a6983290f51ce2fc8. 61 Rust + 11 Python tests, including broker regressions and example smoke: one synthetic dispatch, 47 charged fixture units, zero real provider calls. No-store release CLI 466,464 bytes / 2,704 KiB peak RSS (unchanged binary size; broker is separate). Active 1K benchmark: exact p95 0.0620 ms, graph 0.1891 ms, selective context 0.3194 ms, common-term 0.3896 ms (reference 0.5882 ms), forget 1.5660 ms; 100/100 complete selective packets and zero mismatches in 30 comparisons. Active CLI 4,108 KiB vs same-run no-store 2,672 KiB. No new 100K scale run on M2.1 found; M1.4f remains scale/recovery baseline. No live inference, actual token estimate or account validation. Next: M2.2 bounded SSE/JSON parsing and deterministic replay.

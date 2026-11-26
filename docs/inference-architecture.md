@@ -1,6 +1,6 @@
 # OpenAI-native inference architecture
 
-Status: target architecture, M2.1 offline broker in development. [Architecture](architecture.md) | [Resource budget](resource-budget.md). No live inference is enabled by this document.
+Status: target architecture, M2.1 offline broker merged and CI-validated; M2.2 stream parsing next. [Architecture](architecture.md) | [Resource budget](resource-budget.md). No live inference is enabled by this document.
 
 ## Integration contract
 
@@ -42,7 +42,7 @@ M1: deterministic mock provider, no network, tests for reservation concurrency, 
 
 M1.1–M1.4f merged and automated/scale validation passed. AMG remains local-only.
 SQLite + FTS5 retained for M2 development; selective retrieval and memory
-benchmarks pass on CI; no cross-engine superiority claim. M2.1 introduces
+benchmarks pass on CI; no cross-engine superiority claim. M2.1 merged and passed [CI](https://github.com/idmfrank/atomos/actions/runs/45833540395) (61 Rust and 11 Python tests). It implements
 an isolated typed synthetic replay broker, durable admission/settlement,
 conservative unknown usage, persistent overrun halt and local-first
 resolution. No live transport, OAuth, private-memory context, or actual
