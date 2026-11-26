@@ -92,7 +92,7 @@ async function signOut(store){
 // shell, agent fallback or cache. No noninteractive unlock.
 function unlock(label){
   require(process.stdin.isTTY&&process.stderr.isTTY,'interactive_tty_required');
-  const r=spawnSync('/usr/bin/systemd-ask-password',['--timeout=60','--silent',label],{stdio:['inherit','pipe','inherit'],timeout:65000,maxBuffer:2048});
+  const r=spawnSync('/usr/bin/systemd-ask-password',['--timeout=60','--echo=no',label],{stdio:['inherit','pipe','inherit'],timeout:65000,maxBuffer:2048});
   const out=r.stdout;
   require(r.status===0&&Buffer.isBuffer(out),'vault_prompt_failed');
   const end=out.length&&out[out.length-1]===10?out.length-1:out.length;
