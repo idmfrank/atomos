@@ -24,7 +24,7 @@ impl Inference for MockInference {
 /// Exact, explicit commands only. Unknown or ambiguous input is not executed.
 pub fn resolve_local(text: &str) -> Option<&'static str> {
     match text.trim().to_ascii_lowercase().as_str() {
-        "what is your name?" | "what's your name?" => Some("I am AtomOS."),
+        "what is your name?" | "what's your name?" | "what is your name" | "what's your name" => Some("I am AtomOS."),
         "help" => Some("Commands: help, what is your name?, /quit."),
         _ => None,
     }
