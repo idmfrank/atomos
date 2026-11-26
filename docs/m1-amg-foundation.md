@@ -1,6 +1,6 @@
 # M1.4a — AMG durable foundation
 
-Status: development branch; CI and physical resource benchmarks pending.
+Status: development branch; initial bootstrap CI passed; strict committed-lockfile CI and physical resource benchmarks pending.
 See [AMG architecture](amg-architecture.md).
 
 This first vertical slice introduces a separate Rust library and explicit local
@@ -37,8 +37,8 @@ not inferred truth or validity. No automatic overwrite of facts.
 
 Linux development prerequisites: Rust/Cargo, Bash, Python 3, GNU coreutils,
 pkg-config and SQLite development library with FTS5. Explicitly provision
-Cargo dependencies with cargo fetch --locked after the generated lockfile is
-committed. Builds/tests then run with --locked --offline. No dependency fetch
+Cargo dependencies with cargo fetch --locked using the committed Cargo.lock.
+The new dependency set has not been validated on Rust 1.75; CI uses the installed newer toolchain. Builds/tests then run with --locked --offline. No dependency fetch
 or model download during runtime. Existing CLI benchmark excludes AMG; report
 new memory process and storage separately.
 
@@ -69,3 +69,7 @@ FULL synchronous, foreign keys, secure_delete ON, 250 ms busy timeout,
 Full query execution deadlines, disk-full/crash tests, power-failure recovery,
 backup/restore, export, migrations beyond v1, resource benchmarks and engine
 comparison remain required. M1.4a is not the full M1.4 acceptance gate.
+
+## Initial validation
+
+[Bootstrap Actions run 45754526687](https://github.com/idmfrank/atomos/actions/runs/45754526687) passed all 35 Rust tests (6 new memory tests), 5 existing Python tests and CLI/stub audio/AMG process-level smoke checks. The generated dependency lockfile is committed without manual version selection; the temporary generation step is removed. A fresh locked run is required before merge. Existing text-only core release executable: 314,224 bytes, peak RSS 2,088 KiB; excludes the memory binary and SQLite runtime. No AMG resource measurements yet.
