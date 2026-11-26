@@ -1,5 +1,11 @@
 # AtomOS engineering rules
 
+## Session startup and handoff
+
+Read [PROJECT_STATE.md](PROJECT_STATE.md) before starting work. It records the verified baseline, current objective, environment boundaries and pending gates. Check the actual checkout and latest CI; never assume a snapshot is current. Update the handoff and relevant docs after a verified milestone. Codex may build and run offline tests; interactive vault operations and live inference require explicit owner action per the documented M2.4 procedure.
+
+## Engineering rules
+
 - Preserve natural conversation quality, zero incremental inference spend, privacy, and deterministic bounded local operation. No unofficial provider access or paid fallback.
 - Keep production hot paths in Rust. Measure any cross-language/IPC overhead before a rewrite. Native speech adapters remain provisional; do not sacrifice speech quality.
 - For behavioral changes, freeze the existing reference and compare equivalent inputs/state. For retrieval compare facts, revision/source IDs, ranking/connector flags, truncation and compiled bytes, not just counts. Add independent expected-result tests; never weaken an assertion merely to make CI pass. Document intentional semantic changes explicitly.

@@ -4,7 +4,9 @@
 
 AtomOS is an experimental project to build a persistent, conversational AI agent that can operate continuously on inexpensive, low-power hardware. The agent owns its identity, memory, permissions and scheduled activities independently of the language model it uses. Reasoning is delegated to OpenAI only when necessary, with the goal of operating within an owner's existing ChatGPT Plus subscription without additional AI spending. The runtime remains useful offline and retains a narrow inference interface for optional self-hosted models.
 
-**Status:** M1.1–M1.4b merged and automated validation passed, including durable local identity, explicit memory administration and read-only conversational recall. M1.4c and M1.4d merged and CI passed; M1.4e SQLite scale benchmark passed through 100k entities; M1.4f retrieval optimization and streaming recovery merged and scale-tested; M2.1 offline inference broker merged and regression-tested; M2.2 bounded offline Responses replay merged and scale-tested; M2.3a synthetic account authorization merged and tested; M2.3b auth-only utility merged and tested; M2.3c hardening merged and scale-tested; M2.3d owner-reported WSL OAuth and model catalog qualified, 50% app cap observed; M2.4 isolated one-shot inference qualification in development. Physical speech/model validation, wake word, authenticated private memory access, reference-device AMG resource measurements, live OpenAI inference and bootable OS remain outstanding.
+**Status:** M1.1–M1.4b merged and automated validation passed, including durable local identity, explicit memory administration and read-only conversational recall. M1.4c and M1.4d merged and CI passed; M1.4e SQLite scale benchmark passed through 100k entities; M1.4f retrieval optimization and streaming recovery merged and scale-tested; M2.1 offline inference broker merged and regression-tested; M2.2 bounded offline Responses replay merged and scale-tested; M2.3a synthetic account authorization merged and tested; M2.3b auth-only utility merged and tested; M2.3c hardening merged and scale-tested; M2.3d owner-reported WSL OAuth and model catalog qualified, 50% app cap observed; M2.4 one-shot qualification harness merged and CI/scale passed; owner-run first inference pending. Physical speech/model validation, wake word, authenticated private memory access, reference-device AMG resource measurements, live OpenAI inference and bootable OS remain outstanding.
+
+**Session handoff:** [PROJECT_STATE.md](PROJECT_STATE.md) records the current verified baseline, next steps and gates for ChatGPT and Codex.
 
 ## Current implementation
 
@@ -25,9 +27,9 @@ AtomOS is an experimental project to build a persistent, conversational AI agent
 | M2.3b | Optional auth-only Sign in with ChatGPT utility, PKCE, signed identity and protected local session records. [Implementation](docs/m2-official-sign-in.md); CI passed; no inference. |
 | M2.3c | Passphrase-encrypted credential vault, strict JSON, read-only model discovery, spending gate review and Node24 checkout pin. [Implementation](docs/m2-auth-hardening.md); CI passed; no inference. |
 | M2.3d | Owner WSL OAuth registration, encrypted session reopen and account-specific catalog succeeded; [PR #17](https://github.com/idmfrank/atomos/pull/17), [PR #18](https://github.com/idmfrank/atomos/pull/18). 50% app cap observed; live refresh not tested. |
-| M2.4 | [Owner-run one-shot qualification](docs/m2-first-live-qualification.md), fixed prompt, separate durable reservation, existing Rust decoder, no automated/live CI calls. Draft; no first inference yet. |
+| M2.4 | [Owner-run one-shot qualification](docs/m2-first-live-qualification.md), fixed prompt, separate durable reservation, existing Rust decoder, no automated/live CI calls. Merged [PR #19](https://github.com/idmfrank/atomos/pull/19); CI and scale passed; no first inference yet. |
 
-Latest verified executable baseline: [90e7a91](https://github.com/idmfrank/atomos/commit/90e7a915af380b0700f316b6aefb88c9ea501ddd), [Actions run 45865041099](https://github.com/idmfrank/atomos/actions/runs/45865041099). 86 distinct Rust, 11 Python and 16 Node tests passed (113 total); later PR #18 owner local run passed 18 Node tests. No real inference in CI. Rust/Cargo 1.100.0; locked dependencies provisioned before offline build/test.
+Latest verified executable baseline: [6dff964](https://github.com/idmfrank/atomos/commit/6dff9641f6a2ff91b0cd0ad5f4690d5cbbc20aa2), [Actions run 45874158043](https://github.com/idmfrank/atomos/actions/runs/45874158043). 86 distinct Rust, 11 Python and 26 Node tests passed (123 total). No real inference in CI. Rust/Cargo 1.100.0; locked dependencies provisioned before offline build/test.
 
 ### Benchmark results
 
@@ -48,41 +50,42 @@ Latest verified executable baseline: [90e7a91](https://github.com/idmfrank/atomo
 | M2.2 | 466,464 | 2,676 | 75 | 11 |
 | M2.3a | 466,512 | 2,624 | 86 | 11 |
 | M2.3b | 466,512 | 2,664 | 86 | 11 |
-| **M2.3c** | **466,512** | **2,524** | **86** | **11** |
+| M2.3c | 466,512 | 2,524 | 86 | 11 |
+| M2.4 | 466,512 | 2,588 (full-scale no-store baseline) | 86 | 11 |
 
-Each release CLI benchmark executes 1,000 local text interactions. Rust/Python test counts refer to the workspace suite, not benchmark samples. M2.3c additionally passed 16 distinct Node authentication tests (113 total); PR #18 passed 18 owner-local Node tests. Peak RSS is measured process memory; runner variation can affect comparisons. M2.1's broker is a separate synthetic replay example, not linked into the measured conversational CLI. Excludes OS, speech engines, Python adapter, active AMG, ledger and administration executable. See [resource budget and run links](docs/resource-budget.md).
+Each release CLI benchmark executes 1,000 local text interactions. Rust/Python test counts refer to the workspace suite, not benchmark samples. M2.4 passed 26 distinct Node tests (123 total); PR #18 passed 18 owner-local Node tests. Peak RSS is measured process memory; runner variation can affect comparisons. M2.1's broker is a separate synthetic replay example, not linked into the measured conversational CLI. Excludes OS, speech engines, Python adapter, active AMG, ledger and administration executable. See [resource budget and run links](docs/resource-budget.md).
 
-**Active AMG scale — verified M2.3c [combined benchmark](https://github.com/idmfrank/atomos/actions/runs/45865299130)**
+**Active AMG scale — verified M2.4 [combined benchmark](https://github.com/idmfrank/atomos/actions/runs/45874467379)**
 
 | Metric | 1K entities | 10K entities | 100K entities |
 | --- | ---: | ---: | ---: |
 | Active assertions | 2,500 | 25,000 | 250,000 |
 | Main DB (bytes, after seed) | 1,216,512 | 11,186,176 | 116,084,736 |
-| Active CLI peak RSS (KiB) | 4,188 | 4,152 | 4,120 |
-| Exact recall p95 (ms) | 0.0399 | 0.0570 | 0.0767 |
-| Graph traversal p95 (ms) | 0.1250 | 0.1288 | 0.1479 |
-| Selective context p95 (ms) | 0.2538 | 0.3361 | 0.3548 |
-| Common-term context p95 (ms) | 0.2781 | 0.5825 | 2.4256 |
-| Reference common-term p95 (ms) | 0.4653 | 3.6819 | 35.2295 |
-| Forget p95 (ms) | 2.7095 | 3.4109 | 3.2001 |
+| Active CLI peak RSS (KiB) | 4,188 | 4,040 | 4,324 |
+| Exact recall p95 (ms) | 0.0625 | 0.0666 | 0.0768 |
+| Graph traversal p95 (ms) | 0.1885 | 0.2309 | 0.2152 |
+| Selective context p95 (ms) | 0.3122 | 0.3751 | 0.3957 |
+| Common-term context p95 (ms) | 0.3860 | 0.7245 | 3.1946 |
+| Reference common-term p95 (ms) | 0.8638 | 4.4316 | 43.8345 |
+| Forget p95 (ms) | 1.3533 | 1.3180 | 1.5756 |
 | Fixture precision / recall | 100% / 100% | 100% / 100% | 100% / 100% |
 | Retrieval parity mismatches | 0 / 30 | 0 / 30 | 0 / 30 |
 | Logical export records | 6,005 | 60,005 | 600,005 |
 | Logical export (bytes) | 829,540 | 8,407,555 | 85,222,570 |
-| Restore (seconds) | 0.114 | 1.228 | 12.901 |
-| Recovery peak RSS (KiB) | 7,240 | 9,124 | 9,100 |
+| Restore (seconds) | 0.146 | 1.634 | 17.352 |
+| Recovery peak RSS (KiB) | 7,124 | 9,296 | 9,028 |
 
-Same-run no-store RSS 2,572 KiB. All recovery checks passed. Latency varies across hosted runners; no controlled hardware comparison. Synthetic graph only; no physical voice, energy, hard aggregate quota or actual token savings.
+Same-run no-store RSS 2,588 KiB. All recovery checks passed. Latency varies across hosted runners; no controlled hardware comparison. Synthetic graph only; no physical voice, energy, hard aggregate quota or actual token savings.
 
-**Responses decoder — verified M2.3c [post-merge CI](https://github.com/idmfrank/atomos/actions/runs/45865041099)**
+**Responses decoder — verified M2.4 [post-merge CI](https://github.com/idmfrank/atomos/actions/runs/45874158043)**
 
 | Read chunk (bytes) | Samples | p50 (µs) | p95 (µs) | p99 (µs) |
 | --- | ---: | ---: | ---: | ---: |
-| 1 | 1,000 | 16.4 | 19.0 | 30.3 |
-| 64 | 1,000 | 12.0 | 12.5 | 19.9 |
-| 4,096 | 1,000 | 12.0 | 19.6 | 23.0 |
+| 1 | 1,000 | 33.3 | 40.9 | 56.0 |
+| 64 | 1,000 | 21.8 | 22.4 | 33.0 |
+| 4,096 | 1,000 | 21.4 | 22.0 | 39.6 |
 
-2,497-byte synthetic stream, zero errors/real calls. Separate decoder example peak RSS 2,116 KiB; excludes network, broker fsync and speech. CLI does not include decoder/broker. M2.3 adds synthetic policy only, no live provider access.
+2,497-byte synthetic stream, zero errors/real calls. Separate decoder example peak RSS 2,188 KiB; excludes network, broker fsync and speech. CLI does not include decoder/broker. M2.3 adds synthetic policy only, no live provider access.
 
 ### Development quick start
 
