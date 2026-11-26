@@ -176,3 +176,31 @@ test('explicit returning plan consent uses existing registration',()=>{
   assert.equal(u.searchParams.get('client_id'),client);
   assert.equal(u.searchParams.has('agent_name_hint'),false);
 });
+
+
+test('catalog-specific bounded reader accepts large metadata, auth reader does not',async()=>{
+  const {readJsonBody}=await import('./response-json.mjs');
+  const entry={visibility:'list',slug:'fixture',display_name:'Fixture',metadata:'x'.repeat(700000),details:Array(20000).fill(1)};
+  const raw=JSON.stringify({models:[entry]});
+  assert.throws(()=>strictJson(raw),/json_limit/);
+  await assert.rejects(readJsonBody(new Response(raw).body),/auth_response_limit/);
+  assert.deepEqual(catalog(await readJsonBody(new Response(raw).body,true)),[{slug:'fixture',display_name:'Fixture'}]);
+});
+test('larger catalog still rejects size, duplicate keys, depth and structural excess',async()=>{
+  const {readJsonBody}=await import('./response-json.mjs');
+  const {CATALOG_MAX_BYTES}=await import('./strict-json.mjs');
+  let consumed=0,closed=false;
+  async function* big(){
+    try{const chunk=Buffer.alloc(1024*1024,32);
+      for(let i=0;i<10;i++){consumed++;yield chunk;}
+    }finally{closed=true;}
+  }
+  await assert.rejects(readJsonBody(big(),true),/catalog_response_limit/);
+  assert.equal(consumed,CATALOG_MAX_BYTES/(1024*1024)+1);assert.equal(closed,true);
+  for(const [raw,code] of [
+    ['{"models":[],"models":[]}',/catalog_json_duplicate_key/],
+    ['['.repeat(34)+'0'+']'.repeat(34),/catalog_json_structure_limit/],
+    [JSON.stringify(Array(262145).fill(0)),/catalog_json_structure_limit/],
+    ['{"models":',/catalog_json_invalid/]
+  ])await assert.rejects(readJsonBody(new Response(raw).body,true),code);
+});

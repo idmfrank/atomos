@@ -1,7 +1,10 @@
 // Native JSON grammar validation plus a bounded duplicate-key audit.
 // No prototype mutation; audit escaped keys by their decoded strings.
-export function strictJson(text){
-  if(typeof text!=='string'||Buffer.byteLength(text)>512*1024)throw Error('json_limit');
+export const CATALOG_MAX_BYTES=8*1024*1024;
+export function strictJson(text,modelCatalog=false){
+  const maxBytes=modelCatalog===true?CATALOG_MAX_BYTES:512*1024;
+  const maxValues=modelCatalog===true?262144:16384;
+  if(typeof text!=='string'||Buffer.byteLength(text)>maxBytes)throw Error('json_limit');
   const value=JSON.parse(text);
   let i=0,count=0;
   const ws=()=>{while(i<text.length&&' \t\r\n'.includes(text[i]))i++;};
@@ -15,7 +18,7 @@ export function strictJson(text){
     throw Error('json_string');
   }
   function walk(depth){
-    if(depth>32||++count>16384)throw Error('json_structure_limit');
+    if(depth>32||++count>maxValues)throw Error('json_structure_limit');
     ws();
     const c=text[i];
     if(c==='{'){

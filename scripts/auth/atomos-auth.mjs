@@ -1,21 +1,18 @@
 #!/usr/bin/env node
-// Explicit owner-run auth utility. Never calls the inference or models API.
+// Explicit owner-run auth and model catalog utility. Never calls inference.
 import http from 'node:http';
 import {spawnSync} from 'node:child_process';
-import {strictJson} from './strict-json.mjs';
+import {readJsonBody} from './response-json.mjs';
 import {randomBytes} from 'node:crypto';
 import {require,AuthError,DISCOVERY,ENDPOINTS,discovery,begin,callback,tokenRecord,refreshForm,refreshed,revokeForm,signedOut,planGranted,MODEL_CATALOG,catalog,catalogAllowed} from './protocol.mjs';
 import {withStore} from './store.mjs';
-const MAX=256*1024;
 const ALLOWED=new Set([DISCOVERY,ENDPOINTS.jwks_uri,ENDPOINTS.token_endpoint,ENDPOINTS.revocation_endpoint]);
 async function request(url,form=null,empty=false,bearer=null){
   require((ALLOWED.has(url)&&bearer===null||url===MODEL_CATALOG&&bearer!==null&&!form&&!empty)&&process.env.NODE_TLS_REJECT_UNAUTHORIZED!=='0','unsafe_endpoint_or_tls');
   const r=await fetch(url,{method:form?'POST':'GET',body:form??undefined,redirect:'error',signal:AbortSignal.timeout(15000),headers:form?{'content-type':'application/x-www-form-urlencoded'}:{accept:'application/json',...(bearer?{authorization:'Bearer '+bearer}:{})}});
   if(!r.ok){await r.body?.cancel();throw new AuthError('auth_http_'+r.status);}
   if(empty){require(r.status===200,'revocation_not_confirmed');for await(const b of r.body??[]){require(b.length===0,'revocation_not_confirmed');}return;}
-  let n=0;const chunks=[];
-  for await(const b of r.body){n+=b.length;require(n<=MAX,'auth_response_limit');chunks.push(Buffer.from(b));}
-  return strictJson(new TextDecoder('utf-8',{fatal:true}).decode(Buffer.concat(chunks,n)));
+  return readJsonBody(r.body,url===MODEL_CATALOG);
 }
 async function signIn(store){
   require(!store.pendingRegistration,'registration_pending_manual_recovery');

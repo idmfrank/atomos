@@ -50,7 +50,7 @@ Missing host with existing registration/pending marker rejected.
 Optional owner-run `models` command uses the same verified local active
 profile and current unexpired access token, no automatic refresh.
 Only GET https://api.openai.com/v1/models with Bearer, no redirects and
-15-second deadline / 256 KiB response limit. Validate documented models array;
+15-second deadline / 8 MiB catalog-only response limit. Authentication endpoints retain the 256 KiB wire limit; vault/JWT JSON defaults remain unchanged. Catalog JSON audit retains depth 32 with a separate 262,144-value bound. Validate documented models array;
 preserve server ordering for visibility=list, bounded slug/display_name,
 reject duplicate visible slugs/control chars. Print names/slugs only. Do
 not log token or raw responses. No /v1/responses code path or model fallback.
@@ -95,3 +95,7 @@ provider HTTPS/callback interoperability and integrated runtime unmeasured.
 Full scope not a production security certification. Remaining follow-up:
 manual review, supported real sign-in and model catalog, owner spending
 confirmation, decision on output ceiling and real account-bound transport.
+
+## Owner-run WSL qualification (2026-11-26)
+
+Owner reported all 16 offline tests passed on Ubuntu 24.04.4 LTS / Node 24.22.3. After PR #17 corrected the password prompt option, actual sign-in succeeded and a fresh status invocation reported active registration, granted plan scope, unexpired access, and inference disabled. The subsequent read-only catalog GET passed HTTP status validation but exceeded the original 256 KiB body limit. Catalog-only bounds increased to 8 MiB and 262,144 JSON values; auth and vault limits unchanged. Added two synthetic regression tests; actual catalog response size and successful parsing still unverified. No tokens, callback URLs, account identity or credentials recorded. No live inference. No new registration or vault reset required for this fix.
