@@ -3,7 +3,7 @@
 use std::path::Path;
 
 mod sqlite;
-pub use sqlite::SqliteMemory;
+pub use sqlite::{SqliteMemory, SqliteReader};
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -91,6 +91,15 @@ pub fn init(dir: &Path, owner: &str, name: &str) -> Result<SqliteMemory> {
 }
 pub fn open(dir: &Path, owner: &str) -> Result<SqliteMemory> {
     SqliteMemory::open(dir, owner)
+}
+
+/// Read-only runtime boundary. No mutation methods or exposed SQL.
+pub trait MemoryReader {
+    fn identity(&self) -> &Identity;
+    fn recall(&self, subject: &str, predicate: &str) -> Result<Option<Fact>>;
+}
+pub fn open_reader(dir: &Path, owner: &str) -> Result<SqliteReader> {
+    SqliteReader::open(dir, owner)
 }
 
 pub(crate) fn key(s: &str) -> Result<()> {

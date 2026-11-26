@@ -4,7 +4,7 @@
 
 AtomOS is an experimental project to build a persistent, conversational AI agent that can operate continuously on inexpensive, low-power hardware. The agent owns its identity, memory, permissions and scheduled activities independently of the language model it uses. Reasoning is delegated to OpenAI only when necessary, with the goal of operating within an owner's existing ChatGPT Plus subscription without additional AI spending. The runtime remains useful offline and retains a narrow inference interface for optional self-hosted models.
 
-**Status:** M1.1–M1.3 merged and automated validation passed. M1.4a (AtomOS Memory Graph durable foundation) in development; bootstrap CI passed, locked verification pending, resource validation pending. Physical speech/model tests, always-on wake word, persistent identity, live OpenAI inference and bootable OS remain unvalidated or unimplemented.
+**Status:** M1.1–M1.3 merged and automated validation passed. M1.4a merged and locked offline CI passed; M1.4b read-only conversational AMG integration in development; resource validation pending. Physical speech/model tests, always-on wake word, persistent identity, live OpenAI inference and bootable OS remain unvalidated or unimplemented.
 
 ## Current implementation
 
@@ -13,7 +13,8 @@ AtomOS is an experimental project to build a persistent, conversational AI agent
 | M1.1 | Dependency-free Rust core/CLI, local/mock inference, turn epochs, bounded playback queue, fixed-budget persistent reservation ledger. [PR #2](https://github.com/idmfrank/atomos/pull/2) |
 | M1.2 | Single-turn ALSA/Whisper.cpp/Piper smoke harness, transcript bounds, instance-scoped reservations, stub audio tests. [PR #3](https://github.com/idmfrank/atomos/pull/3) |
 | M1.3 | Persistent Rust voice coordinator, streaming PCM protocol, RMS endpointing, follow-up window, AEC-gated cancellation, optional warm Sherpa-ONNX/Kokoro adapter, IPC startup/deadline fixes. [PR #4](https://github.com/idmfrank/atomos/pull/4) |
-| M1.4a | Initial SQLite-backed typed memory, explicit owner CLI and regression tests on development branch; bootstrap CI passed, locked verification pending. See [AMG foundation](docs/m1-amg-foundation.md). |
+| M1.4a | Initial SQLite-backed typed memory, explicit owner CLI and regression tests merged; locked offline CI passed. See [AMG foundation](docs/m1-amg-foundation.md). |
+| M1.4b | Opt-in read-only text and synthetic voice recall, persistent display name, bounded subject follow-up, live correction/deletion visibility. [Implementation](docs/m1-amg-conversation.md); CI pending. |
 
 Verified post-merge baseline: [83dbf8c](https://github.com/idmfrank/atomos/commit/83dbf8c39e7ed7fae4bcb3230eb4022452540cb5), [Actions run 45752758740](https://github.com/idmfrank/atomos/actions/runs/45752758740). 29 Rust and 5 Python integration tests, CLI and stub audio smoke checks passed; zero remote inference.
 
@@ -314,3 +315,7 @@ These are research references, not selected dependencies. Verify current upstrea
 ## Project principles
 
 Own the agent and its memory. Use OpenAI intelligence deliberately, spend tokens only when they improve the result, and never incur additional AI costs automatically. Spend energy on useful work, preserve state across failure, and measure before optimizing.
+
+### Conversational AMG development
+
+M1.4a [locked post-merge CI](https://github.com/idmfrank/atomos/actions/runs/45754844830): 35 Rust and 5 Python tests, smoke checks; core binary 314,224 bytes, peak RSS 2,040 KiB without active AMG. M1.4b enables explicit read-only recall via `atomos --memory DIR OWNER` (also before `--voice-events`). Synthetic data only; voice is not authentication and voice recall is restricted to demo preferences. Local admin remains separate. See [M1.4b](docs/m1-amg-conversation.md) for grammar and tests. No remote inference. The CLI now links SQLite; no active-store resource measurements yet.

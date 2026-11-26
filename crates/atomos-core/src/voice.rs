@@ -170,13 +170,22 @@ impl VoiceSession {
     /// Only the final transcript from the committed endpoint is accepted.
     /// Partials and late finals cannot invoke inference.
     pub fn final_text(&mut self, id: VoiceId, text: &str) -> Vec<Action> {
+        self.final_text_with(id, text, respond)
+    }
+
+    /// Invoke the host responder only after validating the final turn.
+    /// The core does not depend on a database or provider implementation.
+    pub fn final_text_with(
+        &mut self, id: VoiceId, text: &str,
+        reply: impl FnOnce(&mut MockInference, &str) -> String,
+    ) -> Vec<Action> {
         if self.state != State::Finalizing(id) { return Vec::new(); }
         if text.len() > MAX_TRANSCRIPT_BYTES || text.trim().is_empty()
             || text.chars().any(|c| c.is_control())
         {
             return self.reset_to(State::Armed, Action::Armed);
         }
-        let answer = respond(&mut self.provider, text);
+        let answer = reply(&mut self.provider, text);
         self.set(State::Speaking(id));
         vec![Action::Speak(id, answer)]
     }

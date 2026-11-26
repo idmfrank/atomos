@@ -1,7 +1,10 @@
 #![forbid(unsafe_code)]
 mod voice_events;
+mod conversation;
+use conversation::{Channel, Conversation};
+use atomos_memory::{open_reader, MemoryReader};
 use atomos_core::turn::{TurnManager, MAX_TRANSCRIPT_BYTES};
-use atomos_core::{respond, MockInference};
+use atomos_core::MockInference;
 use std::io::{self, BufRead, Read, Write};
 
 // Limit raw bytes before trimming. Reject control characters except normal
@@ -20,24 +23,35 @@ fn transcript(bytes: &[u8]) -> io::Result<&str> {
     Ok(text.trim())
 }
 
-fn answer(provider: &mut MockInference, turns: &mut TurnManager, line: &str) -> io::Result<String> {
+fn answer(provider: &mut MockInference, turns: &mut TurnManager, conversation: &mut Conversation, line: &str) -> io::Result<String> {
     let invalid = |_| io::Error::new(io::ErrorKind::InvalidData, "Invalid conversation turn");
     let id = turns.wake().map_err(invalid)?;
     turns.commit(id, line).map_err(invalid)?;
-    let response = respond(provider, line);
+    let response = conversation.reply(provider, line);
     turns.finish(id).map_err(invalid)?;
     Ok(response)
 }
 
 fn main() -> io::Result<()> {
-    let args: Vec<_> = std::env::args_os().skip(1).collect();
+    let mut args: Vec<_> = std::env::args_os().skip(1).collect();
+    // Explicit opt-in, existing store only. Flags precede the mode.
+    let reader: Option<Box<dyn MemoryReader>> = if args.first().is_some_and(|s| s == "--memory") {
+        if args.len() < 3 {
+            return Err(io::Error::new(io::ErrorKind::InvalidInput, "Expected --memory DIR OWNER"));
+        }
+        let owner = args[2].to_str().ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "Invalid owner scope"))?;
+        let db = open_reader(std::path::Path::new(&args[1]), owner)
+            .map_err(|_| io::Error::new(io::ErrorKind::PermissionDenied, "Cannot open configured AMG store"))?;
+        args.drain(..3);
+        Some(Box::new(db))
+    } else { None };
 
-    if args.len() == 1 && args[0] == "--voice-events" {
-        return voice_events::run(false);
+    let voice = args.len() == 1 && args[0] == "--voice-events";
+    let aec = args.len() == 2 && args[0] == "--voice-events" && args[1] == "--aec-verified";
+    if voice || aec {
+        return voice_events::run(aec, Conversation::new(reader, Channel::Voice));
     }
-    if args.len() == 2 && args[0] == "--voice-events" && args[1] == "--aec-verified" {
-        return voice_events::run(true);
-    }
+    let mut conversation = Conversation::new(reader, Channel::Text);
 
     // Each mode owns its stdio locks. Dispatch voice mode before acquiring
     // any locks here: the voice coordinator reads stdin itself.
@@ -55,11 +69,11 @@ fn main() -> io::Result<()> {
         if line.is_empty() {
             return Err(io::Error::new(io::ErrorKind::InvalidData, "Empty transcript"));
         }
-        writeln!(out, "{}", answer(&mut provider, &mut turns, line)?)?;
+        writeln!(out, "{}", answer(&mut provider, &mut turns, &mut conversation, line)?)?;
         return Ok(());
     }
     if !args.is_empty() {
-        return Err(io::Error::new(io::ErrorKind::InvalidInput, "Usage: atomos [--single-turn | --voice-events [--aec-verified]]"));
+        return Err(io::Error::new(io::ErrorKind::InvalidInput, "Usage: atomos [--memory DIR OWNER] [--single-turn | --voice-events [--aec-verified]]"));
     }
 
     writeln!(out, "AtomOS M1: offline mock (no OpenAI calls)")?;
@@ -83,10 +97,13 @@ fn main() -> io::Result<()> {
         if line.is_empty() {
             continue;
         }
-        writeln!(out, "{}", answer(&mut provider, &mut turns, line)?)?;
+        writeln!(out, "{}", answer(&mut provider, &mut turns, &mut conversation, line)?)?;
         out.flush()?;
     }
     writeln!(out, "Simulated inference calls: {}", provider.calls)?;
+    if conversation.local_recalls() > 0 {
+        writeln!(out, "Local memory recalls: {}", conversation.local_recalls())?;
+    }
     Ok(())
 }
 

@@ -1,6 +1,7 @@
 //! Bounded local stdio protocol for a trusted audio worker.
 //! ASCII hex prevents newline/control injection. No network or credential access.
 use atomos_core::voice::{Action, VoiceSession, FRAME_SAMPLES};
+use crate::conversation::Conversation;
 use std::io::{self, BufRead, Read, Write};
 
 const MAX_LINE: usize = 16500;
@@ -29,7 +30,7 @@ fn unhex(text: &str) -> Option<Vec<u8>> {
 
 fn invalid() -> io::Error { io::Error::new(io::ErrorKind::InvalidData, "Invalid voice event") }
 
-fn dispatch(session: &mut VoiceSession, line: &str) -> io::Result<Vec<Action>> {
+fn dispatch(session: &mut VoiceSession, conversation: &mut Conversation, line: &str) -> io::Result<Vec<Action>> {
     let mut fields = line.split(' ');
     let cmd = fields.next().ok_or_else(invalid)?;
     let actions = match cmd {
@@ -52,7 +53,7 @@ fn dispatch(session: &mut VoiceSession, line: &str) -> io::Result<Vec<Action>> {
             let raw = unhex(fields.next().ok_or_else(invalid)?).ok_or_else(invalid)?;
             let text = std::str::from_utf8(&raw).map_err(|_| invalid())?;
             if fields.next().is_some() { return Err(invalid()); }
-            return Ok(session.final_text(id, text));
+            return Ok(session.final_text_with(id, text, |provider, text| conversation.reply(provider, text)));
         }
         "DONE" => {
             let id = fields.next().ok_or_else(invalid)?.parse().map_err(|_| invalid())?;
@@ -85,7 +86,7 @@ fn emit(out: &mut impl Write, actions: Vec<Action>) -> io::Result<()> {
     out.flush()
 }
 
-pub fn run(aec_verified: bool) -> io::Result<()> {
+pub fn run(aec_verified: bool, mut conversation: Conversation) -> io::Result<()> {
     let mut session = VoiceSession::new(500, aec_verified);
     let mut input = io::stdin().lock();
     let mut out = io::stdout().lock();
@@ -100,7 +101,12 @@ pub fn run(aec_verified: bool) -> io::Result<()> {
             emit(&mut out, session.stop())?;
             return Ok(());
         }
-        let actions = dispatch(&mut session, line)?;
+        let actions = dispatch(&mut session, &mut conversation, line)?;
+        // Interrupted, expired, or muted sessions cannot carry a subject into
+        // another turn. Stale finals never invoke the responder.
+        if actions.iter().any(|a| matches!(a, Action::Cancel(_) | Action::Idle | Action::Muted)) {
+            conversation.clear();
+        }
         emit(&mut out, actions)?;
     }
 }
@@ -120,9 +126,10 @@ mod tests {
     #[test]
     fn rejects_malformed_or_extra_fields() {
         let mut s = VoiceSession::new(500, false);
-        assert!(dispatch(&mut s, "FRAME 00").is_err());
-        assert!(dispatch(&mut s, "FINAL x 00").is_err());
-        assert!(dispatch(&mut s, "DONE 1 extra").is_err());
-        assert!(dispatch(&mut s, "ARM extra").is_err());
+        let mut c = Conversation::new(None, crate::conversation::Channel::Voice);
+        assert!(dispatch(&mut s, &mut c, "FRAME 00").is_err());
+        assert!(dispatch(&mut s, &mut c, "FINAL x 00").is_err());
+        assert!(dispatch(&mut s, &mut c, "DONE 1 extra").is_err());
+        assert!(dispatch(&mut s, &mut c, "ARM extra").is_err());
     }
 }

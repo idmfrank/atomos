@@ -22,12 +22,16 @@ MAX_REPLY = 10 * MAX_LINE
 class Bridge:
     """Private bounded stdio client for the Rust voice coordinator."""
 
-    def __init__(self, binary, aec=False, request_timeout=3.0):
+    def __init__(self, binary, aec=False, request_timeout=3.0, memory=None):
         if not 0 < request_timeout <= 30:
             raise ValueError("invalid IPC deadline")
         self.request_timeout = request_timeout
         self.failed = False
-        args = [str(binary), "--voice-events"]
+        args = [str(binary)]
+        if memory is not None:
+            directory, owner = memory
+            args.extend(["--memory", str(directory), owner])
+        args.append("--voice-events")
         if aec:
             args.append("--aec-verified")
         self.proc = subprocess.Popen(args, stdin=subprocess.PIPE,
@@ -328,6 +332,8 @@ def main():
         p.add_argument("--" + arg, required=True)
     p.add_argument("--tts-data-dir", required=True)
     p.add_argument("--tts-lexicon", default="")
+    p.add_argument("--memory", nargs=2, metavar=("DIR", "OWNER"),
+                   help="enable read-only synthetic demo memory; voice is not authentication")
     p.add_argument("--speaker-id", type=int, default=0)
     p.add_argument("--input-device", type=int)
     p.add_argument("--output-device", type=int)
@@ -370,7 +376,7 @@ def main():
     generation.sid = a.speaker_id
     generation.speed = 1.0
 
-    bridge = Bridge(pathlib.Path(a.binary).resolve(strict=True), a.aec_verified)
+    bridge = Bridge(pathlib.Path(a.binary).resolve(strict=True), a.aec_verified, memory=a.memory)
     playback = Playback(tts, generation, sd, np, a.output_device)
     asr = Recognition(recognizer, np)
     try:
