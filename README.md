@@ -1,6 +1,6 @@
 # AtomOS
 
-**An OpenAI-native, always-on operating environment for personal AI agents, designed for minimal hardware, power and token consumption.**
+**An OpenAI-native, always-on operating environment for personal AI agents, designed for natural voice conversation, zero incremental AI spending and efficient use of compute, power and tokens.**
 
 AtomOS is an experimental project to build a persistent, conversational AI agent that can operate continuously on inexpensive, low-power hardware. The agent owns its identity, memory, permissions and scheduled activities independently of the language model it uses. Reasoning is delegated to OpenAI only when necessary, with the goal of operating within an owner's existing ChatGPT Plus subscription without additional AI spending. The runtime remains useful offline and retains a narrow inference interface for optional self-hosted models.
 
@@ -8,9 +8,10 @@ AtomOS is an experimental project to build a persistent, conversational AI agent
 
 ## Design goals
 
-- Run continuously on commodity ARM, RISC-V and, eventually, microcontroller-class hardware.
-- Minimize idle power, RAM, storage, CPU wakeups and network traffic.
-- Make voice and text conversation native interfaces, without requiring a desktop or screen.
+- Make natural, responsive, interruptible voice conversation the primary interface; retain text for accessibility and debugging. No screen or desktop is required.
+- In order of priority: conversational quality, zero incremental AI spending, persistent identity and autonomy, token efficiency, power efficiency, then hardware cost. Security and privacy are non-negotiable constraints.
+- Run continuously on efficient x86-64 hardware initially; support ARM, RISC-V and microcontroller-class satellites later.
+- Minimize idle power, RAM, storage, CPU wakeups and network traffic without compromising conversational quality.
 - Preserve identity, conversation context, commitments and preferences across reboots and model changes.
 - Make OpenAI the first-class remote inference provider, using official ChatGPT plan sharing where eligible and authorized. Keep agent state and local operation independent of the provider.
 - Treat inference as a finite system resource: resolve routine events locally, compile minimal context and enforce token budgets before every remote request.
@@ -31,7 +32,7 @@ AtomOS is an experimental project to build a persistent, conversational AI agent
 
 ```mermaid
 flowchart TD
-    U[Human: voice or text] <--> P[Perception and conversation interface]
+    U[Human: voice or text] <--> P[Streaming ASR, turn detection, TTS and barge-in]
     E[Timers, sensors and authorized events] --> R
     P <--> R[Persistent agent runtime]
     R <--> M[Local identity and memory store]
@@ -46,7 +47,7 @@ flowchart TD
     B <--> C[OpenAI Responses API via authorized ChatGPT plan]
     B <--> H[Optional self-hosted inference]
     R --> O[OS services: network, storage, power]
-    O --> HW[ARM, RISC-V or MCU hardware]
+    O --> HW[x86-64 voice host; optional ARM or MCU satellites]
 ```
 
 The language model is a replaceable computational resource. The persistent agent runtime is responsible for state, context selection, task execution and authorization. Model output is treated as untrusted input, never as direct authority to execute a tool.
@@ -116,7 +117,7 @@ These are internal design targets, not ChatGPT Plus entitlements. For example, 1
 
 ### Voice pipeline
 
-Keep wake-word detection and voice activity detection local. Capture speech only after activation, perform STT locally or on an optional owner-operated server, route the resulting text through the local intent resolver and Token Governor, and synthesize speech locally where practical. No continuous cloud audio stream. Do not assume standalone OpenAI audio or Realtime endpoints are covered by plan sharing; disable them under subscription-only policy unless eligibility and zero incremental cost are verified. Benchmark unrestricted speech recognition separately from the text runtime.
+Keep wake-word detection and voice activity detection local. Use a bounded volatile pre-roll buffer, stream ASR during active speech, commit text only at a valid turn boundary, route through local intent resolution and the Token Governor, and synthesize streamed text in speakable chunks. Continue listening during playback with acoustic echo cancellation and cancel playback promptly on barge-in. Do not persist audio by default. No continuous cloud audio stream. Do not assume standalone OpenAI audio or Realtime endpoints are covered by plan sharing; disable them under subscription-only policy unless eligibility and zero incremental cost are verified. Voice quality and latency must be measured from the first prototype, including in-room acoustics and interruptions. See [voice architecture](docs/architecture.md) and [resource budget](docs/resource-budget.md).
 
 ## Memory and identity
 
@@ -138,12 +139,12 @@ Each agent has a stable identifier and cryptographic credentials. Device enrollm
 | Component | Initial choice |
 | --- | --- |
 | Agent runtime | Rust, with a small dependency footprint |
-| OS foundation | Buildroot minimal Linux for the first prototype |
+| OS foundation | Headless Linux for development and audio validation; Buildroot x86-64 image after the pipeline is proven |
 | Event processing | Bounded asynchronous Rust tasks |
 | Persistent state | SQLite on Linux; compact journal on constrained targets |
 | Serialization | CBOR internally where useful; JSON for provider APIs |
 | Networking | HTTPS/TLS, streaming WebSocket where supported |
-| Voice | Local wake-word detection and VAD; local/self-hosted STT/TTS first |
+| Voice | Streaming local ASR and neural TTS, hardware-assisted echo cancellation, local wake word and VAD; engine adapters benchmarked before selection |
 | Inference | OpenAI-first streaming Responses API adapter using eligible ChatGPT plan sharing; local rules and mock adapter as offline baseline |
 | Inference policy | Rust Token Governor, durable usage ledger, local intent resolver and context compiler |
 | Security | Capability-based tool authorization, Ed25519 device identity, vetted cryptography |
@@ -153,19 +154,37 @@ Use Linux first to avoid spending the initial development cycle on hardware driv
 
 ## Reference hardware and resource budgets
 
-Initial platform: Raspberry Pi Zero 2 W (512 MB RAM), with an ESP32-S3 voice endpoint as the subsequent constrained-hardware target. A Milk-V Duo-class RISC-V board is a potential additional port.
+Primary conversational reference: efficient x86-64 mini PC, Intel N100/N150-class minimum or equivalent; prefer a refurbished Core i5/Ryzen 5 with 16 GB RAM and 256 GB SSD if it meets the latency and power gates. A USB far-field microphone array with echo cancellation (e.g. ReSpeaker XVF3800) and a compatible speaker form the reference audio path. Exact SKU and audio routing remain subject to measured tests.
 
-| Metric | Core target (Linux SBC) | Micro target (ESP32-S3 with PSRAM) |
+| Metric | Conversational host | Lightweight core / satellite |
 | --- | --- | --- |
-| Complete device cost | Under $35 | Under $20 |
-| Idle power at device input | Under 1 W | 0.1–0.5 W |
-| Total OS + runtime active RAM | 64 MB or less | 1–4 MB target |
-| OS + runtime storage image | 128 MB or less | 4–16 MB target |
-| Persistent memory budget | 256 MB initially | Hardware-dependent; external storage optional |
+| Complete device cost | Target $300; indicative $230–$330 | Pi Zero 2 W core ~$35; MCU satellite TBD with audio |
+| Average device input power | 6–12 W target | Core ~1.5 W; MCU target 0.1–0.5 W idle |
+| Physical RAM | 16 GB preferred, 8 GB minimum candidate | Pi Zero 512 MB; ESP32-S3 PSRAM |
+| OS + non-audio core RAM | 64 MB stretch target on specialized image | 64 MB core; 1–4 MB MCU target |
+| Active voice stack and core RAM | Approximately 2.5 GiB planning budget | Voice inference offloaded to host |
+| OS + non-audio runtime image | 128 MB stretch target, excludes model assets | 128 MB core; 4–16 MB MCU target |
+| Local persistent agent memory | 256 MB initial configurable quota | Hardware-dependent |
 | Operation | 24/7 | 24/7 |
-| General-purpose model inference | Remote or separate local server | Remote or separate local server |
+| General-purpose inference | OpenAI via eligible plan sharing; optional local model | Delegate to authorized host |
 
-These are **unvalidated engineering targets**, not existing capabilities or retail quotes. Complete device cost includes board, power, storage and audio hardware as applicable. Micro targets depend on flash/PSRAM configuration, networking and audio buffers. Power targets exclude the separate inference server; report both endpoint and end-to-end energy in benchmarks. Measure idle and active states separately, with Wi-Fi and voice configuration documented.
+These are unvalidated engineering targets, not guarantees or price quotes. Host costs include audio and basic accessories; measure at the wall including audio equipment. Report OS, runtime, models and retained user data separately. Prioritize conversation quality over hardware price or an arbitrary footprint; report peak/idle RAM, whole-device energy, latency and quality together. Do not buy a dedicated GPU for the initial prototype.
+
+### Voice quality gates
+
+| Metric | Initial target |
+| --- | --- |
+| Wake detection | Under 200 ms after wake phrase ends |
+| ASR | Faster than real time on reference hardware |
+| End-of-turn detection | Under 400 ms for clear completed turns |
+| Local spoken response | Under 500 ms after speech ends, simple intents |
+| First audible OpenAI response | Under 1.5 s median after speech ends; report p95 |
+| Barge-in to playback stop | Under 150 ms |
+| Far-field operation | Evaluate 1, 3 and 5 m in quiet and noisy conditions |
+| Continuity | Context survives sessions and restart |
+| Idle remote inference | Zero |
+ 
+Targets must be validated end to end; network latency is variable. A text-mediated voice pipeline may not match native speech-to-speech prosody or turn-taking. See [resource and benchmark plan](docs/resource-budget.md).
 
 ## Security and privacy
 
@@ -182,12 +201,12 @@ These are **unvalidated engineering targets**, not existing capabilities or reta
 
 | Milestone | Deliverable / exit criteria |
 | --- | --- |
-| M0 — Design | README, architecture decisions, threat model, resource and inference budgets, and reference hardware selection. |
-| M1 — Agent core | Rust CLI, stable local identity, persistent journal, local intent resolver, Token Governor, usage ledger, mock inference and initial official OpenAI authentication/eligibility validation. Restart restores state and budget. |
-| M2 — Model broker | Authorized OpenAI subscription-only streaming text inference, context compiler, model discovery and quota/error handling. Verify no paid fallback; optional self-hosted adapter only after core path is validated. |
+| M0 — Design | README, architecture, threat model, resource and inference budgets, and reference hardware selection. |
+| M1 — Voice-first agent core | Rust runtime, mock inference, identity and journal, local intent resolver and Token Governor. Parallel local voice spike: streaming ASR/TTS, VAD, barge-in and latency instrumentation. Validate official OpenAI eligibility before live calls. |
+| M2 — Conversational integration | Integrate streaming OpenAI text responses with local voice pipeline, context compiler, model discovery and quota/error handling. Validate full-duplex interaction and no paid fallback. |
 | M3 — Memory and scheduling | Bounded local retrieval, memory editing/export, durable reminders, approved workflow reuse, cancellation and restart recovery; budgeted consolidation. |
-| M4 — Minimal OS | Bootable Buildroot image for Pi Zero 2 W, automatic service startup, health checks and measured resource budgets. |
-| M5 — Voice | Local wake word and VAD, local/self-hosted STT/TTS, interruption and mute control; measure audio footprint and verify subscription-only operation. |
+| M4 — Minimal OS | Bootable Buildroot x86-64 image for selected voice host, automatic startup, health checks and measured resource budgets. |
+| M5 — Voice refinement | Improve acoustic robustness, prosody, turn-taking and far-field quality; tune power, latency and memory against measured baselines. |
 | M6 — Tools and security | Typed tool calls, policy enforcement, approval flow, audit logging and adversarial tests before broad tool access. |
 | M7 — Embedded port | Evaluate ESP32-S3 implementation, power management, storage durability and audio performance. |
 | M8 — Distributed agent | Optional authorized node discovery, encrypted synchronization, conflict resolution and inference routing. Evaluate Nostr as an optional transport. |
@@ -206,7 +225,9 @@ Security requirements apply from M1; M6 expands and verifies the tool execution 
 7. Verify zero remote inference while idle and no remote calls for deterministic test cases. Measure local resolution rate, total tokens per task, response quality and quota consumption on a reproducible workload.
 8. Test budget exhaustion, concurrent reservations, restart recovery, denied scopes, unavailable allowance and provider quota limits. Demonstrate offline continuation, no paid fallback and no bypass of the Token Governor.
 
-Voice is an explicit subsequent milestone. The first prototype validates the agent architecture before introducing audio complexity.
+9. Demonstrate a complete microphone-to-speaker local conversation loop, barge-in, echo suppression and visible mute/listening states with deterministic mock inference; measure latency before enabling live OpenAI integration.
+
+Voice is a first-milestone requirement. A CLI is a test interface, not the intended user experience.
 
 ## Proposed repository layout
 
@@ -215,13 +236,13 @@ atomos/
   README.md
   docs/             # Architecture, ADRs, threat model, resource and inference budgets
   crates/           # Runtime, memory, policy, inference, governor, platform interfaces
-  apps/             # CLI and later voice endpoint
+  apps/             # CLI and voice endpoint
   platform/         # Buildroot and embedded board definitions
   tests/            # Integration, recovery, security tests
   benchmarks/       # RAM, power, latency, durability, tokens and task quality
 ```
 
-Only the README is intended for the initial commit. The remaining structure will be created as implementation begins.
+Design specifications: [architecture](docs/architecture.md), [threat model](docs/threat-model.md), [resource budget](docs/resource-budget.md), and [inference architecture](docs/inference-architecture.md). Implementation follows the M1 voice-first spike.
 
 ## Prior art to evaluate
 
@@ -238,7 +259,7 @@ These are research references, not selected dependencies. Verify current upstrea
 
 ## Open decisions
 
-- Exact reference board, microphone and speaker configuration.
+- Exact x86-64 host, microphone/speaker configuration and audio engine selection after benchmarks.
 - Validate AtomOS eligibility for OpenAI plan sharing, account-level spending controls, supported model capabilities and data retention policies. Define headless sign-in/enrollment using only documented flows.
 - Establish real-world Plus usage headroom and benchmark token efficiency without compromising response quality.
 - Memory retrieval strategy, flash wear management and encryption/key recovery.
