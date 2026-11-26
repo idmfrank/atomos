@@ -1,19 +1,21 @@
 #!/usr/bin/env node
 // Explicit owner-run auth utility. Never calls the inference or models API.
 import http from 'node:http';
+import {spawnSync} from 'node:child_process';
+import {strictJson} from './strict-json.mjs';
 import {randomBytes} from 'node:crypto';
-import {require,AuthError,DISCOVERY,ENDPOINTS,discovery,begin,callback,tokenRecord,refreshForm,refreshed,revokeForm,signedOut,planGranted} from './protocol.mjs';
+import {require,AuthError,DISCOVERY,ENDPOINTS,discovery,begin,callback,tokenRecord,refreshForm,refreshed,revokeForm,signedOut,planGranted,MODEL_CATALOG,catalog,catalogAllowed} from './protocol.mjs';
 import {withStore} from './store.mjs';
 const MAX=256*1024;
 const ALLOWED=new Set([DISCOVERY,ENDPOINTS.jwks_uri,ENDPOINTS.token_endpoint,ENDPOINTS.revocation_endpoint]);
-async function request(url,form=null,empty=false){
-  require(ALLOWED.has(url)&&process.env.NODE_TLS_REJECT_UNAUTHORIZED!=='0','unsafe_endpoint_or_tls');
-  const r=await fetch(url,{method:form?'POST':'GET',body:form??undefined,redirect:'error',signal:AbortSignal.timeout(15000),headers:form?{'content-type':'application/x-www-form-urlencoded'}:{accept:'application/json'}});
+async function request(url,form=null,empty=false,bearer=null){
+  require((ALLOWED.has(url)&&bearer===null||url===MODEL_CATALOG&&bearer!==null&&!form&&!empty)&&process.env.NODE_TLS_REJECT_UNAUTHORIZED!=='0','unsafe_endpoint_or_tls');
+  const r=await fetch(url,{method:form?'POST':'GET',body:form??undefined,redirect:'error',signal:AbortSignal.timeout(15000),headers:form?{'content-type':'application/x-www-form-urlencoded'}:{accept:'application/json',...(bearer?{authorization:'Bearer '+bearer}:{})}});
   if(!r.ok){await r.body?.cancel();throw new AuthError('auth_http_'+r.status);}
   if(empty){require(r.status===200,'revocation_not_confirmed');for await(const b of r.body??[]){require(b.length===0,'revocation_not_confirmed');}return;}
   let n=0;const chunks=[];
   for await(const b of r.body){n+=b.length;require(n<=MAX,'auth_response_limit');chunks.push(Buffer.from(b));}
-  return JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(Buffer.concat(chunks,n)));
+  return strictJson(new TextDecoder('utf-8',{fatal:true}).decode(Buffer.concat(chunks,n)));
 }
 async function signIn(store){
   require(!store.pendingRegistration,'registration_pending_manual_recovery');
@@ -86,16 +88,41 @@ async function signOut(store){
   store.save(signedOut(p));
   console.log(confirmed?'Signed out; remote revocation confirmed.':'Signed out locally; remote revocation unconfirmed. Disconnect app in ChatGPT Settings.');
 }
+// Use the installed OS terminal password prompt; no secret argv/env,
+// shell, agent fallback or cache. No noninteractive unlock.
+function unlock(label){
+  require(process.stdin.isTTY&&process.stderr.isTTY,'interactive_tty_required');
+  const r=spawnSync('/usr/bin/systemd-ask-password',['--timeout=60',label],{stdio:['inherit','pipe','inherit'],timeout:65000,maxBuffer:2048});
+  const out=r.stdout;
+  require(r.status===0&&Buffer.isBuffer(out),'vault_prompt_failed');
+  const end=out.length&&out[out.length-1]===10?out.length-1:out.length;
+  const pass=Buffer.from(out.subarray(0,end));out.fill(0);
+  require(pass.length>=20&&pass.length<=1024&&!pass.includes(0)&&!pass.includes(10)&&!pass.includes(13),'vault_passphrase_length');
+  return pass;
+}
+async function models(store){
+  const p=store.profile;catalogAllowed(p);
+  const list=catalog(await request(MODEL_CATALOG,null,false,p.access_token));
+  console.log(JSON.stringify({models:list,live_inference_enabled:false},null,2));
+}
 async function main(){
   const [cmd,dir,consent,...extra]=process.argv.slice(2);
-  require(!extra.length&&['status','sign-in','refresh','sign-out'].includes(cmd)&&dir,'usage: node scripts/auth/atomos-auth.mjs status|sign-in|refresh|sign-out ABSOLUTE_PRIVATE_DIR [--confirm-eligible-auth-only]');
+  require(!extra.length&&['status','sign-in','refresh','sign-out','models'].includes(cmd)&&dir,'usage: node scripts/auth/atomos-auth.mjs status|sign-in|refresh|sign-out|models ABSOLUTE_PRIVATE_DIR [--confirm-eligible-auth-only]');
   require(cmd==='status'?consent===undefined:consent==='--confirm-eligible-auth-only','explicit_owner_confirmation_required');
-  await withStore(dir,async store=>{
+  const pass=unlock('AtomOS vault passphrase (at least 20 characters):');
+  try{
+  await withStore(dir,pass,async store=>{
+    if(cmd==='sign-in'&&!store.profile){
+      const second=unlock('Confirm new AtomOS vault passphrase:');
+      try{require(pass.equals(second),'vault_passphrase_mismatch');}finally{second.fill(0);}
+    }
+    if(cmd==='models')return models(store);
     if(cmd==='sign-in')return signIn(store);
     if(cmd==='refresh')return refresh(store);
     if(cmd==='sign-out')return signOut(store);
     const p=store.profile;
     console.log(JSON.stringify({registration:!!p,pending_registration:store.pendingRegistration,status:p?.status??'unregistered',plan_scope_granted:!!p&&planGranted(p),access_expired:p?.status==='active'?p.expires_at<=Math.floor(Date.now()/1000):null,live_inference_enabled:false}));
   });
+  }finally{pass.fill(0);}
 }
 main().catch(e=>{console.error(e instanceof AuthError?e.message:'Authentication operation failed; inspect local permissions and documented recovery without sharing credentials.');process.exitCode=1;});
