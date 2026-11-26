@@ -1,6 +1,6 @@
 # AtomOS Memory Graph (AMG)
 
-Status: accepted target architecture. M1.4a and M1.4b merged and automated tests passed; full M1.4 implementation and performance validation pending.
+Status: accepted target architecture. M1.4a–e and scale deletion correction merged and tested. M1.4f optimization/recovery in development; full security and hardware validation pending.
 See [system architecture](architecture.md), [inference architecture](inference-architecture.md), [resource budget](resource-budget.md), and [threat model](threat-model.md).
 
 ## Implemented baseline versus remaining design
@@ -10,7 +10,7 @@ See [system architecture](architecture.md), [inference architecture](inference-a
 - M1.4c next: bounded graph/FTS retrieval through read-only interfaces, relevance fusion, conflict/truncation metadata and compact policy-separated context compilation. No live model calls.
 - M1.4d/e: authenticated controls, export/recovery, deletion and quota assurance, active-store benchmarks and alternative engine comparison. Valid-world-time intervals, alias resolution, multiple/conflicting assertions, complete episodic/procedural/prospective classes and key recovery are not implemented yet.
 
-The schema and architecture below specify the target, not a claim that every control or memory class exists. Current SQLite reader exposes only identity and exact recall; graph/FTS administration retrieval is separate. Voice is not authentication. Synthetic fixtures only.
+The schema and architecture below specify the target, not a claim that every control or memory class exists. Current reader exposes identity, exact recall, expiring revision-specific demo voice recall and scoped graph/FTS retrieval; administration owns mutation. Voice is not authentication. Synthetic fixtures only.
 
 ## Decision
 
@@ -172,3 +172,7 @@ M2 integrates authorized broker only after official plan eligibility and spendin
 - [redb candidate](https://github.com/cberner/redb)
 
 References describe candidate capabilities, not benchmark results or approved dependencies.
+
+## Measured engine decision
+
+See [M1.4f baseline](m1-amg-optimization.md#reference-baseline-and-decision) for successful 1k/10k/100k results. Retain SQLite + FTS5 for M2 development, preserve logical interface and export, defer equivalent alternative adapters pending owner approval. No claim SQLite outperforms redb/CozoDB. CI fixture does not certify target hardware, full quota, privacy or complete memory classes. [Engineering verification rules](../AGENTS.md) require reference parity and independent tests for behavior-preserving optimization.

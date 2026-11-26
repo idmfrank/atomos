@@ -189,3 +189,13 @@ fn oversized_line_is_rejected_before_restore_creation(){
     assert!(SqliteMemory::restore_logical(&dest,"demo",&backup).is_err());
     assert!(!dest.exists());
 }
+
+#[test]
+fn export_cannot_consume_active_store_budget(){
+    let f=Fixture::new();let path=f.0.join("db");
+    let mut db=init(&path,"demo","Aster").unwrap();
+    let inside=path.join("backup.amg");
+    assert!(db.export_logical(&inside).is_err());
+    assert!(!inside.exists());
+    db.export_logical(&f.0.join("outside.amg")).unwrap();
+}

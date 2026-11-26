@@ -176,6 +176,11 @@ impl SqliteMemory {
     pub fn export_logical(&mut self,path:&Path)->Result<usize>{
         let parent=path.parent().filter(|p|!p.as_os_str().is_empty()).unwrap_or(Path::new("."));
         private_dir(parent)?;
+        let db_path=Path::new(self.conn.path().ok_or(Error::Invalid("missing database path"))?);
+        let store=fs::canonicalize(db_path)?.parent().ok_or(Error::Invalid("missing store directory"))?.to_path_buf();
+        if fs::canonicalize(parent)?.starts_with(&store){
+            return Err(Error::Invalid("backup must be outside the active store directory"));
+        }
         let tx=self.conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
         check_integrity(&tx,&self.identity.owner_scope)?;
         let file=OpenOptions::new().write(true).create_new(true).mode(0o600).open(path)?;

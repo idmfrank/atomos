@@ -15,7 +15,7 @@ bench=target/release/examples/amg_bench
 cli=target/release/atomos
 tmp="$(mktemp -d)"
 trap 'rm -rf -- "$tmp"' EXIT
-echo "AMG_BENCH version=2 samples=$samples stage_timeout_seconds=$stage_seconds"
+echo "AMG_BENCH version=3 samples=$samples stage_timeout_seconds=$stage_seconds"
 uname -smr
 rustc --version
 pkg-config --modversion sqlite3
