@@ -18,7 +18,7 @@ Ledger fields: request ID, task ID, turn/epoch, account alias, model, priority, 
 
 ## Context compiler
 
-Preserve owner instructions, applicable safety policy, recent turn state, task-relevant typed facts and only needed tool schemas. Use local full-text index and entity keys initially, optional local embeddings after benchmark. Use stable prompt prefixes where appropriate; prompt caching is not assumed to reduce subscription usage. Keep essential context even if a task requires larger budget; ask the owner or defer rather than silently degrade accuracy. Untrusted content remains clearly delimited. Store facts with source, timestamp and confirmation status. No remote model call to select a model for every request.
+Preserve owner instructions, applicable safety policy, recent turn state, task-relevant typed facts and only needed tool schemas. Use AMG exact entity/property lookup, bounded graph traversal, scoped FTS5 and local ranking initially; optional local embeddings only after benchmark. See [AMG architecture](amg-architecture.md). Preserve provenance, validity, conflicts and scope; return ambiguity/truncation metadata. No remote retrieval/routing requirement. Use stable prompt prefixes where appropriate; prompt caching is not assumed to reduce subscription usage. Keep essential context even if a task requires larger budget; ask the owner or defer rather than silently degrade accuracy. Untrusted content remains clearly delimited. Store facts with source, timestamp and confirmation status. No remote model call to select a model for every request.
 
 ## Voice integration
 
@@ -37,3 +37,7 @@ Local wake, VAD, streaming ASR, endpointing and local TTS consume no remote mode
 | Stream interruption or unknown usage | Cancel, persist outcome and conservatively reconcile. |
 
 M1: deterministic mock provider, no network, tests for reservation concurrency, restart, cancellation, zero idle calls and local resolution. M2: gated real integration, capability checks, streamed response and quota failure tests, measured usage. Use no real account secrets in CI. Define an explicit user-authorized live test mode after eligibility verification. Report measured raw tokens and successful tasks per 1000 tokens, plus quality and provider limits separately.
+
+## Implementation status
+
+M1.1–M1.3 local/mock and fixed-budget durable reservation tests passed. No live broker, authorized OAuth integration, final context compiler, calendar/rolling ledger or subscription eligibility validation yet. AMG is the planned memory/context source; governor accounting remains independent until invariants can be preserved. See [README](../README.md).

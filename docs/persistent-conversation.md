@@ -1,6 +1,6 @@
 # M1.3: Persistent conversational coordinator
 
-Status: proposed implementation, pending CI and real hardware evaluation. No remote inference.
+Status: merged, automated validation passed; real hardware and native model evaluation pending. No remote inference.
 
 ## What this slice implements
 
@@ -45,4 +45,4 @@ CI uses fake recognition/synthesis for the adapter boundary and actual Rust stdi
 
 ## CI regression correction
 
-The first M1.3 CI run (45751853421) compiled and passed all 29 Rust tests, the CLI smoke test and prior stub audio tests, then timed out in the new IPC replay. Review found that the main CLI acquired stdin before dispatching voice mode, whose event loop tried to acquire stdin again. Voice dispatch now precedes all CLI stdio locks. Independent subprocess startup tests cover both voice flags. Replay requests use the bounded adapter IPC client (3 s default deadline for writes and reads combined); failed connections terminate/reap the child and cannot be reused. A deliberately unresponsive child exercises deadline and cleanup behavior. Each Python suite also has a 30 s process deadline with forced termination fallback. The Token Governor's deprecated atomic update is replaced with a checked CAS loop compatible with the declared Rust 1.75 baseline. Verify the new CI run before merge.
+The first M1.3 CI run (45751853421) compiled and passed all 29 Rust tests, the CLI smoke test and prior stub audio tests, then timed out in the new IPC replay. Review found that the main CLI acquired stdin before dispatching voice mode, whose event loop tried to acquire stdin again. Voice dispatch now precedes all CLI stdio locks. Independent subprocess startup tests cover both voice flags. Replay requests use the bounded adapter IPC client (3 s default deadline for writes and reads combined); failed connections terminate/reap the child and cannot be reused. A deliberately unresponsive child exercises deadline and cleanup behavior. Each Python suite also has a 30 s process deadline with forced termination fallback. The Token Governor's deprecated atomic update is replaced with a checked CAS loop compatible with the declared Rust 1.75 baseline. Correction merged in PR #4. [Post-merge CI](https://github.com/idmfrank/atomos/actions/runs/45752758740) passed 29 Rust and 5 Python integration tests, smoke checks and text-only release benchmark. Actual acoustic performance remains unvalidated.

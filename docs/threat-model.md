@@ -38,3 +38,7 @@ Mute stops capture and discards pending volatile audio; software mute is not equ
 - Verify physical mute and listening indicators on reference hardware before normal household use.
 
 Residual risks: provider-side retention and account-wide usage are outside local control; audio transcription can misinterpret speech; physical compromise and upstream vulnerabilities remain possible. Document provider policies and hardware properties before deployment. AtomOS is not a safety-critical or emergency response device.
+
+## AMG memory-specific controls (design accepted, not yet implemented)
+
+See [AMG architecture](amg-architecture.md). Explicit owner scope and authenticated sensitive mutations; typed queries, bounded traversal, source trust and temporal conflicts; model-inferred data cannot upgrade its authority. Delete or invalidate dependent assertions, derived indexes/caches and queued context. No credentials, raw audio or ASR partials in memory. SQLite is not encrypted by default; address file permissions, encryption/key recovery, WAL/FTS deletion caveats and backups before private deployment. Logical deletion is not forensic erasure; transmitted context cannot be recalled. Test prompt injection, cross-scope reads, rollback, corruption, disk-full and restoration without deleted-record resurrection. Synthetic CI data only.

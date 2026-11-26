@@ -1,6 +1,6 @@
 # M1 slice 2: local audio path
 
-Status: experimental, pending CI and physical validation. This is a deliberately bounded hardware smoke test, not the final conversational engine.
+Status: merged, automated stub integration tests passed; physical validation pending. This is a deliberately bounded hardware smoke test, not the final conversational engine.
 
 ## Purpose
 

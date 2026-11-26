@@ -49,3 +49,9 @@ Use an AC wall meter including power supply, microphone and speaker; record idle
 ## Go/no-go
 
 M1 must demonstrate interruptible local voice and mock inference without credentials; failures become issues before integration. M2 must validate eligibility, spending controls and streaming remote text, then compare complete voice quality with local baseline. Do not promise equivalence to native speech-to-speech ChatGPT. Choose the lowest total-cost host that meets quality, latency and security gates. If none passes, revise speech engine/hardware before reducing quality expectations.
+
+## Verified text-only baseline and AMG targets
+
+M1.3 [post-merge CI](https://github.com/idmfrank/atomos/actions/runs/45752758740): release executable 314,224 bytes; peak RSS 2,136 KiB for 1,000 local simulated text interactions. Excludes OS, real speech models, Python adapter, active ledger and memory DB; no inference calls. Not an acoustic, power or whole-system benchmark.
+
+AMG provisional targets: <8 MiB incremental memory engine overhead within the overall RAM budget, 256 MiB configurable aggregate data quota including derived indexes and journal sidecars, warm p95 exact retrieval <5 ms, bounded traversal <20 ms, context compilation including retrieval <50 ms. Depth 2 default/3 maximum. Zero remote tokens for local retrieval. Compare equivalent SQLite, embedded graph and KV workloads before final engine selection. See [AMG benchmark protocol](amg-architecture.md#performance-and-comparison). All AMG targets unmeasured.

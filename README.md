@@ -4,7 +4,39 @@
 
 AtomOS is an experimental project to build a persistent, conversational AI agent that can operate continuously on inexpensive, low-power hardware. The agent owns its identity, memory, permissions and scheduled activities independently of the language model it uses. Reasoning is delegated to OpenAI only when necessary, with the goal of operating within an owner's existing ChatGPT Plus subscription without additional AI spending. The runtime remains useful offline and retains a narrow inference interface for optional self-hosted models.
 
-**Status:** Architecture and planning. No implementation or performance benchmarks yet.
+**Status:** M1.1–M1.3 merged and automated validation passed. M1.4 (AtomOS Memory Graph) architecture accepted; implementation pending. Physical speech/model tests, always-on wake word, persistent identity, live OpenAI inference and bootable OS remain unvalidated or unimplemented.
+
+## Current implementation
+
+| Slice | Implemented (automated tests passed) |
+| --- | --- |
+| M1.1 | Dependency-free Rust core/CLI, local/mock inference, turn epochs, bounded playback queue, fixed-budget persistent reservation ledger. [PR #2](https://github.com/idmfrank/atomos/pull/2) |
+| M1.2 | Single-turn ALSA/Whisper.cpp/Piper smoke harness, transcript bounds, instance-scoped reservations, stub audio tests. [PR #3](https://github.com/idmfrank/atomos/pull/3) |
+| M1.3 | Persistent Rust voice coordinator, streaming PCM protocol, RMS endpointing, follow-up window, AEC-gated cancellation, optional warm Sherpa-ONNX/Kokoro adapter, IPC startup/deadline fixes. [PR #4](https://github.com/idmfrank/atomos/pull/4) |
+| M1.4 | AMG design accepted; memory engine and schema not yet implemented. |
+
+Verified post-merge baseline: [83dbf8c](https://github.com/idmfrank/atomos/commit/83dbf8c39e7ed7fae4bcb3230eb4022452540cb5), [Actions run 45752758740](https://github.com/idmfrank/atomos/actions/runs/45752758740). 29 Rust and 5 Python integration tests, CLI and stub audio smoke checks passed; zero remote inference.
+
+| Text-only release benchmark | M1.1 | M1.2 | M1.3 |
+| --- | ---: | ---: | ---: |
+| Executable bytes | 296,824 | 302,072 | 314,224 |
+| Peak process RSS (KiB) | 2,068 | 2,020 | 2,136 |
+| Rust tests | 15 | 18 | 29 |
+| Python integration tests | 0 | 0 | 5 |
+
+1,000 simulated local text interactions; excludes OS, real speech models, Python adapter and active memory DB/ledger. RSS differences may reflect measurement variability. No acoustic latency, power or total system RAM claim. Current Rust workspace has zero external crate dependencies; optional hardware tools/models not bundled.
+
+### Development quick start
+
+Linux, Rust/Cargo (declared minimum 1.75, CI verified on 1.100), Bash, Python 3 and GNU coreutils:
+
+```bash
+bash scripts/test.sh
+cargo run --locked --offline -p atomos-cli --bin atomos
+bash scripts/benchmark.sh
+```
+
+Try "what is your name?" (local), "explain entropy" (mock), and "/quit". See [local voice smoke test](docs/local-voice-spike.md) and [persistent conversation](docs/persistent-conversation.md) for optional hardware adapters. Passing stub tests do not validate physical audio. Executable changes require passing CI before merge.
 
 ## Design goals
 
@@ -35,22 +67,22 @@ flowchart TD
     U[Human: voice or text] <--> P[Streaming ASR, turn detection, TTS and barge-in]
     E[Timers, sensors and authorized events] --> R
     P <--> R[Persistent agent runtime]
-    R <--> M[Local identity and memory store]
+    R <--> M[AMG: identity, graph, journal, FTS]
     R <--> S[Event scheduler and task journal]
     R --> A[Capability and approval policy]
     A --> T[Authorized tools and devices]
     R <--> D[Local intent resolver and approved workflows]
-    R <--> G[Token Governor]
-    G <--> X[Context compiler]
-    X <--> M
-    X <--> B[Inference broker]
+    R --> X[Context compiler]
+    M --> X
+    X --> G[Token Governor]
+    G --> B[Inference broker]
     B <--> C[OpenAI Responses API via authorized ChatGPT plan]
     B <--> H[Optional self-hosted inference]
     R --> O[OS services: network, storage, power]
     O --> HW[x86-64 voice host; optional ARM or MCU satellites]
 ```
 
-The language model is a replaceable computational resource. The persistent agent runtime is responsible for state, context selection, task execution and authorization. Model output is treated as untrusted input, never as direct authority to execute a tool.
+The diagram represents the target architecture, not all implemented services. The language model is a replaceable computational resource. The persistent agent runtime is responsible for state, context selection, task execution and authorization. Model output is treated as untrusted input, never as direct authority to execute a tool.
 
 ### Runtime lifecycle
 
@@ -117,9 +149,13 @@ These are internal design targets, not ChatGPT Plus entitlements. For example, 1
 
 ### Voice pipeline
 
+Implemented: 20 ms/16 kHz mono PCM, explicit activation, 60 ms onset, up to 100 ms pre-roll, 300 ms quiet endpoint and eight-second follow-up. Default half-duplex; barge-in only when AEC explicitly verified. Optional Sherpa-ONNX/Kokoro warm development adapter (Python); whole-utterance synthesis, not incremental. Whisper.cpp/Piper remains the batch baseline. Wake word, neural VAD, actual acoustic AEC and physical latency/quality validation remain outstanding. See [M1.3](docs/persistent-conversation.md). The following describes the target pipeline.
+
 Keep wake-word detection and voice activity detection local. Use a bounded volatile pre-roll buffer, stream ASR during active speech, commit text only at a valid turn boundary, route through local intent resolution and the Token Governor, and synthesize streamed text in speakable chunks. Continue listening during playback with acoustic echo cancellation and cancel playback promptly on barge-in. Do not persist audio by default. No continuous cloud audio stream. Do not assume standalone OpenAI audio or Realtime endpoints are covered by plan sharing; disable them under subscription-only policy unless eligibility and zero incremental cost are verified. Voice quality and latency must be measured from the first prototype, including in-room acoustics and interruptions. See [voice architecture](docs/architecture.md) and [resource budget](docs/resource-budget.md).
 
-## Memory and identity
+## AtomOS Memory Graph (AMG) and identity
+
+**Decision:** temporal property graph with provenance, backed provisionally by SQLite on Linux. Logical model independent of physical storage through typed Rust interfaces. Indexed relationships, FTS5 and durable event journal; no separate database daemon, mandatory vector database or remote embeddings. Compare equivalent embedded graph and key-value alternatives before permanent selection. See [AMG architecture](docs/amg-architecture.md).
 
 | Memory class | Purpose |
 | --- | --- |
@@ -130,9 +166,11 @@ Keep wake-word detection and voice activity detection local. Use a bounded volat
 | Procedural | Tool descriptions, approved procedures and workflows. |
 | Prospective | Reminders, commitments and scheduled tasks. |
 
-Use a bounded local store with a journal, compact serialization, indexed retrieval and configurable retention. Start with SQLite on Linux; evaluate a flash-friendly journal and CBOR on embedded targets. Preserve timestamps and provenance. Distinguish owner-provided instructions from model-generated summaries and retrieved content. Provide export, correction and deletion of persistent memories, and never store raw audio by default.
+Use typed entities, directed edges and assertions with source, trust, valid and recorded times. Exact lookup first, bounded traversal, FTS5, local ranking; optional local embeddings only after measured benefit. Compile minimal sufficient context including conflicts, provenance and policy before governor admission. Working context stays in bounded RAM. Support explicit memory operations, scoped retrieval, correction/supersession, export and deletion including derived indexes/caches. No raw audio, ASR partials or credentials in memory. Evaluate compact flash journal/CBOR on constrained targets.
 
-Each agent has a stable identifier and cryptographic credentials. Device enrollment, key rotation, recovery and revocation must be designed before cross-device identity synchronization is enabled. Private keys must never be sent to an inference provider.
+Initial unmeasured targets: <8 MiB incremental memory overhead, 256 MiB aggregate data quota, warm p95 exact lookup <5 ms, traversal <20 ms, context compilation <50 ms, depth 2 default/3 maximum, zero remote retrieval tokens. Existing governor journal remains independent. SQLite is not itself encryption; owner access, encrypted storage/key recovery, retention and backup/deletion policies must be addressed before real private data.
+
+Target identity design uses a stable agent ID and separate protected cryptographic credentials; persistent identity and enrollment are not implemented yet. Device enrollment, key rotation, recovery and revocation must be designed before cross-device identity synchronization is enabled. Private keys must never be sent to an inference provider.
 
 ## Technical approach
 
@@ -141,12 +179,12 @@ Each agent has a stable identifier and cryptographic credentials. Device enrollm
 | Agent runtime | Rust, with a small dependency footprint |
 | OS foundation | Headless Linux for development and audio validation; Buildroot x86-64 image after the pipeline is proven |
 | Event processing | Bounded asynchronous Rust tasks |
-| Persistent state | SQLite on Linux; compact journal on constrained targets |
+| Persistent state | AMG temporal property graph, provisional SQLite + FTS5; compact journal on constrained targets |
 | Serialization | CBOR internally where useful; JSON for provider APIs |
 | Networking | HTTPS/TLS, streaming WebSocket where supported |
-| Voice | Streaming local ASR and neural TTS, hardware-assisted echo cancellation, local wake word and VAD; engine adapters benchmarked before selection |
+| Voice | Rust coordinator; optional Sherpa-ONNX/Kokoro warm adapter, Whisper.cpp/Piper batch baseline; wake word, neural VAD, AEC and physical validation pending |
 | Inference | OpenAI-first streaming Responses API adapter using eligible ChatGPT plan sharing; local rules and mock adapter as offline baseline |
-| Inference policy | Rust Token Governor, durable usage ledger, local intent resolver and context compiler |
+| Inference policy | Local resolver and fixed-budget journal prototype implemented; context compiler, calendar/rolling budgets and authenticated broker permits planned |
 | Security | Capability-based tool authorization, Ed25519 device identity, vetted cryptography |
 | Embedded evolution | Rust `no_std` where practical; existing ESP-IDF/RTOS components when justified |
 
@@ -164,7 +202,7 @@ Primary conversational reference: efficient x86-64 mini PC, Intel N100/N150-clas
 | OS + non-audio core RAM | 64 MB stretch target on specialized image | 64 MB core; 1–4 MB MCU target |
 | Active voice stack and core RAM | Approximately 2.5 GiB planning budget | Voice inference offloaded to host |
 | OS + non-audio runtime image | 128 MB stretch target, excludes model assets | 128 MB core; 4–16 MB MCU target |
-| Local persistent agent memory | 256 MB initial configurable quota | Hardware-dependent |
+| Local persistent agent memory | 256 MiB initial configurable aggregate quota | Hardware-dependent |
 | Operation | 24/7 | 24/7 |
 | General-purpose inference | OpenAI via eligible plan sharing; optional local model | Delegate to authorized host |
 
@@ -212,6 +250,8 @@ Targets must be validated end to end; network latency is variable. A text-mediat
 | M8 — Distributed agent | Optional authorized node discovery, encrypted synchronization, conflict resolution and inference routing. Evaluate Nostr as an optional transport. |
 | M9 — OS specialization | Compare optimized Linux, RTOS and custom kernel approaches using equivalent workloads. Proceed only with demonstrated benefits. |
 
+M1 slices: M1.1 offline core, M1.2 audio smoke harness, M1.3 persistent voice coordinator (automated tests passed), M1.4 AMG identity/memory/retrieval/context compiler (design accepted). M1 exit still requires real model/device validation, measured acoustic interruption, activation evaluation and persistent identity. M2 requires official provider eligibility and spending controls. M3 expands memory management, scheduling and approved workflows rather than duplicating M1.4.
+
 Security requirements apply from M1; M6 expands and verifies the tool execution surface rather than deferring basic security until then.
 
 ### First prototype acceptance criteria
@@ -229,20 +269,20 @@ Security requirements apply from M1; M6 expands and verifies the tool execution 
 
 Voice is a first-milestone requirement. A CLI is a test interface, not the intended user experience.
 
-## Proposed repository layout
+## Repository layout and planned expansion
 
 ```text
 atomos/
   README.md
-  docs/             # Architecture, ADRs, threat model, resource and inference budgets
-  crates/           # Runtime, memory, policy, inference, governor, platform interfaces
-  apps/             # CLI and voice endpoint
-  platform/         # Buildroot and embedded board definitions
-  tests/            # Integration, recovery, security tests
-  benchmarks/       # RAM, power, latency, durability, tokens and task quality
+  docs/             # Architecture, AMG, threat model, budgets, prototype notes
+  crates/atomos-core/ # Rust domain, governor, audio, voice and tests
+  apps/atomos-cli/    # CLI and streaming voice protocol
+  scripts/          # Offline tests, benchmarks, optional audio adapters
+  .github/workflows/ # CI
+  # Planned: memory/inference/policy crates, platform/ and expanded benchmarks/
 ```
 
-Design specifications: [architecture](docs/architecture.md), [threat model](docs/threat-model.md), [resource budget](docs/resource-budget.md), and [inference architecture](docs/inference-architecture.md). Implementation follows the M1 voice-first spike.
+Design: [architecture](docs/architecture.md), [AMG architecture](docs/amg-architecture.md), [threat model](docs/threat-model.md), [resource budget](docs/resource-budget.md), [inference architecture](docs/inference-architecture.md). Implementation: [M1.1](docs/m1-prototype.md), [M1.2](docs/local-voice-spike.md), [M1.3](docs/persistent-conversation.md).
 
 ## Prior art to evaluate
 
@@ -262,7 +302,9 @@ These are research references, not selected dependencies. Verify current upstrea
 - Exact x86-64 host, microphone/speaker configuration and audio engine selection after benchmarks.
 - Validate AtomOS eligibility for OpenAI plan sharing, account-level spending controls, supported model capabilities and data retention policies. Define headless sign-in/enrollment using only documented flows.
 - Establish real-world Plus usage headroom and benchmark token efficiency without compromising response quality.
-- Memory retrieval strategy, flash wear management and encryption/key recovery.
+- AMG schema/bindings, FTS5 and query benchmarks, embedded engine comparison, retention, flash wear and encryption/key recovery.
+- Physical model compatibility, full-duplex AEC, wake word/neural VAD, incremental TTS and hardware latency/power.
+- CI checkout action Node.js deprecation and minimum Rust version verification.
 - Runtime dependency choices and whether shared core code can remain portable to MCU targets.
 - Distributed identity protocol and synchronization semantics.
 - Project license and eventual public release. Apache-2.0 is a candidate; no license is granted by this planning document.

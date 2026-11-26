@@ -1,6 +1,6 @@
 # AtomOS architecture
 
-Status: proposed, M0. Conversation-first baseline. See [README](../README.md), [threat model](threat-model.md), [resource budget](resource-budget.md), [inference architecture](inference-architecture.md).
+Status: target architecture; M1.1–M1.3 automated baseline passed, M1.4 AMG design accepted. Conversation-first baseline. See [README](../README.md), [threat model](threat-model.md), [resource budget](resource-budget.md), [inference architecture](inference-architecture.md), [AMG architecture](amg-architecture.md).
 
 ## System boundary
 
@@ -12,11 +12,12 @@ flowchart LR
   V --> ASR[Streaming ASR]
   ASR --> T[Turn manager]
   T --> R[Agent runtime]
-  R <--> M[Memory and journal]
+  R <--> M[AMG graph and journal]
   R --> L[Local intent resolver]
-  R --> G[Token Governor]
-  G --> C[Context compiler]
-  C --> B[OpenAI adapter]
+  R --> C[Context compiler]
+  M --> C
+  C --> G[Token Governor]
+  G --> B[Inference broker]
   B --> R
   R --> P[Capability policy]
   P --> Tools[Approved tools]
@@ -66,10 +67,14 @@ Candidates: local wake word (openWakeWord), VAD (Silero or simpler baseline), st
 
 ## State and concurrency
 
-One turn manager owns active conversation state. Use bounded asynchronous channels and cancellation tokens; do not hold database transactions across inference. A single durable journal records committed state transitions. SQLite is the initial store on Linux, with schema versioning, bounded retention and explicit migration/recovery. Preserve provenance, distinguish untrusted retrieved content from instructions, and enforce deletion in derived indexes. No plaintext credentials in journal.
+One turn manager owns active conversation state. Use bounded asynchronous channels and cancellation tokens; do not hold database transactions across inference. A single durable journal records committed state transitions. AMG models memory as a temporal property graph with provenance, event journal, exact/graph/FTS retrieval and bounded context compilation. SQLite is the provisional reference engine behind typed interfaces; benchmark embedded graph and KV alternatives. Use schema versioning, bounded retention, explicit migration/recovery. See [AMG architecture](amg-architecture.md). Preserve provenance, distinguish untrusted retrieved content from instructions, and enforce deletion in derived indexes. No plaintext credentials in journal.
 
 The scheduler is event-driven. Background work competes for neither interactive audio nor reserved inference capacity. Prioritize audio callbacks, local interaction and active user requests over consolidation. Avoid real-time priority changes until tested against starvation.
 
 ## First vertical slice (M1)
 
 Run on a normal headless Linux development host before building a minimal distribution. Deliver a local conversation loop with mock responses, an interruptible playback path and event timestamps. In parallel implement governor and local intent tests; no live OpenAI calls until authorization and cost controls are verified. Start with recorded/synthetic fixtures and then test physical microphone and speaker. M2 integrates streaming remote text only after both paths pass.
+
+## Verified implementation boundary
+
+M1.3 main baseline [CI](https://github.com/idmfrank/atomos/actions/runs/45752758740): 29 Rust + 5 Python tests and smoke checks passed. Persistent controller, RMS endpointing and local IPC are implemented; optional warm hardware adapter uses Sherpa-ONNX/Kokoro with default half-duplex. Wake word, neural VAD, real AEC, physical engine validation, persistent identity/AMG, live broker and scheduler remain pending. The fixed-budget governor journal is separate from future AMG. See [persistent conversation](persistent-conversation.md) and [AMG](amg-architecture.md).
