@@ -17,3 +17,7 @@ optional = true
 [dependencies.serde_json]
 version = "=1.0.145"
 optional = true
+
+[[example]]
+name = "responses_bench"
+required-features = ["responses-replay"]
