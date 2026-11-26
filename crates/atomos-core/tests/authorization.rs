@@ -106,3 +106,37 @@ fn wire_replay_cannot_read_before_policy_and_matches_fixture_usage(){
     let wire=include_bytes!("fixtures/responses-text.sse");
     assert!(b.run_sse(env(1),req(),4,wire.as_slice(),||false).is_ok());assert_eq!(b.charged(),47);
 }
+
+#[cfg(feature="responses-replay")]
+#[test]
+fn documented_subscription_errors_suspend_durably(){
+    for (code,kind) in [
+        ("subscription_sharing_usage_limit_exceeded",Failure::RateLimited),
+        ("subscription_sharing_user_not_eligible",Failure::Authorization),
+        ("subscription_sharing_invalid_user",Failure::Authorization),
+        ("chatpass_v2_scope_not_authorized",Failure::Authorization),
+        ("chatpass_v2_invalid_authorization_context",Failure::Authorization)]{
+        let f=Fixture::new();let mut b=AuthorizedReplay::initialize(&f.0,policy()).unwrap();
+        let s=format!("data: {{\"type\":\"error\",\"sequence_number\":0,\"code\":\"{code}\"}}\n\n");
+        assert_eq!(b.run_sse(env(1),req(),4,s.as_bytes(),||false),Err(Error::Broker(BrokerError::Provider(kind))));
+        drop(b);let mut b=AuthorizedReplay::open(&f.0,policy()).unwrap();
+        assert!(b.suspended());assert_eq!(b.charged(),200);
+        assert_eq!(b.run(env(2),req(),4,&events()),Err(Error::Suspended));
+    }
+}
+#[test]
+fn output_overrun_suspends_durably_and_charges_actual(){
+    let f=Fixture::new();let mut b=AuthorizedReplay::initialize(&f.0,policy()).unwrap();
+    let e=[Event::Started{turn:4},Event::Delta{turn:4,text:"synthetic"},Event::Completed{turn:4,usage:Usage{input:35,output:65,cached_input:0,reasoning_output:0}}];
+    assert_eq!(b.run(env(1),req(),4,&e),Err(Error::Broker(BrokerError::UsageOverrun)));
+    assert_eq!(b.charged(),100);drop(b);
+    let mut b=AuthorizedReplay::open(&f.0,policy()).unwrap();
+    assert!(b.suspended());assert_eq!(b.run(env(2),req(),4,&events()),Err(Error::Suspended));
+}
+#[test]
+fn window_end_is_independent_of_grant_expiry(){
+    let f=Fixture::new();let p=Policy{grant_expiry:1500,..policy()};
+    let mut b=AuthorizedReplay::initialize(&f.0,p).unwrap();
+    assert_eq!(b.run(Envelope{now:1000,expires_at:1020,..env(1)},req(),4,&events()),Err(Error::Expired));
+    assert_eq!(b.dispatches(),0);
+}

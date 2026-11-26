@@ -112,9 +112,9 @@ fn usage(v:&Value)->Result<Usage>{
 }
 fn failure(code:Option<&str>)->Failure{
     match code{
-        Some("rate_limit_exceeded"|"insufficient_quota")=>Failure::RateLimited,
-        Some("invalid_api_key"|"authentication_error"|"permission_denied")=>Failure::Authorization,
-        Some("invalid_request_error"|"unsupported_model"|"model_not_found")=>Failure::Unsupported,
+        Some("rate_limit_exceeded"|"insufficient_quota"|"subscription_sharing_usage_limit_exceeded")=>Failure::RateLimited,
+        Some("invalid_api_key"|"authentication_error"|"permission_denied"|"subscription_sharing_user_not_eligible"|"subscription_sharing_invalid_user"|"chatpass_v2_scope_not_authorized"|"chatpass_v2_invalid_authorization_context")=>Failure::Authorization,
+        Some("invalid_request_error"|"unsupported_model"|"model_not_found"|"subscription_sharing_unsupported_capability"|"subscription_sharing_route_not_supported")=>Failure::Unsupported,
         _=>Failure::Unavailable,
     }
 }
