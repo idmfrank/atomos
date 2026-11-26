@@ -26,3 +26,6 @@ jobs:
         run: bash scripts/test.sh
       - name: Text-only benchmark
         run: bash scripts/benchmark.sh
+
+      - name: Active AMG benchmark (synthetic 1k)
+        run: AMG_SAMPLES=100 timeout --kill-after=5s 120s bash scripts/benchmark-amg.sh 1000

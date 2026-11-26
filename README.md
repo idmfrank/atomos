@@ -4,7 +4,7 @@
 
 AtomOS is an experimental project to build a persistent, conversational AI agent that can operate continuously on inexpensive, low-power hardware. The agent owns its identity, memory, permissions and scheduled activities independently of the language model it uses. Reasoning is delegated to OpenAI only when necessary, with the goal of operating within an owner's existing ChatGPT Plus subscription without additional AI spending. The runtime remains useful offline and retains a narrow inference interface for optional self-hosted models.
 
-**Status:** M1.1–M1.4b merged and automated validation passed, including durable local identity, explicit memory administration and read-only conversational recall. M1.4c merged and CI passed; M1.4d disclosure and logical recovery in development; CI pending. Physical speech/model validation, wake word, authenticated private memory access, active-AMG resource measurements, live OpenAI inference and bootable OS remain outstanding.
+**Status:** M1.1–M1.4b merged and automated validation passed, including durable local identity, explicit memory administration and read-only conversational recall. M1.4c and M1.4d merged and CI passed; M1.4e active memory benchmark in development; equivalent alternative adapters pending. Physical speech/model validation, wake word, authenticated private memory access, active-AMG resource measurements, live OpenAI inference and bootable OS remain outstanding.
 
 ## Current implementation
 
@@ -16,16 +16,17 @@ AtomOS is an experimental project to build a persistent, conversational AI agent
 | M1.4a | Initial SQLite-backed typed memory, explicit owner CLI and regression tests merged; locked offline CI passed. See [AMG foundation](docs/m1-amg-foundation.md). |
 | M1.4b | Opt-in read-only text and synthetic voice recall, persistent display name, bounded subject follow-up, live correction/deletion visibility. [PR #6](https://github.com/idmfrank/atomos/pull/6), [implementation](docs/m1-amg-conversation.md); locked offline CI passed. |
 | M1.4c | Scoped graph/FTS retrieval, deterministic ranking, required facts, connector evidence and bounded data-only context previews. [Implementation](docs/m1-amg-context.md); locked offline CI passed. |
-| M1.4d | Explicit expiring revision-specific voice grants, schema v2 migration, logical export/restore and integrity checks. [Implementation](docs/m1-amg-recovery.md); CI pending. |
+| M1.4d | Explicit expiring revision-specific voice grants, schema v2 migration, logical export/restore and integrity checks. [Implementation](docs/m1-amg-recovery.md); locked offline CI passed. |
+| M1.4e | Active SQLite benchmark and alternative-engine qualification. [Implementation](docs/m1-amg-benchmark.md); CI/scale results pending. |
 
-Latest verified executable baseline: [868422f](https://github.com/idmfrank/atomos/commit/868422f8c5a5804654f4ea6b9e132a22e637a3b2), [Actions run 45796667551](https://github.com/idmfrank/atomos/actions/runs/45796667551). 40 Rust and 10 Python integration tests passed, plus CLI, stub audio and separate-process AMG lifecycle checks; zero remote inference. Rust/Cargo 1.100.0; locked dependencies provisioned before offline build/test.
+Latest verified executable baseline: [1d8a914](https://github.com/idmfrank/atomos/commit/1d8a91495d3c50289eb64287cc95b1029d68ab0c), [Actions run 45798237897](https://github.com/idmfrank/atomos/actions/runs/45798237897). 44 Rust and 11 Python integration tests passed, plus CLI, stub audio and separate-process AMG lifecycle checks; zero remote inference. Rust/Cargo 1.100.0; locked dependencies provisioned before offline build/test.
 
-| Text-only release benchmark | M1.1 | M1.2 | M1.3 | M1.4a | M1.4b | M1.4c |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Executable bytes | 296,824 | 302,072 | 314,224 | 314,224 | 366,440 | 462,552 |
-| Peak process RSS (KiB) | 2,068 | 2,020 | 2,136 | 2,040 | 2,644 | 2,628 |
-| Rust tests | 15 | 18 | 29 | 35 | 35 | 40 |
-| Python integration tests | 0 | 0 | 5 | 5 | 9 | 10 |
+| Text-only release benchmark | M1.1 | M1.2 | M1.3 | M1.4a | M1.4b | M1.4c | M1.4d |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Executable bytes | 296,824 | 302,072 | 314,224 | 314,224 | 366,440 | 462,552 | 464,912 |
+| Peak process RSS (KiB) | 2,068 | 2,020 | 2,136 | 2,040 | 2,644 | 2,628 | 2,608 |
+| Rust tests | 15 | 18 | 29 | 35 | 35 | 40 | 44 |
+| Python integration tests | 0 | 0 | 5 | 5 | 9 | 10 | 11 |
 
 1,000 simulated local text interactions; excludes OS, real speech models, Python adapter and active memory DB/ledger. RSS differences may reflect measurement variability. No acoustic latency, power or total system RAM claim. M1.1–M1.3 Rust baseline has zero external crate dependencies; M1.4a adds system-linked SQLite through rusqlite in the separate memory crate; M1.4b links that crate into the CLI. The no-store benchmark does not measure the active SQLite working set or the separate administration binary. Optional hardware tools/models not bundled.
 
@@ -260,7 +261,7 @@ Targets must be validated end to end; network latency is variable. A text-mediat
 | M8 — Distributed agent | Optional authorized node discovery, encrypted synchronization, conflict resolution and inference routing. Evaluate Nostr as an optional transport. |
 | M9 — OS specialization | Compare optimized Linux, RTOS and custom kernel approaches using equivalent workloads. Proceed only with demonstrated benefits. |
 
-M1 slices: M1.1 offline core, M1.2 audio smoke harness, M1.3 persistent voice coordinator, M1.4a durable AMG foundation and M1.4b read-only conversational recall are merged and CI-tested. Next M1.4c: relevance-ranked retrieval and bounded context compilation; M1.4d: memory export, recovery and security; M1.4e: database performance and engine comparison. M1 exit still requires real model/device validation, measured acoustic interruption, activation evaluation and the remaining AMG acceptance gates. M2 requires official provider eligibility and spending controls. M3 expands memory management, scheduling and approved workflows rather than duplicating M1.4.
+M1 slices: M1.1 offline core, M1.2 audio smoke harness, M1.3 persistent voice coordinator, M1.4a durable AMG, M1.4b read-only recall, M1.4c scoped retrieval and M1.4d disclosure/recovery are merged and CI-tested. M1.4e: active memory performance and engine evaluation in development. M1 exit still requires real model/device validation, measured acoustic interruption, activation evaluation and the remaining AMG acceptance gates. M2 requires official provider eligibility and spending controls. M3 expands memory management, scheduling and approved workflows rather than duplicating M1.4.
 
 Security requirements apply from M1; M6 expands and verifies the tool execution surface rather than deferring basic security until then.
 
@@ -325,6 +326,10 @@ These are research references, not selected dependencies. Verify current upstrea
 
 Own the agent and its memory. Use OpenAI intelligence deliberately, spend tokens only when they improve the result, and never incur additional AI costs automatically. Spend energy on useful work, preserve state across failure, and measure before optimizing.
 
-### M1.4d development: memory recovery and disclosure
+### M1.4d: memory recovery and disclosure
 
 Schema v2 requires explicit migration of v1 stores; no auto-migration. Voice demo recall now requires an explicit expiring grant for the exact current revision, in addition to existing voice limits. New/corrected/restored facts default to no voice disclosure; no provider disclosure. Export/restore uses bounded logical records (not SQL), preserves identity and history, and rebuilds search in a new directory. Backups remain plaintext; older snapshots may resurrect forgotten records. Synthetic data only. See [M1.4d](docs/m1-amg-recovery.md) for commands, limits and outstanding controls.
+
+### M1.4e active memory benchmark
+
+After provisioning dependencies, run `AMG_SAMPLES=100 bash scripts/benchmark-amg.sh 1000`. Manual scale workflow supports 1k/10k/100k synthetic entities. Reports reader/graph/context/durable write latency, correctness, context bytes, quiescent storage and same-binary CLI RSS. SQLite remains provisional; redb and CozoDB need equivalent adapters. See [protocol](docs/m1-amg-benchmark.md).
