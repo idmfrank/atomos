@@ -1,11 +1,10 @@
 # M1.4a — AMG durable foundation
 
-Status: development branch; initial bootstrap CI passed; strict committed-lockfile CI and physical resource benchmarks pending.
+Status: merged and locked offline CI passed. Active AMG resource benchmarks pending.
 See [AMG architecture](amg-architecture.md).
 
 This first vertical slice introduces a separate Rust library and explicit local
-administration binary. It has no network or model dependency. Existing text
-and voice entry points remain unchanged; voice cannot authorize memory writes.
+administration binary. It has no network or model dependency. At this slice, text and voice entry points were unchanged. M1.4b subsequently integrates read-only recall; see [M1.4b](m1-amg-conversation.md). Voice cannot authorize memory writes.
 
 Reference storage: system-linked SQLite (>=3.37 with FTS5 and unixepoch support,
 test actual runtime; SQLite 3.38+ recommended), using pinned rusqlite 0.32.1.
@@ -72,4 +71,4 @@ comparison remain required. M1.4a is not the full M1.4 acceptance gate.
 
 ## Initial validation
 
-[Bootstrap Actions run 45754526687](https://github.com/idmfrank/atomos/actions/runs/45754526687) passed all 35 Rust tests (6 new memory tests), 5 existing Python tests and CLI/stub audio/AMG process-level smoke checks. The generated dependency lockfile is committed without manual version selection; the temporary generation step is removed. A fresh locked run is required before merge. Existing text-only core release executable: 314,224 bytes, peak RSS 2,088 KiB; excludes the memory binary and SQLite runtime. No AMG resource measurements yet.
+[Bootstrap Actions run 45754526687](https://github.com/idmfrank/atomos/actions/runs/45754526687) passed all 35 Rust tests (6 new memory tests), 5 existing Python tests and CLI/stub audio/AMG process-level smoke checks. The generated dependency lockfile is committed without manual version selection; the temporary generation step is removed. The committed-lockfile build passed after merge in [run 45754844830](https://github.com/idmfrank/atomos/actions/runs/45754844830), including 35 Rust and 5 Python tests and separate-process memory lifecycle checks. Existing text-only core release executable: 314,224 bytes, peak RSS 2,088 KiB; excludes the memory binary and SQLite runtime. No AMG resource measurements yet.

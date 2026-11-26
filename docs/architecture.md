@@ -1,6 +1,6 @@
 # AtomOS architecture
 
-Status: target architecture; M1.1–M1.3 automated baseline passed, M1.4 AMG design accepted. Conversation-first baseline. See [README](../README.md), [threat model](threat-model.md), [resource budget](resource-budget.md), [inference architecture](inference-architecture.md), [AMG architecture](amg-architecture.md).
+Status: target architecture; M1.1–M1.4b merged and automated validation passed. M1.4c retrieval/context compilation next. Conversation-first baseline. See [README](../README.md), [threat model](threat-model.md), [resource budget](resource-budget.md), [inference architecture](inference-architecture.md), [AMG architecture](amg-architecture.md).
 
 ## System boundary
 
@@ -77,4 +77,8 @@ Run on a normal headless Linux development host before building a minimal distri
 
 ## Verified implementation boundary
 
-M1.3 main baseline [CI](https://github.com/idmfrank/atomos/actions/runs/45752758740): 29 Rust + 5 Python tests and smoke checks passed. Persistent controller, RMS endpointing and local IPC are implemented; optional warm hardware adapter uses Sherpa-ONNX/Kokoro with default half-duplex. Wake word, neural VAD, real AEC, physical engine validation, persistent identity/AMG, live broker and scheduler remain pending. The fixed-budget governor journal is separate from future AMG. See [persistent conversation](persistent-conversation.md) and [AMG](amg-architecture.md).
+[M1.4b post-merge CI](https://github.com/idmfrank/atomos/actions/runs/45755478646): 35 Rust + 9 Python tests, smoke checks and no-store text benchmark passed. The Rust core provides mock/local inference, turn epochs, bounded PCM, RMS endpointing and IPC. Optional warm Sherpa-ONNX/Kokoro adapter defaults to half-duplex; real speech engines and AEC remain unvalidated.
+
+AMG v1 implements persistent local identity, scoped entities and typed assertions/edges, recorded-time revision history, transactional correction/deletion and FTS5. The explicit administration CLI owns mutation. M1.4b adds MemoryReader and a SQLite read-only connection to the text and voice host. Exact lookup only in conversation; follow-up retains a subject key, never a cached value. Final-turn validation precedes lookup; no database operation on microphone callback. Voice demo allowlist is not authentication. No implicit store creation/migration or remote inference. See [AMG foundation](m1-amg-foundation.md) and [conversational integration](m1-amg-conversation.md).
+
+Wake word, neural VAD, physical AEC/audio, full context compiler, authenticated memory access, export/recovery, scheduler and live broker remain pending. The fixed-budget governor journal remains separate from AMG. See [AMG architecture](amg-architecture.md) for target requirements.

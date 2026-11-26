@@ -4,7 +4,7 @@
 
 AtomOS is an experimental project to build a persistent, conversational AI agent that can operate continuously on inexpensive, low-power hardware. The agent owns its identity, memory, permissions and scheduled activities independently of the language model it uses. Reasoning is delegated to OpenAI only when necessary, with the goal of operating within an owner's existing ChatGPT Plus subscription without additional AI spending. The runtime remains useful offline and retains a narrow inference interface for optional self-hosted models.
 
-**Status:** M1.1–M1.3 merged and automated validation passed. M1.4a merged and locked offline CI passed; M1.4b read-only conversational AMG integration in development; resource validation pending. Physical speech/model tests, always-on wake word, persistent identity, live OpenAI inference and bootable OS remain unvalidated or unimplemented.
+**Status:** M1.1–M1.4b merged and automated validation passed, including durable local identity, explicit memory administration and read-only conversational recall. Next: M1.4c retrieval and context compilation. Physical speech/model validation, wake word, authenticated private memory access, active-AMG resource measurements, live OpenAI inference and bootable OS remain outstanding.
 
 ## Current implementation
 
@@ -14,18 +14,18 @@ AtomOS is an experimental project to build a persistent, conversational AI agent
 | M1.2 | Single-turn ALSA/Whisper.cpp/Piper smoke harness, transcript bounds, instance-scoped reservations, stub audio tests. [PR #3](https://github.com/idmfrank/atomos/pull/3) |
 | M1.3 | Persistent Rust voice coordinator, streaming PCM protocol, RMS endpointing, follow-up window, AEC-gated cancellation, optional warm Sherpa-ONNX/Kokoro adapter, IPC startup/deadline fixes. [PR #4](https://github.com/idmfrank/atomos/pull/4) |
 | M1.4a | Initial SQLite-backed typed memory, explicit owner CLI and regression tests merged; locked offline CI passed. See [AMG foundation](docs/m1-amg-foundation.md). |
-| M1.4b | Opt-in read-only text and synthetic voice recall, persistent display name, bounded subject follow-up, live correction/deletion visibility. [Implementation](docs/m1-amg-conversation.md); CI pending. |
+| M1.4b | Opt-in read-only text and synthetic voice recall, persistent display name, bounded subject follow-up, live correction/deletion visibility. [PR #6](https://github.com/idmfrank/atomos/pull/6), [implementation](docs/m1-amg-conversation.md); locked offline CI passed. |
 
-Verified post-merge baseline: [83dbf8c](https://github.com/idmfrank/atomos/commit/83dbf8c39e7ed7fae4bcb3230eb4022452540cb5), [Actions run 45752758740](https://github.com/idmfrank/atomos/actions/runs/45752758740). 29 Rust and 5 Python integration tests, CLI and stub audio smoke checks passed; zero remote inference.
+Latest verified executable baseline: [7e523bd](https://github.com/idmfrank/atomos/commit/7e523bdc1c139f3555fce39eda887b0655676d33), [Actions run 45755478646](https://github.com/idmfrank/atomos/actions/runs/45755478646). 35 Rust and 9 Python integration tests passed, plus CLI, stub audio and separate-process AMG lifecycle checks; zero remote inference. Rust/Cargo 1.100.0; locked dependencies provisioned before offline build/test.
 
-| Text-only release benchmark | M1.1 | M1.2 | M1.3 |
-| --- | ---: | ---: | ---: |
-| Executable bytes | 296,824 | 302,072 | 314,224 |
-| Peak process RSS (KiB) | 2,068 | 2,020 | 2,136 |
-| Rust tests | 15 | 18 | 29 |
-| Python integration tests | 0 | 0 | 5 |
+| Text-only release benchmark | M1.1 | M1.2 | M1.3 | M1.4a | M1.4b |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Executable bytes | 296,824 | 302,072 | 314,224 | 314,224 | 366,440 |
+| Peak process RSS (KiB) | 2,068 | 2,020 | 2,136 | 2,040 | 2,644 |
+| Rust tests | 15 | 18 | 29 | 35 | 35 |
+| Python integration tests | 0 | 0 | 5 | 5 | 9 |
 
-1,000 simulated local text interactions; excludes OS, real speech models, Python adapter and active memory DB/ledger. RSS differences may reflect measurement variability. No acoustic latency, power or total system RAM claim. M1.1–M1.3 Rust baseline has zero external crate dependencies; M1.4a adds system-linked SQLite through rusqlite. Optional hardware tools/models not bundled.
+1,000 simulated local text interactions; excludes OS, real speech models, Python adapter and active memory DB/ledger. RSS differences may reflect measurement variability. No acoustic latency, power or total system RAM claim. M1.1–M1.3 Rust baseline has zero external crate dependencies; M1.4a adds system-linked SQLite through rusqlite in the separate memory crate; M1.4b links that crate into the CLI. The no-store benchmark does not measure the active SQLite working set or the separate administration binary. Optional hardware tools/models not bundled.
 
 ### Development quick start
 
@@ -151,7 +151,7 @@ These are internal design targets, not ChatGPT Plus entitlements. For example, 1
 
 ### Voice pipeline
 
-Implemented: 20 ms/16 kHz mono PCM, explicit activation, 60 ms onset, up to 100 ms pre-roll, 300 ms quiet endpoint and eight-second follow-up. Default half-duplex; barge-in only when AEC explicitly verified. Optional Sherpa-ONNX/Kokoro warm development adapter (Python); whole-utterance synthesis, not incremental. Whisper.cpp/Piper remains the batch baseline. Wake word, neural VAD, actual acoustic AEC and physical latency/quality validation remain outstanding. See [M1.3](docs/persistent-conversation.md). The following describes the target pipeline.
+Implemented: 20 ms/16 kHz mono PCM, explicit activation, 60 ms onset, up to 100 ms pre-roll, 300 ms quiet endpoint and eight-second follow-up. Default half-duplex; barge-in only when AEC explicitly verified. Optional Sherpa-ONNX/Kokoro warm development adapter (Python); whole-utterance synthesis, not incremental. Whisper.cpp/Piper remains the batch baseline. Wake word, neural VAD, actual acoustic AEC and physical latency/quality validation remain outstanding. See [M1.3](docs/persistent-conversation.md), [M1.4a](docs/m1-amg-foundation.md), [M1.4b](docs/m1-amg-conversation.md). The following describes the target pipeline.
 
 Keep wake-word detection and voice activity detection local. Use a bounded volatile pre-roll buffer, stream ASR during active speech, commit text only at a valid turn boundary, route through local intent resolution and the Token Governor, and synthesize streamed text in speakable chunks. Continue listening during playback with acoustic echo cancellation and cancel playback promptly on barge-in. Do not persist audio by default. No continuous cloud audio stream. Do not assume standalone OpenAI audio or Realtime endpoints are covered by plan sharing; disable them under subscription-only policy unless eligibility and zero incremental cost are verified. Voice quality and latency must be measured from the first prototype, including in-room acoustics and interruptions. See [voice architecture](docs/architecture.md) and [resource budget](docs/resource-budget.md).
 
@@ -172,7 +172,13 @@ Use typed entities, directed edges and assertions with source, trust, valid and 
 
 Initial unmeasured targets: <8 MiB incremental memory overhead, 256 MiB aggregate data quota, warm p95 exact lookup <5 ms, traversal <20 ms, context compilation <50 ms, depth 2 default/3 maximum, zero remote retrieval tokens. Existing governor journal remains independent. SQLite is not itself encryption; owner access, encrypted storage/key recovery, retention and backup/deletion policies must be addressed before real private data.
 
-Target identity design uses a stable agent ID and separate protected cryptographic credentials; persistent identity and enrollment are not implemented yet. Device enrollment, key rotation, recovery and revocation must be designed before cross-device identity synchronization is enabled. Private keys must never be sent to an inference provider.
+M1.4a implements a stable local agent ID, owner scope and display name; M1.4b retrieves the name during conversation. Persistent identity is not authentication. Personality configuration, cryptographic credentials and device enrollment remain planned. Device enrollment, key rotation, recovery and revocation must be designed before cross-device identity synchronization is enabled. Private keys must never be sent to an inference provider.
+
+### Current conversational memory behavior
+
+Opt in with `atomos --memory DIR OWNER` (also before `--single-turn` or `--voice-events`). The existing database must be initialized by `atomos-memory`. The runtime uses a read-only SQLite connection and typed MemoryReader. Supported English grammar includes "what is your name?", "what is my favorite color?", "recall project status", and "and count" (previous subject). Exact values are re-read on each turn; only the subject key is retained in RAM. Clear it on unrelated or failed requests, mute, interruption, idle and restart. Missing facts or storage errors produce local status. Other open-ended questions still use mock reasoning. No model calls, automatic learning or voice mutations.
+
+Synthetic data only: voice recall is explicitly opt-in and restricted to owner favorite_color, favorite_food and favorite_music text values plus agent display name. Voice is not authentication; the allowlist is not a privacy classifier. Text administration assumes a trusted OS operator. See [M1.4b](docs/m1-amg-conversation.md) for commands and tests. Relevance ranking, retrieval fusion, policy-aware context compilation, authenticated owner controls and active-store benchmarks remain pending.
 
 ## Technical approach
 
@@ -252,7 +258,7 @@ Targets must be validated end to end; network latency is variable. A text-mediat
 | M8 — Distributed agent | Optional authorized node discovery, encrypted synchronization, conflict resolution and inference routing. Evaluate Nostr as an optional transport. |
 | M9 — OS specialization | Compare optimized Linux, RTOS and custom kernel approaches using equivalent workloads. Proceed only with demonstrated benefits. |
 
-M1 slices: M1.1 offline core, M1.2 audio smoke harness, M1.3 persistent voice coordinator (automated tests passed), M1.4 AMG identity/memory/retrieval/context compiler (design accepted). M1 exit still requires real model/device validation, measured acoustic interruption, activation evaluation and persistent identity. M2 requires official provider eligibility and spending controls. M3 expands memory management, scheduling and approved workflows rather than duplicating M1.4.
+M1 slices: M1.1 offline core, M1.2 audio smoke harness, M1.3 persistent voice coordinator, M1.4a durable AMG foundation and M1.4b read-only conversational recall are merged and CI-tested. Next M1.4c: relevance-ranked retrieval and bounded context compilation; M1.4d: memory export, recovery and security; M1.4e: database performance and engine comparison. M1 exit still requires real model/device validation, measured acoustic interruption, activation evaluation and the remaining AMG acceptance gates. M2 requires official provider eligibility and spending controls. M3 expands memory management, scheduling and approved workflows rather than duplicating M1.4.
 
 Security requirements apply from M1; M6 expands and verifies the tool execution surface rather than deferring basic security until then.
 
@@ -278,6 +284,7 @@ atomos/
   README.md
   docs/             # Architecture, AMG, threat model, budgets, prototype notes
   crates/atomos-core/ # Rust domain, governor, audio, voice and tests
+  crates/atomos-memory/ # AMG schema, typed storage, administration and read-only reader
   apps/atomos-cli/    # CLI and streaming voice protocol
   scripts/          # Offline tests, benchmarks, optional audio adapters
   .github/workflows/ # CI
@@ -315,7 +322,3 @@ These are research references, not selected dependencies. Verify current upstrea
 ## Project principles
 
 Own the agent and its memory. Use OpenAI intelligence deliberately, spend tokens only when they improve the result, and never incur additional AI costs automatically. Spend energy on useful work, preserve state across failure, and measure before optimizing.
-
-### Conversational AMG development
-
-M1.4a [locked post-merge CI](https://github.com/idmfrank/atomos/actions/runs/45754844830): 35 Rust and 5 Python tests, smoke checks; core binary 314,224 bytes, peak RSS 2,040 KiB without active AMG. M1.4b enables explicit read-only recall via `atomos --memory DIR OWNER` (also before `--voice-events`). Synthetic data only; voice is not authentication and voice recall is restricted to demo preferences. Local admin remains separate. See [M1.4b](docs/m1-amg-conversation.md) for grammar and tests. No remote inference. The CLI now links SQLite; no active-store resource measurements yet.

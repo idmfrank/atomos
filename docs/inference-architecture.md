@@ -40,4 +40,4 @@ M1: deterministic mock provider, no network, tests for reservation concurrency, 
 
 ## Implementation status
 
-M1.1–M1.3 local/mock and fixed-budget durable reservation tests passed. No live broker, authorized OAuth integration, final context compiler, calendar/rolling ledger or subscription eligibility validation yet. AMG is the planned memory/context source; governor accounting remains independent until invariants can be preserved. See [README](../README.md).
+M1.1–M1.4b automated tests passed. The runtime can answer exact read-only AMG recall locally; no model call for those queries, missing facts or storage failures. M1.4a has data-only exact context formatting and administrative graph/FTS retrieval. M1.4c will extend relevance-ranked read-only retrieval and context compilation; no live dispatch. No live broker, authorized OAuth integration, policy-aware final context compiler, calendar/rolling ledger or subscription eligibility validation yet. Governor accounting remains separate until invariants can be preserved. See [README](../README.md).

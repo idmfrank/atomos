@@ -1,6 +1,6 @@
 # Resource budget and conversational benchmarks
 
-Status: proposed, M0. All figures are engineering targets, not measured capabilities.
+Status: engineering targets plus explicitly labeled measured text-only baselines. Physical voice, whole-device power and active-AMG benchmarks remain pending.
 
 ## Reference configuration
 
@@ -52,6 +52,12 @@ M1 must demonstrate interruptible local voice and mock inference without credent
 
 ## Verified text-only baseline and AMG targets
 
-M1.3 [post-merge CI](https://github.com/idmfrank/atomos/actions/runs/45752758740): release executable 314,224 bytes; peak RSS 2,136 KiB for 1,000 local simulated text interactions. Excludes OS, real speech models, Python adapter, active ledger and memory DB; no inference calls. Not an acoustic, power or whole-system benchmark.
+| Verified release baseline | Executable bytes | Peak RSS (KiB) | CI |
+| --- | ---: | ---: | --- |
+| M1.3 | 314,224 | 2,136 | [45752758740](https://github.com/idmfrank/atomos/actions/runs/45752758740) |
+| M1.4a | 314,224 | 2,040 | [45754844830](https://github.com/idmfrank/atomos/actions/runs/45754844830) |
+| M1.4b | 366,440 | 2,644 | [45755478646](https://github.com/idmfrank/atomos/actions/runs/45755478646) |
+
+Each benchmark runs 1,000 local simulated text interactions without an active memory store or ledger. M1.4b links the memory crate and system SQLite; the binary grew by 52,216 bytes and peak process RSS differed by 604 KiB from M1.4a. Do not attribute the entire RSS change to SQLite or equate it with active-store overhead. Excludes OS, native speech engines, Python adapter and separate administration binary. No remote inference, acoustic latency or wall-power measurement. M1.4e must measure cold/warm active store, cache, indexes, sidecars, query latency and comparable alternative engines.
 
 AMG provisional targets: <8 MiB incremental memory engine overhead within the overall RAM budget, 256 MiB configurable aggregate data quota including derived indexes and journal sidecars, warm p95 exact retrieval <5 ms, bounded traversal <20 ms, context compilation including retrieval <50 ms. Depth 2 default/3 maximum. Zero remote tokens for local retrieval. Compare equivalent SQLite, embedded graph and KV workloads before final engine selection. See [AMG benchmark protocol](amg-architecture.md#performance-and-comparison). All AMG targets unmeasured.

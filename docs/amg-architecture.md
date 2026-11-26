@@ -1,7 +1,16 @@
 # AtomOS Memory Graph (AMG)
 
-Status: accepted architectural direction for M1.4; implementation and performance validation pending.
+Status: accepted target architecture. M1.4a and M1.4b merged and automated tests passed; full M1.4 implementation and performance validation pending.
 See [system architecture](architecture.md), [inference architecture](inference-architecture.md), [resource budget](resource-budget.md), and [threat model](threat-model.md).
+
+## Implemented baseline versus remaining design
+
+- M1.4a: SQLite v1, local agent ID, entity keys, typed single-valued assertions/edges, source IDs, recorded-time correction history, FTS5, bounded graph traversal and data-only exact context formatting. Explicit local administration, no automatic learning. [Implementation](m1-amg-foundation.md).
+- M1.4b: explicit read-only conversational reader, persistent display name, exact owner/entity recall, bounded subject follow-up, live correction/deletion visibility, startup scope/schema checks and restricted synthetic voice preferences. [Implementation](m1-amg-conversation.md). [Post-merge CI](https://github.com/idmfrank/atomos/actions/runs/45755478646) passed 35 Rust and 9 Python tests.
+- M1.4c next: bounded graph/FTS retrieval through read-only interfaces, relevance fusion, conflict/truncation metadata and compact policy-separated context compilation. No live model calls.
+- M1.4d/e: authenticated controls, export/recovery, deletion and quota assurance, active-store benchmarks and alternative engine comparison. Valid-world-time intervals, alias resolution, multiple/conflicting assertions, complete episodic/procedural/prospective classes and key recovery are not implemented yet.
+
+The schema and architecture below specify the target, not a claim that every control or memory class exists. Current SQLite reader exposes only identity and exact recall; graph/FTS administration retrieval is separate. Voice is not authentication. Synthetic fixtures only.
 
 ## Decision
 

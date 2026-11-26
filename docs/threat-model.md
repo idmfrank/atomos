@@ -39,6 +39,10 @@ Mute stops capture and discards pending volatile audio; software mute is not equ
 
 Residual risks: provider-side retention and account-wide usage are outside local control; audio transcription can misinterpret speech; physical compromise and upstream vulnerabilities remain possible. Document provider policies and hardware properties before deployment. AtomOS is not a safety-critical or emergency response device.
 
-## AMG memory-specific controls (design accepted, not yet implemented)
+## AMG memory-specific controls (target and partial implementation)
 
 See [AMG architecture](amg-architecture.md). Explicit owner scope and authenticated sensitive mutations; typed queries, bounded traversal, source trust and temporal conflicts; model-inferred data cannot upgrade its authority. Delete or invalidate dependent assertions, derived indexes/caches and queued context. No credentials, raw audio or ASR partials in memory. SQLite is not encrypted by default; address file permissions, encryption/key recovery, WAL/FTS deletion caveats and backups before private deployment. Logical deletion is not forensic erasure; transmitted context cannot be recalled. Test prompt injection, cross-scope reads, rollback, corruption, disk-full and restoration without deleted-record resurrection. Synthetic CI data only.
+
+### Verified M1.4b boundary
+
+Conversational access is opt-in and read-only both at the typed Rust interface and SQLite open mode. Voice accepts only demonstration owner preference text fields (favorite_color, favorite_food, favorite_music) and display name; this is not a sensitivity classifier or authenticated authorization. Anyone in earshot can hear responses. Text administration trusts the OS account; owner scope is not authentication. No real private data yet. Missing stores, wrong scope, stale finals and mutation requests are covered by regression tests; no automatic learning or remote inference. Corrected/deleted values are re-read on subsequent turns, but already spoken content is not retractable. Remaining controls include authenticated scope/sensitivity policy, encryption, full source/derived-data deletion, backup/restore, crash/disk-full and aggregate quota validation. See [M1.4b](m1-amg-conversation.md).
