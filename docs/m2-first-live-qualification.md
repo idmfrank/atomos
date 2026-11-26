@@ -1,6 +1,6 @@
 # M2.4 — First live inference qualification
 
-Status: draft, no actual inference by development or CI. M2.3d owner-reported
+Status: PR #19 merged at 6dff964; [post-merge tests](https://github.com/idmfrank/atomos/actions/runs/45874158043) and [full scale](https://github.com/idmfrank/atomos/actions/runs/45874467379) passed. Owner-run first inference still pending; no actual inference by development or CI. M2.3d owner-reported
 WSL2 OAuth and persistent vault succeeded, 18 local auth tests passed, model
 catalog returned 10 listed models including gpt-6.2-sol. AtomOS enabled at
 50% in owner's connected-app settings screenshot. No actual token refresh
