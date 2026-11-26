@@ -69,7 +69,8 @@ fn read(dir:&Path,n:usize,count:usize)->bool {
     let first=r.recall(&node(i),"status").ok().flatten();
     let first_ok=first.as_ref().is_some_and(|f|f.value==Value::Text(status(i)));
     println!("metric=first_exact_process_cold samples=1 errors={} elapsed_ms={:.4}",usize::from(!first_ok),ms(t));
-    let mut exact=Stats::default();let mut retrieval=Stats::default();let mut context=Stats::default();let mut broad=Stats::default();
+    let mut exact=Stats::default();let mut retrieval=Stats::default();let mut context=Stats::default();let mut broad=Stats::default();let mut reference_broad=Stats::default();
+    let mut parity_checked=0usize;let mut mismatches=0usize;let mut reference_errors=0usize;
     let (mut hits,mut returned,mut wanted,mut compiled,mut context_bytes,mut full_bytes)=(0usize,0usize,0usize,0usize,0usize,0usize);
     for j in 0..count {
         let i=sample(j,n);let root=node(i);let peer=node(i+1);
@@ -109,14 +110,35 @@ fn read(dir:&Path,n:usize,count:usize)->bool {
         if j<30 {
             let q=ContextRequest::new(&root,"status");
             let t=Instant::now();
-            let good=r.retrieve(&q).ok().and_then(|v|compile_ranked_context(&v,4096).ok()).is_some_and(|p|p.facts==3);
-            broad.add(ms(t),good);
+            let candidate=r.retrieve(&q);
+            let packet=candidate.as_ref().ok().and_then(|v|compile_ranked_context(v,4096).ok());
+            let candidate_time=ms(t);
+            let good=candidate.as_ref().is_ok_and(|v| {
+                v.facts.len()==3 && v.facts.iter().map(|f|(f.fact.subject.clone(),f.fact.predicate.clone())).collect::<BTreeSet<_>>()==expected(i)
+            }) && packet.is_some();
+            broad.add(candidate_time,good);
+            let t=Instant::now();
+            let reference=r.retrieve_reference(&q);
+            let old_packet=reference.as_ref().ok().and_then(|v|compile_ranked_context(v,4096).ok());
+            reference_broad.add(ms(t),old_packet.is_some());
+            match (&reference,&candidate) {
+                (Ok(a),Ok(b))=>{
+                    parity_checked+=1;
+                    if a!=b || old_packet!=packet {
+                        mismatches+=1;
+                        eprintln!("parity_mismatch stage=ranked_context reference_facts={} candidate_facts={}",a.facts.len(),b.facts.len());
+                    }
+                }
+                (Ok(_),Err(_))=>{mismatches+=1;eprintln!("parity_mismatch stage=candidate_rejected");}
+                (Err(_),_)=>{reference_errors+=1;eprintln!("parity_reference_unavailable stage=reference_query");}
+            }
         }
     }
-    exact.report("exact_warm");retrieval.report("scoped_graph_fts_warm");context.report("context_end_to_end_warm");broad.report("common_term_context");
+    exact.report("exact_warm");retrieval.report("scoped_graph_fts_warm");context.report("context_end_to_end_warm");broad.report("common_term_context");reference_broad.report("common_term_reference");
+    println!("parity compared={parity_checked} mismatches={mismatches} reference_errors={reference_errors}");
     println!("quality expected_facts={wanted} returned_facts={returned} matched_facts={hits} complete_packets={compiled} requests={count} precision={:.4} recall={:.4}",if returned==0{0.0}else{hits as f64/returned as f64},hits as f64/wanted as f64);
     println!("context_bytes successful_packets={compiled} ranked_total={context_bytes} same_scope_all_facts_total={full_bytes} remote_calls=0");
-    first_ok&&exact.errors==0&&retrieval.errors==0&&context.errors==0
+    first_ok&&exact.errors==0&&retrieval.errors==0&&context.errors==0&&broad.errors==0&&mismatches==0&&parity_checked>0
 }
 fn graph(dir:&Path,n:usize,count:usize)->bool {
     let db=open(dir,"bench").unwrap();let mut stats=Stats::default();
