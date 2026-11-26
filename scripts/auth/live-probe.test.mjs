@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {withStore} from './store.mjs';
 import {SCOPES,hostId} from './protocol.mjs';
-import {MODEL,body,qualify,intent,resultRecord,decodeWire,decoderPath} from './live-probe.mjs';
+import {MODEL,body,qualify,intent,resultRecord,decodeWire,decoderPath,sendOnce} from './live-probe.mjs';
 const now=1700000000000;
 function profile(host=hostId()){return {version:1,host,client_id:'oaiapp_fixture',subject:'fixture',status:'active',scopes:SCOPES,access_token:'fixture-access',refresh_token:'fixture-refresh',id_token:'fixture-id',nonce:'fixture-nonce',saved_at:now/1000,expires_at:now/1000+3600};}
 const available=[{slug:MODEL}];
@@ -68,4 +68,35 @@ test('existing Rust decoder replays fixture without exposing output or secrets',
   const d=decodeWire(exe,wire);assert.equal(d.terminal,'completed');assert.deepEqual(d.usage,usage);
   assert.equal(d.expected_text,false);assert.equal('text' in d,false);
   assert.equal(decodeWire(exe,Buffer.from('event: junk\n\n')).terminal,'unvalidated');
+});
+
+test('transport sends one fixed HTTPS POST and rejects redirects without following',async()=>{
+  const {EventEmitter}=await import('node:events');
+  let calls=0;
+  const request=(url,opts,cb)=>{
+    calls++;assert.equal(url,'https://api.openai.com/v1/responses');
+    assert.equal(opts.method,'POST');assert.equal(opts.agent,false);assert.equal(opts.rejectUnauthorized,true);
+    assert.equal(opts.headers.authorization,'Bearer fixture-access');
+    const req=new EventEmitter();req.destroy=()=>{};
+    req.end=payload=>{assert.equal(payload,body());
+      queueMicrotask(()=>{const r=new EventEmitter();r.statusCode=302;r.headers={location:'https://example.invalid'};r.destroy=()=>{};cb(r);});
+    };return req;
+  };
+  await assert.rejects(sendOnce('fixture-access',request),/probe_http_302/);assert.equal(calls,1);
+});
+test('transport bounds body and accepts complete SSE without exposing token',async()=>{
+  const {EventEmitter}=await import('node:events');
+  function fake(chunks,ctype='text/event-stream'){
+    return (_url,_opts,cb)=>{
+      const req=new EventEmitter();req.destroy=()=>{};
+      req.end=()=>queueMicrotask(()=>{
+        const r=new EventEmitter();r.statusCode=200;r.headers={'content-type':ctype};r.destroy=()=>{};
+        cb(r);for(const b of chunks)r.emit('data',b);r.emit('end');
+      });return req;
+    };
+  }
+  const r=await sendOnce('fixture-access',fake([Buffer.from('a'),Buffer.from('bc')]));
+  assert.equal(r.wire.toString(),'abc');assert.equal(r.wire_bytes,3);assert.ok(r.first_body_ms!==null);
+  await assert.rejects(sendOnce('fixture-access',fake([Buffer.alloc(256*1024+1)])),/probe_wire_limit/);
+  await assert.rejects(sendOnce('fixture-access',fake([],'application/json')),/probe_content_type/);
 });

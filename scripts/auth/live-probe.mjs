@@ -2,6 +2,7 @@
 import https from 'node:https';
 import fs from 'node:fs';
 import path from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {performance} from 'node:perf_hooks';
@@ -31,7 +32,7 @@ export function resultRecord(pending,decoded,metrics){
 }
 // Exactly one HTTP request, no redirect handling, agent reuse, retry,
 // SDK or API-key fallback. Absolute wall deadline includes connection/body.
-export function sendOnce(access){
+export function sendOnce(access,request=https.request){
   return new Promise((resolve,reject)=>{
     const payload=body(),start=performance.now();
     let timer,finished=false,req,res,first=null,headers=null,total=0,chunks=[];
@@ -41,7 +42,7 @@ export function sendOnce(access){
     };
     try{
       require(process.env.NODE_TLS_REJECT_UNAUTHORIZED!=='0','unsafe_tls');
-      req=https.request(ENDPOINT,{method:'POST',agent:false,rejectUnauthorized:true,headers:{authorization:'Bearer '+access,'content-type':'application/json','accept':'text/event-stream','accept-encoding':'identity','content-length':Buffer.byteLength(payload)}},r=>{
+      req=request(ENDPOINT,{method:'POST',agent:false,rejectUnauthorized:true,headers:{authorization:'Bearer '+access,'content-type':'application/json','accept':'text/event-stream','accept-encoding':'identity','content-length':Buffer.byteLength(payload)}},r=>{
         res=r;headers=performance.now()-start;
         if(r.statusCode!==200){finish(new AuthError('probe_http_'+r.statusCode));return;}
         if(!/^text\/event-stream(?:\s*;|$)/i.test(r.headers['content-type']??'')||r.headers['content-encoding']&&r.headers['content-encoding']!=='identity'){finish(new AuthError('probe_content_type'));return;}
@@ -64,7 +65,7 @@ export function sendOnce(access){
   });
 }
 export function decoderPath(){
-  const dir=path.dirname(new URL(import.meta.url).pathname);
+  const dir=path.dirname(fileURLToPath(import.meta.url));
   const exe=path.resolve(dir,'../../target/release/examples/responses_qualify');
   const m=fs.statSync(exe);require(m.isFile()&&(m.mode&0o111)!==0,'build_decoder_first');
   return exe;
