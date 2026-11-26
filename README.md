@@ -4,7 +4,7 @@
 
 AtomOS is an experimental project to build a persistent, conversational AI agent that can operate continuously on inexpensive, low-power hardware. The agent owns its identity, memory, permissions and scheduled activities independently of the language model it uses. Reasoning is delegated to OpenAI only when necessary, with the goal of operating within an owner's existing ChatGPT Plus subscription without additional AI spending. The runtime remains useful offline and retains a narrow inference interface for optional self-hosted models.
 
-**Status:** M1.1–M1.3 merged and automated validation passed. M1.4 (AtomOS Memory Graph) architecture accepted; implementation pending. Physical speech/model tests, always-on wake word, persistent identity, live OpenAI inference and bootable OS remain unvalidated or unimplemented.
+**Status:** M1.1–M1.3 merged and automated validation passed. M1.4a (AtomOS Memory Graph durable foundation) in development; CI and resource validation pending. Physical speech/model tests, always-on wake word, persistent identity, live OpenAI inference and bootable OS remain unvalidated or unimplemented.
 
 ## Current implementation
 
@@ -13,7 +13,7 @@ AtomOS is an experimental project to build a persistent, conversational AI agent
 | M1.1 | Dependency-free Rust core/CLI, local/mock inference, turn epochs, bounded playback queue, fixed-budget persistent reservation ledger. [PR #2](https://github.com/idmfrank/atomos/pull/2) |
 | M1.2 | Single-turn ALSA/Whisper.cpp/Piper smoke harness, transcript bounds, instance-scoped reservations, stub audio tests. [PR #3](https://github.com/idmfrank/atomos/pull/3) |
 | M1.3 | Persistent Rust voice coordinator, streaming PCM protocol, RMS endpointing, follow-up window, AEC-gated cancellation, optional warm Sherpa-ONNX/Kokoro adapter, IPC startup/deadline fixes. [PR #4](https://github.com/idmfrank/atomos/pull/4) |
-| M1.4 | AMG design accepted; memory engine and schema not yet implemented. |
+| M1.4a | Initial SQLite-backed typed memory, explicit owner CLI and regression tests on development branch; pending CI. See [AMG foundation](docs/m1-amg-foundation.md). |
 
 Verified post-merge baseline: [83dbf8c](https://github.com/idmfrank/atomos/commit/83dbf8c39e7ed7fae4bcb3230eb4022452540cb5), [Actions run 45752758740](https://github.com/idmfrank/atomos/actions/runs/45752758740). 29 Rust and 5 Python integration tests, CLI and stub audio smoke checks passed; zero remote inference.
 
@@ -24,11 +24,11 @@ Verified post-merge baseline: [83dbf8c](https://github.com/idmfrank/atomos/commi
 | Rust tests | 15 | 18 | 29 |
 | Python integration tests | 0 | 0 | 5 |
 
-1,000 simulated local text interactions; excludes OS, real speech models, Python adapter and active memory DB/ledger. RSS differences may reflect measurement variability. No acoustic latency, power or total system RAM claim. Current Rust workspace has zero external crate dependencies; optional hardware tools/models not bundled.
+1,000 simulated local text interactions; excludes OS, real speech models, Python adapter and active memory DB/ledger. RSS differences may reflect measurement variability. No acoustic latency, power or total system RAM claim. M1.1–M1.3 Rust baseline has zero external crate dependencies; M1.4a adds system-linked SQLite through rusqlite. Optional hardware tools/models not bundled.
 
 ### Development quick start
 
-Linux, Rust/Cargo (declared minimum 1.75, CI verified on 1.100), Bash, Python 3 and GNU coreutils:
+Linux, Rust/Cargo (declared minimum 1.75, CI previously verified on 1.100), Bash, Python 3, GNU coreutils, pkg-config and SQLite development library with FTS5. M1.4a requires explicitly provisioned Cargo dependencies; lockfile bootstrap pending on development branch:
 
 ```bash
 bash scripts/test.sh

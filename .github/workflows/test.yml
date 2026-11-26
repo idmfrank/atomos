@@ -18,6 +18,12 @@ jobs:
         run: |
           rustc --version
           cargo --version
+      - name: Bootstrap dependency lock (temporary M1.4 branch step)
+        run: |
+          pkg-config --modversion sqlite3
+          cargo generate-lockfile
+          cat Cargo.lock
+          cargo fetch --locked
       - name: Test and smoke
         run: bash scripts/test.sh
       - name: Text-only benchmark

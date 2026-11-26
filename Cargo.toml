@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/atomos-core", "apps/atomos-cli"]
+members = ["crates/atomos-core", "crates/atomos-memory", "apps/atomos-cli"]
 resolver = "2"
 
 [workspace.package]
