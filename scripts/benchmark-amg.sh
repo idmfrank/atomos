@@ -38,7 +38,9 @@ for n in "$@"; do
   fi
   stat -c 'db_bytes_after_seed=%s' "$dir/memory.db"
   du -sb "$dir" | awk '{print "quiescent_store_apparent_bytes=" $1}'
-  for mode in read graph write; do
+  modes=(read graph write)
+  if [[ "$(printenv AMG_RECOVERY || echo 0)" == 1 ]]; then modes+=(recovery); fi
+  for mode in "${modes[@]}"; do
     echo "BEGIN_AMG_STAGE dataset=$n stage=$mode"
     if timeout --kill-after=5s "$stage_seconds" /usr/bin/time -f "metric=$mode-process elapsed_s=%e peak_rss_kib=%M" "$bench" "$mode" "$dir" "$n" "$samples"; then
       echo "END_AMG_STAGE dataset=$n stage=$mode"

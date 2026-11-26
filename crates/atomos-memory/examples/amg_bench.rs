@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 // Synthetic fixture only. Seed in bulk; time production APIs, not seed SQL.
 use atomos_memory::{compile_context,compile_ranked_context,init,open,open_reader,
-    ContextRequest,MemoryReader,MemoryStore,Retrieval,Value};
+    ContextRequest,MemoryReader,MemoryStore,Retrieval,SqliteMemory,Value};
 use rusqlite::{params,Connection};
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -170,11 +170,33 @@ fn write(dir:&Path,n:usize,count:usize)->bool {
     println!("metric=verify_after_writes samples=1 errors={} elapsed_ms={:.4}",usize::from(!integrity),ms(t));
     ok&&integrity&&db.identity()==&identity&&add.errors==0&&correct.errors==0&&forget.errors==0
 }
+fn recovery(dir:&Path,n:usize)->bool {
+    // Only benchmark-owned temporary stores and exports.
+    let mut db=open(dir,"bench").unwrap();
+    let parent=dir.parent().expect("benchmark parent");
+    let backup=parent.join(format!("backup-{n}.amg"));
+    let restored=parent.join(format!("restored-{n}"));
+    let identity=db.identity().clone();
+    let t=Instant::now();let rows=db.export_logical(&backup).unwrap();
+    println!("metric=logical_export elapsed_ms={:.4} rows={rows} bytes={}",ms(t),std::fs::metadata(&backup).unwrap().len());
+    let t=Instant::now();let mut recovered=SqliteMemory::restore_logical(&restored,"bench",&backup).unwrap();
+    println!("metric=logical_restore elapsed_ms={:.4} bytes={}",ms(t),std::fs::metadata(restored.join("memory.db")).unwrap().len());
+    let mut ok=recovered.identity()==&identity;
+    for i in [0,n/2,n-1] {
+        ok &= recovered.recall(&node(i),"status").unwrap()==db.recall(&node(i),"status").unwrap();
+        ok &= recovered.recall(&node(i),"note").unwrap()==db.recall(&node(i),"note").unwrap();
+    }
+    let t=Instant::now();ok &= recovered.verify().is_ok();
+    println!("metric=logical_restore_verify elapsed_ms={:.4} errors={}",ms(t),usize::from(!ok));
+    drop(recovered);drop(db);
+    std::fs::remove_file(backup).unwrap();std::fs::remove_dir_all(restored).unwrap();
+    ok
+}
 fn main(){
     let a:Vec<String>=std::env::args().collect();
-    if a.len()!=5 {eprintln!("usage: amg_bench seed|read|graph|write DIR ENTITY_COUNT SAMPLES");std::process::exit(2);}
+    if a.len()!=5 {eprintln!("usage: amg_bench seed|read|graph|write|recovery DIR ENTITY_COUNT SAMPLES");std::process::exit(2);}
     let dir=Path::new(&a[2]);let n:usize=a[3].parse().expect("entity count");let count:usize=a[4].parse().expect("samples");
     assert!((100..=100_000).contains(&n)&&n%2==0&&(1..=1000).contains(&count));
-    let ok=match a[1].as_str(){"seed"=>{seed(dir,n);true},"read"=>read(dir,n,count),"graph"=>graph(dir,n,count),"write"=>write(dir,n,count),_=>false};
+    let ok=match a[1].as_str(){"seed"=>{seed(dir,n);true},"read"=>read(dir,n,count),"graph"=>graph(dir,n,count),"write"=>write(dir,n,count),"recovery"=>recovery(dir,n),_=>false};
     if !ok {std::process::exit(1);}
 }

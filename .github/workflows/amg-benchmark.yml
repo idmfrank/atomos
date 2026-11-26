@@ -29,4 +29,5 @@ jobs:
         env:
           AMG_SIZES: ${{ inputs.sizes }}
           AMG_SAMPLES: "100"
+          AMG_RECOVERY: "1"
         run: bash scripts/benchmark-amg.sh $AMG_SIZES
