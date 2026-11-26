@@ -4,7 +4,7 @@
 
 AtomOS is an experimental project to build a persistent, conversational AI agent that can operate continuously on inexpensive, low-power hardware. The agent owns its identity, memory, permissions and scheduled activities independently of the language model it uses. Reasoning is delegated to OpenAI only when necessary, with the goal of operating within an owner's existing ChatGPT Plus subscription without additional AI spending. The runtime remains useful offline and retains a narrow inference interface for optional self-hosted models.
 
-**Status:** M1.1–M1.4b merged and automated validation passed, including durable local identity, explicit memory administration and read-only conversational recall. M1.4c and M1.4d merged and CI passed; M1.4e SQLite scale benchmark passed through 100k entities; M1.4f retrieval optimization and streaming recovery merged and scale-tested; M2.1 offline inference broker merged and regression-tested; M2.2 bounded offline Responses replay is in development. Physical speech/model validation, wake word, authenticated private memory access, reference-device AMG resource measurements, live OpenAI inference and bootable OS remain outstanding.
+**Status:** M1.1–M1.4b merged and automated validation passed, including durable local identity, explicit memory administration and read-only conversational recall. M1.4c and M1.4d merged and CI passed; M1.4e SQLite scale benchmark passed through 100k entities; M1.4f retrieval optimization and streaming recovery merged and scale-tested; M2.1 offline inference broker merged and regression-tested; M2.2 bounded offline Responses replay merged and scale-tested; M2.3 synthetic account authorization in development. Physical speech/model validation, wake word, authenticated private memory access, reference-device AMG resource measurements, live OpenAI inference and bootable OS remain outstanding.
 
 ## Current implementation
 
@@ -20,9 +20,10 @@ AtomOS is an experimental project to build a persistent, conversational AI agent
 | M1.4e | Active SQLite benchmark and alternative-engine qualification. [Implementation](docs/m1-amg-benchmark.md); scale CI passed after [PR #10](https://github.com/idmfrank/atomos/pull/10). |
 | M1.4f | Compact-scope FTS optimization, reference verification, streaming logical backup and storage accounting. [Implementation](docs/m1-amg-optimization.md); CI and scale validation passed. |
 | M2.1 | Offline inference broker, durable admission, typed synthetic response replay and usage reconciliation. [Implementation](docs/m2-inference-broker.md); locked offline CI passed. |
-| M2.2 | Optional bounded Responses SSE/JSON decoder, strict text lifecycle, governor-gated byte replay and differential tests. [Implementation](docs/m2-responses-replay.md); CI pending. |
+| M2.2 | Optional bounded Responses SSE/JSON decoder, strict text lifecycle, governor-gated byte replay and differential tests. [Implementation](docs/m2-responses-replay.md); CI and full scale validation passed. |
+| M2.3 | Offline account-bound authorization policy, fixed-window request IDs, expiry, durable suspension and subscription error recovery. [Implementation](docs/m2-account-authorization.md); CI pending; live inference remains disabled. |
 
-Latest verified executable baseline: [f0815cb](https://github.com/idmfrank/atomos/commit/f0815cb9a72f7d915fe3ca0a6983290f51ce2fc8), [Actions run 45833540395](https://github.com/idmfrank/atomos/actions/runs/45833540395). 61 Rust and 11 Python integration tests passed, plus CLI, stub audio, separate-process AMG lifecycle and synthetic broker smoke checks; zero real provider calls. Rust/Cargo 1.100.0; locked dependencies provisioned before offline build/test.
+Latest verified executable baseline: [3e6ab40](https://github.com/idmfrank/atomos/commit/3e6ab401e1fb3ddceab9e4f4621bfe830b59ec82), [Actions run 45839901448](https://github.com/idmfrank/atomos/actions/runs/45839901448). 75 Rust (61 default + 14 feature-enabled) and 11 Python tests passed, plus smoke checks; zero real provider calls. Rust/Cargo 1.100.0; locked dependencies provisioned before offline build/test.
 
 ### Benchmark results
 
@@ -39,33 +40,42 @@ Latest verified executable baseline: [f0815cb](https://github.com/idmfrank/atomo
 | M1.4d | 464,912 | 2,608 | 44 | 11 |
 | M1.4e (schema v3) | 464,912 | 2,776 | 46 | 11 |
 | M1.4f | 466,464 | 2,796 | 51 | 11 |
-| **M2.1** | **466,464** | **2,704** | **61** | **11** |
+| M2.1 | 466,464 | 2,704 | 61 | 11 |
+| **M2.2** | **466,464** | **2,676** | **75** | **11** |
 
 Each release CLI benchmark executes 1,000 local text interactions. Test counts refer to the full workspace regression suite, not benchmark samples. Peak RSS is measured process memory; runner variation can affect comparisons. M2.1's broker is a separate synthetic replay example, not linked into the measured conversational CLI. Excludes OS, speech engines, Python adapter, active AMG, ledger and administration executable. See [resource budget and run links](docs/resource-budget.md).
 
-**Active AMG scale — verified M1.4f [combined benchmark](https://github.com/idmfrank/atomos/actions/runs/45807347862)**
+**Active AMG scale — verified M2.2 [combined benchmark](https://github.com/idmfrank/atomos/actions/runs/45840592568)**
 
 | Metric | 1K entities | 10K entities | 100K entities |
 | --- | ---: | ---: | ---: |
 | Active assertions | 2,500 | 25,000 | 250,000 |
 | Main DB (bytes, after seed) | 1,216,512 | 11,186,176 | 116,084,736 |
-| Active CLI peak RSS (KiB) | 4,140 | 4,096 | 4,152 |
-| Exact recall p95 (ms) | 0.0545 | 0.0730 | 0.1001 |
-| Graph traversal p95 (ms) | 0.1728 | 0.1812 | 0.1923 |
-| Selective context p95 (ms) | 0.3146 | 0.3418 | 0.4233 |
-| Common-term context p95 (ms) | 0.3397 | 0.7455 | 5.9669 |
-| Reference common-term p95 (ms) | 0.5423 | 5.1451 | 60.7457 |
-| Forget p95 (ms) | 1.2229 | 1.1770 | 1.5318 |
+| Active CLI peak RSS (KiB) | 4,252 | 4,144 | 4,300 |
+| Exact recall p95 (ms) | 0.0254 | 0.0350 | 0.0483 |
+| Graph traversal p95 (ms) | 0.1052 | 0.0938 | 0.1025 |
+| Selective context p95 (ms) | 0.1297 | 0.1761 | 0.2129 |
+| Common-term context p95 (ms) | 0.1773 | 0.3914 | 1.6624 |
+| Reference common-term p95 (ms) | 0.3025 | 2.6669 | 26.0003 |
+| Forget p95 (ms) | 4.7472 | 4.5387 | 14.7060 |
 | Fixture precision / recall | 100% / 100% | 100% / 100% | 100% / 100% |
 | Retrieval parity mismatches | 0 / 30 | 0 / 30 | 0 / 30 |
 | Logical export records | 6,005 | 60,005 | 600,005 |
 | Logical export (bytes) | 829,540 | 8,407,555 | 85,222,570 |
-| Restore (seconds) | 0.148 | 1.679 | 18.202 |
-| Recovery peak RSS (KiB) | 7,492 | 9,324 | 9,156 |
+| Restore (seconds) | 0.093 | 1.082 | 11.828 |
+| Recovery peak RSS (KiB) | 7,340 | 9,200 | 8,928 |
 
-Same-run no-store CLI RSS: 2,568 KiB. All recovery checks passed. Synthetic graph only; no physical voice, power, aggregate quota or provider token measurements.
+Same-run no-store RSS 2,600 KiB. All recovery checks passed. Write p95 tails increased versus M1.4f; medians remained about 1.1–1.3 ms; runner/storage variability not isolated. Synthetic graph only; no physical voice, energy, hard aggregate quota or actual token savings.
 
-**Latest M2.1 [1K regression](https://github.com/idmfrank/atomos/actions/runs/45833540395):** exact p95 0.0620 ms, graph p95 0.1891 ms, selective context p95 0.3194 ms, common-term p95 0.3896 ms (reference 0.5882 ms), forget p95 1.5660 ms; active CLI RSS 4,108 KiB vs same-run no-store 2,672 KiB; 100/100 selective packets, 0/30 parity mismatches, 100% fixture precision/recall. Broker smoke: one synthetic dispatch, 47 fixture units, zero real calls. The 100K/recovery baseline above is from M1.4f, not a new M2.1 scale run.
+**Responses decoder — verified M2.2 [post-merge CI](https://github.com/idmfrank/atomos/actions/runs/45839901448)**
+
+| Read chunk (bytes) | Samples | p50 (µs) | p95 (µs) | p99 (µs) |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | 1,000 | 18.9 | 20.2 | 33.5 |
+| 64 | 1,000 | 13.7 | 14.1 | 23.4 |
+| 4,096 | 1,000 | 13.3 | 13.6 | 23.0 |
+
+2,497-byte synthetic stream, zero errors/real calls. Separate decoder example 361,776 bytes, peak RSS 2,080 KiB; excludes network, broker fsync and speech. CLI does not include decoder/broker. M2.3 adds synthetic policy only, no live provider access.
 
 ### Development quick start
 
@@ -298,7 +308,7 @@ Targets must be validated end to end; network latency is variable. A text-mediat
 | M8 — Distributed agent | Optional authorized node discovery, encrypted synchronization, conflict resolution and inference routing. Evaluate Nostr as an optional transport. |
 | M9 — OS specialization | Compare optimized Linux, RTOS and custom kernel approaches using equivalent workloads. Proceed only with demonstrated benefits. |
 
-M1 slices: M1.1 offline core, M1.2 audio smoke harness, M1.3 persistent voice coordinator, M1.4a durable AMG, M1.4b read-only recall, M1.4c scoped retrieval and M1.4d disclosure/recovery are merged and CI-tested. M1.4e: active SQLite scale benchmark passed; M1.4f: optimization and streaming recovery passed. Retain SQLite + FTS5 for M2; alternate adapters deferred, not measured. M2.1 offline broker merged and tested; M2.2 bounded Responses stream parsing and replay in development. M1 exit still requires real model/device validation, measured acoustic interruption, activation evaluation and the remaining AMG acceptance gates. M2 requires official provider eligibility and spending controls. M3 expands memory management, scheduling and approved workflows rather than duplicating M1.4.
+M1 slices: M1.1 offline core, M1.2 audio smoke harness, M1.3 persistent voice coordinator, M1.4a durable AMG, M1.4b read-only recall, M1.4c scoped retrieval and M1.4d disclosure/recovery are merged and CI-tested. M1.4e: active SQLite scale benchmark passed; M1.4f: optimization and streaming recovery passed. Retain SQLite + FTS5 for M2; alternate adapters deferred, not measured. M2.1 offline broker merged and tested; M2.2 bounded Responses stream parsing and replay merged and tested; M2.3 synthetic account authorization in development. M1 exit still requires real model/device validation, measured acoustic interruption, activation evaluation and the remaining AMG acceptance gates. M2 requires official provider eligibility and spending controls. M3 expands memory management, scheduling and approved workflows rather than duplicating M1.4.
 
 Security requirements apply from M1; M6 expands and verifies the tool execution surface rather than deferring basic security until then.
 
@@ -385,4 +395,8 @@ The first 1k active-store benchmark passed, but exposed a global orphan-source c
 
 ### M2.2 offline Responses replay
 
-After locked provisioning, `bash scripts/test-responses.sh` exercises the optional `responses-replay` feature (pinned serde/serde_json), compares wire and typed broker behavior and benchmarks the decoder. No default CLI networking or JSON dependency, credentials, real provider calls or private AMG disclosure. Narrow single-message text profile; unsupported event types fail closed. See [M2.2](docs/m2-responses-replay.md). Actual feature-enabled results pending CI.
+After locked provisioning, `bash scripts/test-responses.sh` exercises the optional `responses-replay` feature (pinned serde/serde_json), compares wire and typed broker behavior and benchmarks the decoder. No default CLI networking or JSON dependency, credentials, real provider calls or private AMG disclosure. Narrow single-message text profile; unsupported event types fail closed. See [M2.2](docs/m2-responses-replay.md). Feature-enabled CI and full scale validation passed; see benchmark results above.
+
+### M2.3 authorization gate
+
+[Account authorization](docs/m2-account-authorization.md): fixed synthetic grant/window and limits, durable single-use request IDs, expiry, account/host binding, conservative recovery and persistent suspension. Official personal-plan credit controls and direct-route error semantics documented; programmatic verification, actual OAuth/credential storage, eligibility and provider-side output ceiling (preview excludes max_output_tokens) remain blocking gates. Live inference unconditionally disabled. No new dependencies.

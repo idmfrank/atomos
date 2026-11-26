@@ -2,6 +2,8 @@
 
 pub mod audio;
 pub mod broker;
+#[cfg(unix)]
+pub mod authorization;
 #[cfg(feature = "responses-replay")]
 pub mod responses;
 pub mod governor;

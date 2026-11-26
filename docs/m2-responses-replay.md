@@ -1,6 +1,6 @@
 # M2.2 — Bounded Responses SSE/JSON replay
 
-Status: draft implementation; locked feature-enabled CI pending. No live
+Status: merged in PR #13; locked feature-enabled CI and scale validation passed. No live
 provider traffic, OAuth, credentials, account eligibility or private AMG
 disclosure. Existing local text and voice remain mock-only.
 
@@ -102,7 +102,7 @@ nesting limits, rate/auth and usage overrun. Feature-enabled CI runs these
 in addition to existing default workspace suite. Decoder-only release
 benchmark: 1,000 iterations each at 1/64/4,096-byte chunk limits, p50/p95/p99/
 max, errors, executable bytes and process peak RSS using GNU time. No disk
-settlement or provider latency included. Expected results pending CI; not
+settlement or provider latency included. Measured results below; not
 a measurement of the integrated runtime.
 
 Next: M2.3 authorization and account policy design; verify official plan
@@ -111,3 +111,7 @@ controls and secure credential management. Before live integration also
 qualify the selected model's actual event profile, enforce transport
 deadline/cancellation and expand synthetic replay cases where needed.
 No paid fallback or private AMG context.
+
+## Verified M2.2 results
+
+[Post-merge CI](https://github.com/idmfrank/atomos/actions/runs/45839901448): 61 default Rust + 14 feature-enabled Rust, 11 Python tests; 3,000 decoder replays, 2,497-byte fixture, 0 errors, p95 20.2/14.1/13.6 µs at 1/64/4,096 byte chunks, 361,776-byte example / 2,080 KiB RSS. Default CLI 466,464 bytes / 2,676 KiB RSS. [Full AMG scale](https://github.com/idmfrank/atomos/actions/runs/45840592568) passed. M2.3 maps documented subscription errors and adds persistent synthetic authorization wrapper; see [account authorization](m2-account-authorization.md). No actual provider traffic.
