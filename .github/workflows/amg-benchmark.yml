@@ -1,0 +1,32 @@
+name: AMG scale benchmark
+on:
+  workflow_dispatch:
+    inputs:
+      sizes:
+        description: "Synthetic entity counts"
+        type: choice
+        options:
+          - "1000 10000 100000"
+          - "1000"
+          - "10000"
+          - "100000"
+        default: "1000 10000 100000"
+permissions:
+  contents: read
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Provision locked dependencies
+        run: |
+          pkg-config --modversion sqlite3
+          cargo fetch --locked
+      - name: Run scale benchmarks
+        env:
+          AMG_SIZES: ${{ inputs.sizes }}
+          AMG_SAMPLES: "100"
+        run: bash scripts/benchmark-amg.sh $AMG_SIZES
