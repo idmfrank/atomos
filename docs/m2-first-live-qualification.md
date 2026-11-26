@@ -100,3 +100,16 @@ generation limit remain outstanding.
 ## Transport recovery (owner report 2026-11-26)
 
 Owner verified 26 local tests and successful build at 30df9b6. Original probe ledger: unknown, unvalidated, probe_content_type, reported_tokens null, charged planning units 1024. In the original source this category is reached only after HTTP 200 and combines media-type and encoding checks. Exact header values and provider usage unknown; no claim that inference completed. Subsequent explicit live refresh succeeded; active unexpired session, plan scope granted, original attempt marker preserved. Do not delete the original ledger or rerun qualify-once. Diagnostic revision records only allowlisted HTTP status/media/encoding classes and bounded timings/byte counts; never raw headers/body, IDs or secrets. Accepts bounded gzip SSE (both compressed/decompressed 256 KiB, invalid compressed data denied), still refuses JSON/HTML/unknown types and unsupported encodings. Gzip is a hypothesis, not established cause. Three new synthetic tests cover header classification, compressed replay and durable unknown accounting. No new live command or authorization added; a separate reviewed and explicitly owner-authorized design is needed for any further live qualification.
+
+## M2.4 second qualification (proposed after PR #21 validation)
+
+PR #21 merged at 986b6bf; [CI](https://github.com/idmfrank/atomos/actions/runs/45912523399) and [scale](https://github.com/idmfrank/atomos/actions/runs/45912716094) passed, 126 distinct tests. The original v1 combined-header rejection is the only allowed historical failure for this follow-up; no automatic retry or general reset. Same existing vault/account/host/model/request, active grant and fresh catalog. Original record is preserved byte-for-byte. New durable intent m2-4-followup.json binds SHA256 of original parsed record and retains prior 1,024 unknown planning units. A second 1,024 planning-unit reservation is made before POST. Result reports cumulative planning units, not provider usage; prior usage remains unknown even after successful settlement. Missing, mismatched, pending or ineligible original records deny; existing follow-up marker (including pending) denies further calls. No third attempt and no inference in CI. Same-UID tampering/rollback/alternate vault remain outside threat model.
+
+Owner must first inspect provider app usage since the previous attempt where available, verify saved enabled personal app limit below 100%, verify unexpired active status with qualification_attempted:true and qualification_followup_attempted:false, and separately accept the unresolved provider generation ceiling and retained unknown usage. After reviewed merge and passing local offline tests (33 expected), owner may run exactly once:
+
+```bash
+node scripts/auth/atomos-auth.mjs qualify-followup-once "$HOME/.config/atomos-auth" \
+  --confirm-personal-app-below-100-second-uncapped-request-retain-unknown-usage
+```
+
+If expiry, stop and refresh through existing owner-run command separately. If any error, do not repeat or delete either record. Report sanitized result only. Gzip support and better classifications are not evidence of the original root cause. Actual stream compatibility and spending/usage remain unqualified. The second request requires new owner approval; this document is not unattended authorization.
