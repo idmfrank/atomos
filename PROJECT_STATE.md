@@ -1,6 +1,6 @@
 # AtomOS — current engineering state
 
-Updated 2026-11-27 (Linux CLI host prepared and deployed). Verified/deployed main: `5869e205167a3dde3a6a77392af294101e6a46c3` (merged PR #34), with unchanged executable behavior from PR #31. [Main CI 46055361823](https://github.com/idmfrank/atomos/actions/runs/46055361823) passed; direct Linux host regression, SSD-backed full scale and installed-binary smoke checks also passed. [Deployment and evidence](docs/linux-cli-deployment.md). M2.5b is specified but not implemented. This documentation revision records setup/evidence only; no runtime or architecture rewrite. Read AGENTS and this file before work.
+Updated 2026-11-27. Main is `33f2d0a47e147248725780db6abcb6e47919abe3` (merged PR #35); [main CI 46074543431](https://github.com/idmfrank/atomos/actions/runs/46074543431) passed. M2.5b is implemented and verified offline on [PR #36](https://github.com/idmfrank/atomos/pull/36), awaiting human review and merge. The installed CLI remains the previously verified local/mock release `5869e205167a3dde3a6a77392af294101e6a46c3`; no model connection or deployment of this branch. Read AGENTS and this file before work.
 
 ## Mission and architecture
 
@@ -35,7 +35,17 @@ Design details: [README](README.md), [resource budget](docs/resource-budget.md),
 | M2.5a | PR #30 atomic synthetic admission and PR #31 fresh time/task fix merged; PR #32 documentation reconciliation merged. 173 distinct tests and current-main CI/full scale passed. No production provider wiring. |
 | CLI scope revision | Owner approved a CLI over SSH as the first MVP on 2026-11-27. Documentation only; implementation acceptance and future interface choices remain pending. |
 
+## M2.5b offline implementation, awaiting review
+
+Development head `2d66c2e5ce8b9ca80c85251b6d70682b93e21f09` passed [PR CI 46077487399](https://github.com/idmfrank/atomos/actions/runs/46077487399) and [full 1K/10K/100K scale/recovery 46077563729](https://github.com/idmfrank/atomos/actions/runs/46077563729). CI tested synthetic merge `9e13874702dd190fc622ba926c07835ba1048a6a`; full scale tested the branch head. All 193 distinct tests passed: 139 Rust, 11 Python and 43 Node (173 preserved + 20 new). Repeated features/compiler runs and the ignored subprocess-only crash fixture are not additional tests. The parent crash test actually launches and terminates that fixture. Rust 1.75 candidate core all-target tests and 18,000 decoder samples passed. Host runtime regression/full scale passed at `b6152f031aebabd3ca6d9f5c8f0652a09abb2283`; its source plus benchmark additions passed the SSD-backed frozen-reference comparison at `2d66c2e`. No live calls.
+
+`AtomicReplay::run_sse_extended` returns Local/Completed/Refused/Failed through existing extended decoding, immutable admission and v1 records. Known usage settles; unknown/cancelled/malformed usage stays charged/pending. Rate/auth and overrun suspend durably. Strict `run_sse` body is preserved byte-for-byte. New independent tests cover persistence write/sync ambiguity, cancellation at EOF, privacy and actual child death/stale lock. No parser, dependency, journal-format or default CLI behavior change. [Implementation and validation](docs/m2-text-outcomes.md#verified-candidate-evidence), [full resource tables](docs/resource-budget.md#m25b-offline-candidate-evidence).
+
+Development is performed directly from this chat; no separate Codex handoff is required. Host source is a clean detached development checkout, separate from the pinned installed release. No runtime merge/deployment or owner vault operation was performed. All three prior attempts and 3,072 retained planning units remain consumed.
+
 ## Latest verified test and benchmark baseline
+
+The M2.5b branch evidence above supersedes the test count for development. The following deployed-release baseline remains valid for the installed CLI; it is historical source-checkout state, not the current detached development checkout.
 
 Latest main `5869e205167a3dde3a6a77392af294101e6a46c3` (PR #34) passed [post-merge CI 46055361823](https://github.com/idmfrank/atomos/actions/runs/46055361823). The owner-authorized Linux host additionally passed all 173 distinct tests (119 Rust / 11 Python / 43 Node), 18,000 decoder samples, the existing admission comparison and 1K/10K/100K AMG scale/recovery. Release binaries were copied into a versioned owner-local release, SHA-256 verified, and smoke-tested with a new generic identity store; a single idle local/mock CLI runs in tmux. Host source is clean main at that SHA. No private facts, vault access or provider inference. [Commands, private log location and provenance](docs/linux-cli-deployment.md).
 
@@ -197,7 +207,7 @@ M2.4b–c offline [protocol compatibility](docs/m2-protocol-compatibility.md) va
 
 - Live stream may contain reasoning items or event shapes unsupported by narrow Rust decoder. Investigate via safe sanitized categories and offline fixtures before separately approved future live calls.
 - Live token revocation, integrated account-bound admission, trusted time/rolling budgets, real usage reconciliation, hard provider generation ceiling or explicit acceptable replacement policy, secure credential boundary and production security review remain open. Same-UID/root tampering and vault rollback are not solved.
-- Active sequence: review and implement the defined [M2.5b offline outcome/settlement contract](docs/m2-text-outcomes.md); specify a coherent single-owner CLI; separately review provider credentials/transport/spending/time/usage gates; then validate the CLI MVP over existing SSH. Private AMG disclosure remains separate. Use synthetic facts until private deployment controls are qualified.
+- Active sequence: human review/merge of the verified [M2.5b offline outcome/settlement implementation](docs/m2-text-outcomes.md); next define the single-owner CLI command/session contract and synthetic integration; separately review provider credentials/transport/spending/time/usage gates; then validate the CLI MVP over existing SSH. Private AMG disclosure remains separate. Use synthetic facts until private deployment controls are qualified.
 - After the CLI MVP: choose browser or voice from actual usage; separately scope reminders, scheduling and approved tools. M3/M4 autonomy/OS and later embedded/distributed ambitions remain long-term, not MVP dependencies. Voice wake/endpointing/AEC/barge-in and full speech/power qualification are paused. WSL is not physical hardware evidence.
 
 ## Maintenance protocol
@@ -206,7 +216,11 @@ Every new Codex session: read AGENTS.md and this file, inspect current commit an
 
 ## Documentation reconciliation
 
-Current revision: record the owner-authorized minimal Linux setup, local/mock deployment, exact tested source and host regression/SSD benchmark evidence. Add `docs/linux-cli-deployment.md`; update README, architecture, roadmap, inference, security, resource and atomic-admission references; add the backing-filesystem evidence rule to AGENTS. No tracked runtime, dependency, schema or workflow changes, no model calls and no private deployment identifiers. Markdown relative-link/heading, fence, scope and private-identifier checks passed before commit; this documentation revision's CI is pending at authoring. Earlier per-commit records below retain their historical scope.
+Current revision: reconcile PR #36 runtime, test, benchmark, CI and full-scale evidence across README, architecture, inference, protocol, atomic admission, outcome contract, security, resources, roadmap and deployment notes. Review all 28 Markdown files; historical AMG/auth/voice evidence and owner procedures remain unchanged because their behavior is unchanged. Record the slower SSD outcome timing and retained gates without an improvement claim. Format the new method/tests/harness for readability and correct a method documentation label; executable semantics are unchanged. Strict method body remains byte-for-byte preserved. This reconciliation's own CI is pending at authoring; verified executable/benchmark evidence is pinned above.
+
+### Historical PR #35 deployment documentation
+
+Historical revision: record the owner-authorized minimal Linux setup, local/mock deployment, exact tested source and host regression/SSD benchmark evidence. Add `docs/linux-cli-deployment.md`; update README, architecture, roadmap, inference, security, resource and atomic-admission references; add the backing-filesystem evidence rule to AGENTS. No tracked runtime, dependency, schema or workflow changes, no model calls and no private deployment identifiers. Markdown relative-link/heading, fence, scope and private-identifier checks passed before commit; this documentation revision's CI is pending at authoring. Earlier per-commit records below retain their historical scope.
 
 ### Historical PR #34 contract revision
 

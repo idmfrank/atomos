@@ -14,9 +14,81 @@ Hosted synthetic timings are not controlled cross-run comparisons or whole-devic
 
 PR #33's documentation-only CLI roadmap is now merged at `c563599f2e2c8b5abb7e03c75bb85e67e831e75d`; [post-merge CI 46029012445](https://github.com/idmfrank/atomos/actions/runs/46029012445) passed with unchanged runtime. Its CI admission/decoder/text/1K smoke checks do not replace the separately labeled PR #32 full-scale measurements above.
 
-## M2.5b benchmark plan, unrun
+## M2.5b offline candidate evidence
 
-The [implementation contract](m2-text-outcomes.md#benchmark-contract) requires equal-wire frozen strict-atomic versus extended-atomic measurements on identical policies, request sequences, state, filesystem and durability. Preserve 300-request mixed-priority independent expectations (14,100 total / 7,050 background), separate compilation/validation, first-read admission, complete decode/settlement and restart timings, actual syscall traces, peak RSS, harness/CLI bytes and journal growth. Auxiliary/reasoning/refusal workloads are reported separately with typed outcome/error counts; different fixtures are not equal-input overhead evidence. Full runtime regression/1K/10K/100K validation remains required for the future implementation PR. No M2.5b measurements or performance improvement are claimed by this documentation-only contract.
+Development head `2d66c2e5ce8b9ca80c85251b6d70682b93e21f09` passed [PR CI 46077487399](https://github.com/idmfrank/atomos/actions/runs/46077487399) and [full 1K/10K/100K scale/recovery 46077563729](https://github.com/idmfrank/atomos/actions/runs/46077563729). CI tested synthetic merge `9e13874702dd190fc622ba926c07835ba1048a6a`; full scale tested the branch head. All 193 distinct tests passed: 139 Rust, 11 Python and 43 Node (173 preserved + 20 new). Repeated features/compiler runs and the ignored subprocess-only crash fixture are not additional tests. The parent crash test actually launches and terminates that fixture. Rust 1.75 candidate core all-target tests and 18,000 decoder samples passed. Host runtime regression/full scale passed at `b6152f031aebabd3ca6d9f5c8f0652a09abb2283`; its source plus benchmark additions passed the SSD-backed frozen-reference comparison at `2d66c2e`. No live calls.
+
+### Equal-wire method and boundaries
+
+Run `TMPDIR=PRIVATE_PERSISTENT_DIR bash scripts/benchmark-outcomes.sh` from a complete checkout with frozen reference history available. It builds the same harness separately against strict atomic commit `c563599f2e2c8b5abb7e03c75bb85e67e831e75d` and the candidate extended API, locked/offline, release profile, same compiler and no native-CPU option. The reference source is extracted to a disposable private directory; its runtime is not edited. Custom cfg selects extended API only in the candidate harness. Both use immutable requests, same initial policy/state, mixed priorities and identical strict bytes. Auxiliary/reasoning/refusal are separate workloads, not same-input overhead comparisons. Compilation/validation are measured separately from the request interval. Traces are separate from latency/RSS runs.
+
+Each of five cases has 300 requests and 30 clean reopens: frozen strict, extended strict, extended auxiliary, extended reasoning, extended refusal. The first four each returned 300 completed answers, the last 300 typed refusals. All had failed/cancelled/unknown/unexpected-error counts 0 and accounting/answer/outcome mismatches 0, supported by per-request and reopen assertions. Each charged 14,100 total / 7,050 background units, 600 appended records and 600 file syncs; 31,284 added journal bytes, 104.280 bytes/request. Failure/cancellation behavior is covered by tests, not these successful-workload timings. Fixture usage is 35 input + 12 output; cached/reasoning subsets are not added.
+
+Measured syscall traces (three requests each for frozen strict, extended strict and extended refusal): admission **2 write syscalls + 1 fsync before first response read**, settlement **2 writes + 1 fsync before result delivery**; total 4 writes / 2 fsyncs per settled request on both APIs. Initialization/directory syncs are outside request measurements. No reduction in durability. Forced death leaves a stale lock and refused reopen; clean reopen timings do not certify automatic crash or power-loss recovery.
+
+### Direct Linux SSD run
+
+Candidate `2d66c2e5ce8b9ca80c85251b6d70682b93e21f09`, Ubuntu 26.04 / Linux 7.0.0-44 / i7-6700 4C8T / 16 GB / SATA SSD **ext4**; Rust 1.95.0, eight build jobs. Explicit private TMPDIR on the SSD; /tmp is tmpfs and was not used. Sequential timing runs with uncontrolled host/storage scheduling. Private logs: `~/.local/state/atomos/m25b-validation/regression-b6152f0.log` and `outcomes-2d66c2e.log`. The first contains the full runtime regression and SSD AMG scale at `b6152f0`; the second isolates the new benchmark at `2d66c2e`.
+
+Latency table values are p50 / p95 / p99 **milliseconds**:
+
+| Workload | Admission at first read | Complete decode/settlement | Clean reopen |
+| --- | --- | --- | --- |
+| Frozen strict | 1.794245 / 1.836982 / 2.008138 | 3.639739 / 3.737196 / 3.917739 | 0.837815 / 0.864011 / 0.922509 |
+| Extended strict | 2.380598 / 2.557247 / 2.747668 | 4.912795 / 5.183656 / 5.309620 | 0.377808 / 1.362314 / 1.609114 |
+| Extended auxiliary | 1.822903 / 2.283637 / 2.367359 | 3.772728 / 4.757672 / 4.951957 | 1.345501 / 1.571748 / 1.684347 |
+| Extended reasoning | 2.050579 / 2.569950 / 2.610335 | 4.239940 / 5.282208 / 5.358519 | 1.489468 / 1.532862 / 1.688887 |
+| Extended refusal | 2.460100 / 2.603019 / 2.634805 | 5.070070 / 5.292650 / 5.330227 | 1.204228 / 1.535035 / 1.634899 |
+
+| Workload | Compilation p50/p95/p99 ms | Validation p50/p95/p99 ms | Process peak RSS KiB |
+| --- | --- | --- | --- |
+| Frozen strict | 0.019099 / 0.019486 / 0.019704 | 0.000275 / 0.000303 / 0.000482 | 2,512 |
+| Extended strict | 0.008327 / 0.009551 / 0.028917 | 0.000552 / 0.000643 / 0.000784 | 2,388 |
+| Extended auxiliary | 0.006138 / 0.009607 / 0.009977 | 0.000446 / 0.000621 / 0.000642 | 2,452 |
+| Extended reasoning | 0.007263 / 0.010377 / 0.022238 | 0.000515 / 0.000730 / 0.000820 | 2,516 |
+| Extended refusal | 0.010031 / 0.010658 / 0.028248 | 0.000647 / 0.000776 / 0.000917 | 2,388 |
+
+Frozen/extended harness: **418,344 / 428,248 bytes**. Default CLI **479,672 bytes**, memory admin **462,280 bytes**, unchanged from the same-host deployed baseline; no-store process **3,060 KiB**. These feature harnesses are not default-CLI overhead. Installed release symlink remains at `5869e205167a3dde3a6a77392af294101e6a46c3`.
+
+The extended strict path is slower in this SSD run, including admission before decoding. Compilation and restart also vary between otherwise identical operations. Retain these observations; no isolated decoder-overhead or performance-improvement claim is supported by this single sequential run.
+
+Preserved old two-journal versus atomic admission comparison also passed: 14,100 total units each, candidate background 7,050, actual admission write/fsync counts 4/2 versus 2/1, zero errors. It is a different comparison from strict-atomic versus extended-atomic above.
+
+SSD full AMG scale/recovery at runtime `b6152f0`:
+
+| Entities | Exact p95 ms | Context p95 ms | Common-term p95 ms | Restore ms | Active CLI KiB |
+| --- | --- | --- | --- | --- | --- |
+| 1,000 | 0.0662 | 0.3338 | 0.3764 | 166.3505 | 4,536 |
+| 10,000 | 0.0696 | 0.3789 | 0.7708 | 1,802.3471 | 4,380 |
+| 100,000 | 0.0787 | 0.3959 | 3.1746 | 18,847.2844 | 4,484 |
+
+At every size: 300/300 facts, 100 complete packets, precision/recall 1, 0/30 parity mismatches, zero restore/verification errors and zero remote calls. At 100K common-term reference p95 44.7892 ms; recovery peak 9,348 KiB. This preserves the existing Rust/SQLite decision; it does not measure real-world answer quality.
+
+### Hosted CI and full scale
+
+[PR CI 46077487399](https://github.com/idmfrank/atomos/actions/runs/46077487399) ran Rust 1.100 on the synthetic merge above; Rust 1.75 package-only core check and all-target tests also passed. Whole-workspace Rust 1.75 remains unverified because of the existing unrelated edition-2024 dependency. The outcome benchmark verified ext4 and used the same durability and assertions. No provider traffic or owner state.
+
+Hosted p50 / p95 / p99 **milliseconds**:
+
+| Workload | Admission | Complete decode/settlement | Clean reopen | Peak RSS KiB |
+| --- | --- | --- | --- | --- |
+| Frozen strict | 0.199625 / 0.262484 / 0.349567 | 0.440137 / 0.558310 / 0.657256 | 0.317888 / 0.410342 / 0.483188 | 2,292 |
+| Extended strict | 0.200376 / 0.262744 / 0.342283 | 0.443254 / 0.535687 / 0.660382 | 0.315804 / 0.405192 / 0.495111 | 2,240 |
+| Extended auxiliary | 0.199947 / 0.260292 / 0.404331 | 0.449355 / 0.541649 / 0.714453 | 0.320733 / 0.418457 / 0.524766 | 2,236 |
+| Extended reasoning | 0.200337 / 0.266030 / 0.330361 | 0.451148 / 0.555194 / 0.661584 | 0.314882 / 0.376037 / 0.480884 | 2,304 |
+| Extended refusal | 0.207620 / 0.291658 / 0.364656 | 0.456348 / 0.561395 / 0.673717 | 0.322145 / 0.402997 / 0.477017 | 2,368 |
+
+Hosted harness bytes frozen/extended **413,000 / 422,624**. Hosted decoder process RSS 2,196 KiB; all 18,000 samples passed; strict p95 at 1/64/4096-byte reads 43.8/26.2/25.7 microseconds. Full compilation/validation percentiles and all sample counts remain in linked job logs. No controlled comparison across host/compiler/runners, power, actual token use or provider capability is claimed.
+
+[Full hosted scale 46077563729](https://github.com/idmfrank/atomos/actions/runs/46077563729), branch head `2d66c2e`, same Rust 1.100:
+
+| Entities | Exact p95 ms | Context p95 ms | Common-term p95 ms | Restore ms | Active CLI KiB |
+| --- | --- | --- | --- | --- | --- |
+| 1,000 | 0.0246 | 0.1212 | 0.1488 | 78.6876 | 4,232 |
+| 10,000 | 0.0340 | 0.1676 | 0.3771 | 959.8413 | 4,232 |
+| 100,000 | 0.0481 | 0.2095 | 1.7925 | 10,284.3357 | 4,176 |
+
+All sizes again returned 300/300 facts and 100 complete packets, precision/recall 1, 0/30 parity mismatches, zero recovery errors/calls. At 100K common reference p95 26.2337 ms, recovery peak 9,092 KiB; no-store CLI 2,576 KiB, default CLI 466,512 bytes. Hosted scale is not the owner's hardware or power-loss evidence.
 
 ## Verified Linux CLI host baseline
 

@@ -18,9 +18,11 @@ The [Linux CLI setup](linux-cli-deployment.md) uses the explicitly selected owne
 
 A tmux session is process continuity, not authenticated private-memory deployment, credential unlock, transcript persistence, reboot recovery or automatic service startup. No real owner inference vault, raw provider stream or private AMG data was accessed/copied. Same-UID/root/rollback and storage power-loss limitations remain. Benchmark temp stores must be explicitly placed on the intended persistent filesystem before making device-durability claims; tmpfs evidence remains separately labeled.
 
-## Planned M2.5b outcome boundary
+The M2.5b candidate now has private unit-test-only write/sync fault injection; it is absent from production builds and exposes no public switch. Offline validation passed on PR #36; [exact tested commits and runs](m2-text-outcomes.md#verified-candidate-evidence). Installed CLI, credentials and host connectivity remain unchanged.
 
-The [offline integration contract](m2-text-outcomes.md) preserves strict/extended parser caps and explicit profile selection. Refusal and failure carry no answer/raw refusal/reasoning text. Validated known usage settles once; unknown/cancelled/invalid outcomes retain the reservation. Rate/auth failures and overrun suspend durably. Admission, settlement and revocation storage faults must suppress delivery and poison the instance; complete surviving records may have committed despite a returned sync error. Forced termination leaves a stale writer lock for investigation, not automatic cleanup. These are planned acceptance requirements, not newly verified runtime controls.
+## M2.5b offline outcome boundary
+
+The [offline integration contract](m2-text-outcomes.md) preserves strict/extended parser caps and explicit profile selection. Refusal and failure carry no answer/raw refusal/reasoning text. Validated known usage settles once; unknown/cancelled/invalid outcomes retain the reservation. Rate/auth failures and overrun suspend durably. Admission, settlement and revocation storage faults must suppress delivery and poison the instance; complete surviving records may have committed despite a returned sync error. Forced termination leaves a stale writer lock for investigation, not automatic cleanup. These controls passed synthetic outcome/fault tests on PR #36. They are isolated library controls, not a qualified provider, credential or CLI deployment boundary.
 
 ## Assets and trust boundaries
 

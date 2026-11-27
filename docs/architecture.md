@@ -19,7 +19,7 @@ flowchart LR
   B -. separately gated .-> Provider[Authorized Responses provider]
 ```
 
-This is target integration, not current executable wiring. The conversational CLI uses mock reasoning for open questions, reads AMG through a typed read-only interface and leaves mutations to `atomos-memory`. Atomic admission and extended decoder outcomes still need offline integration before any production adapter. Model output is data, never authority for memory mutation, shell execution or tools.
+This is target integration, not current executable wiring. The conversational CLI uses mock reasoning for open questions, reads AMG through a typed read-only interface and leaves mutations to `atomos-memory`. Their offline integration is verified on PR #36; CLI/session integration and a production adapter remain later slices. Model output is data, never authority for memory mutation, shell execution or tools.
 
 ## Runtime boundaries and proposed interfaces
 
@@ -53,7 +53,7 @@ All 173 host tests, 18,000 decoder samples and SSD-backed 1K/10K/100K memory rec
 
 ## M2.5b contract boundary
 
-The [offline text-outcome contract](m2-text-outcomes.md) specifies explicit extended atomic replay with Local/Completed/Refused/Failed final results. It reuses existing decoder profiles, immutable request identity, fresh context and v1 accounting records; preserves the strict reference; and adds outcome/cancellation/persistence-fault tests. Implementation is pending. No CLI command/session wiring, transport, incremental display or private memory access is added by the contract.
+The [offline text-outcome contract](m2-text-outcomes.md) specifies explicit extended atomic replay with Local/Completed/Refused/Failed final results. It reuses existing decoder profiles, immutable request identity, fresh context and v1 accounting records; preserves the strict reference; and adds outcome/cancellation/persistence-fault tests. The implementation and required offline evidence passed on PR #36, awaiting review. No CLI command/session wiring, transport, incremental display or private memory access is added by the contract.
 
 ## State, persistence and concurrency
 

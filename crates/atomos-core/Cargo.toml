@@ -34,3 +34,7 @@ required-features = ["responses-replay"]
 [[example]]
 name = "admission_bench"
 required-features = ["responses-replay"]
+
+[[example]]
+name = "outcome_bench"
+required-features = ["atomic-admission"]
