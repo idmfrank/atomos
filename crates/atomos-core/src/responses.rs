@@ -129,9 +129,12 @@ fn failure(code:Option<&str>)->Failure{
     }
 }
 #[derive(Clone,Copy,PartialEq,Eq)]
-enum Stage{Initial,Created,InProgress,Item,Part,TextDone,PartDone,ItemDone,Terminal}
+enum Stage{Initial,Created,Queued,InProgress,Item,Part,TextDone,PartDone,ItemDone,Terminal}
 struct State{
     stage:Stage,
+    compat:bool,
+    created_queued:bool,
+    null_annotations:u64,
     seq:u64,
     response:String,
     item:String,
@@ -142,9 +145,9 @@ struct State{
     validated_events:u64,
 }
 impl State{
-    fn new()->Self{Self{stage:Stage::Initial,seq:0,response:String::new(),item:String::new(),text:String::new(),terminal:None,event_class:"none",item_class:"none",validated_events:0}}
+    fn new(compat:bool)->Self{Self{stage:Stage::Initial,compat,created_queued:false,null_annotations:0,seq:0,response:String::new(),item:String::new(),text:String::new(),terminal:None,event_class:"none",item_class:"none",validated_events:0}}
     fn diagnostics(&self)->DecodeDiagnostics{
-        let stage=match self.stage{Stage::Initial=>"initial",Stage::Created=>"created",Stage::InProgress=>"in_progress",Stage::Item=>"item",Stage::Part=>"part",Stage::TextDone=>"text_done",Stage::PartDone=>"part_done",Stage::ItemDone=>"item_done",Stage::Terminal=>"terminal"};
+        let stage=match self.stage{Stage::Initial=>"initial",Stage::Created=>"created",Stage::Queued=>"queued",Stage::InProgress=>"in_progress",Stage::Item=>"item",Stage::Part=>"part",Stage::TextDone=>"text_done",Stage::PartDone=>"part_done",Stage::ItemDone=>"item_done",Stage::Terminal=>"terminal"};
         DecodeDiagnostics{stage,event_class:self.event_class,item_class:self.item_class,validated_events:self.validated_events}
     }
     fn response<'a>(&self,v:&'a Value,status:&str)->Result<&'a Value>{
@@ -169,12 +172,13 @@ impl State{
     }
     fn event(&mut self,data:&[u8],name:Option<&str>)->Result<()>{
         self.event_class="unparsed";self.item_class="none";
-        if self.seq>=MAX_EVENTS{return Err(DecodeError::Limit);}
+        if self.validated_events>=MAX_EVENTS{return Err(DecodeError::Limit);}
         require(self.stage!=Stage::Terminal)?;
         let v=json(data)?;
         let kind=string(&v,"type")?;
         self.event_class=match kind{
             "response.created"=>"response.created","response.in_progress"=>"response.in_progress",
+            "response.queued"=>"response.queued","response.output_text.annotation.added"=>"response.output_text.annotation.added",
             "response.output_item.added"=>"response.output_item.added","response.output_item.done"=>"response.output_item.done",
             "response.content_part.added"=>"response.content_part.added","response.content_part.done"=>"response.content_part.done",
             "response.output_text.delta"=>"response.output_text.delta","response.output_text.done"=>"response.output_text.done",
@@ -187,24 +191,38 @@ impl State{
             self.item_class=match v.get(key).and_then(|x|x.get("type")).and_then(Value::as_str){Some("message")=>"message",Some("reasoning")=>"reasoning",Some("output_text")=>"output_text",Some("refusal")=>"refusal",Some("function_call")=>"function_call",Some(_)=>"other",None=>"missing"};
         }
         require(name.map_or(true,|s|s==kind))?;
-        require(number(&v,"sequence_number")?==self.seq)?;
+        let seq=number(&v,"sequence_number")?;
+        // Isolated public examples use 1; candidate allows only 0 or 1
+        // at the first event and strictly consecutive numbers thereafter.
+        if self.compat&&self.validated_events==0&&seq==1{self.seq=1;}
+        require(seq==self.seq)?;
         self.seq+=1;
         match kind{
             "response.created"=>{
                 require(self.stage==Stage::Initial)?;
-                let r=self.response(&v,"in_progress")?;
+                let status=if self.compat&&v.get("response").and_then(|x|x.get("status")).and_then(Value::as_str)==Some("queued"){"queued"}else{"in_progress"};
+                let r=self.response(&v,status)?;
                 require(array(r,"output")?.is_empty()&&no_value(r,"usage"))?;
+                if self.compat{require(no_value(r,"error")&&no_value(r,"incomplete_details"))?;}
+                self.created_queued=status=="queued";
                 self.response=id(string(r,"id")?)?.to_owned();
                 self.stage=Stage::Created;
             }
-            "response.in_progress"=>{
+            "response.queued" if self.compat=>{
                 require(self.stage==Stage::Created)?;
+                let r=self.response(&v,"queued")?;
+                require(array(r,"output")?.is_empty()&&no_value(r,"usage")&&no_value(r,"error")&&no_value(r,"incomplete_details"))?;
+                self.stage=Stage::Queued;
+            }
+            "response.in_progress"=>{
+                require(self.stage==Stage::Created||(self.compat&&self.stage==Stage::Queued))?;
                 let r=self.response(&v,"in_progress")?;
                 require(array(r,"output")?.is_empty()&&no_value(r,"usage"))?;
+                if self.compat{require(no_value(r,"error")&&no_value(r,"incomplete_details"))?;}
                 self.stage=Stage::InProgress;
             }
             "response.output_item.added"=>{
-                require(matches!(self.stage,Stage::Created|Stage::InProgress)&&number(&v,"output_index")?==0)?;
+                require(matches!(self.stage,Stage::Created|Stage::InProgress)&&(!self.created_queued||self.stage==Stage::InProgress)&&number(&v,"output_index")?==0)?;
                 let item=object(&v,"item")?;
                 self.item(item,false)?;
                 self.item=id(string(item,"id")?)?.to_owned();
@@ -221,6 +239,14 @@ impl State{
                 if delta.len()>MAX_TEXT.saturating_sub(self.text.len()){return Err(DecodeError::Limit);}
                 require(!delta.is_empty()&&text_ok(delta))?;
                 self.text.push_str(delta);
+            }
+            "response.output_text.annotation.added" if self.compat=>{
+                // Only documented null annotation payloads are no-ops. The
+                // terminal text profile still requires no actual annotations.
+                require(self.stage==Stage::Part)?;self.indices(&v)?;
+                if !v.get("annotation").is_some_and(Value::is_null){return Err(DecodeError::Unsupported);}
+                require(number(&v,"annotation_index")?==self.null_annotations)?;
+                self.null_annotations+=1;
             }
             "response.output_text.done"=>{
                 require(self.stage==Stage::Part)?;self.indices(&v)?;
@@ -319,8 +345,16 @@ pub fn decode(input:impl Read,cancelled:impl FnMut()->bool)->Result<Decoded>{
     decode_diagnostic(input,cancelled).0
 }
 /// Same parser, with fixed-label diagnostic snapshot on success or failure.
-pub fn decode_diagnostic(mut input:impl Read,mut cancelled:impl FnMut()->bool)->(Result<Decoded>,DecodeDiagnostics){
-    let mut frame=Frame::default();let mut state=State::new();
+pub fn decode_diagnostic(input:impl Read,cancelled:impl FnMut()->bool)->(Result<Decoded>,DecodeDiagnostics){
+    decode_profile(input,cancelled,false)
+}
+/// Offline candidate only. No existing broker, live CLI or qualification
+/// command selects this profile. Preserve strict decoding as the reference.
+pub fn decode_compat(input:impl Read,cancelled:impl FnMut()->bool)->(Result<Decoded>,DecodeDiagnostics){
+    decode_profile(input,cancelled,true)
+}
+fn decode_profile(mut input:impl Read,mut cancelled:impl FnMut()->bool,compat:bool)->(Result<Decoded>,DecodeDiagnostics){
+    let mut frame=Frame::default();let mut state=State::new(compat);
     let result=(||->Result<Decoded>{
         let mut total=0usize;let mut buf=[0u8;4096];
         loop{
