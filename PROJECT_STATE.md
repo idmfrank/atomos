@@ -1,6 +1,6 @@
 # AtomOS — current engineering state
 
-Updated 2026-11-26 (owner WSL qualification findings). Verified executable baseline: `e4234174a4d17e4663bd0729daaca71cdc48f702` ([PR #24](https://github.com/idmfrank/atomos/pull/24)). This is the shared handoff between the ChatGPT AtomOS Project, Codex coding sessions and human maintainers. Read [AGENTS.md](AGENTS.md) first, then this file and the specific milestone documentation. Verify the actual checkout and latest CI before assuming this snapshot is current.
+Updated 2026-11-26 (owner WSL qualification findings). Verified executable baseline: `49c6cf2619583fe65bb8e6b9b337700ef3ff6047` ([PR #25](https://github.com/idmfrank/atomos/pull/25)). This is the shared handoff between the ChatGPT AtomOS Project, Codex coding sessions and human maintainers. Read [AGENTS.md](AGENTS.md) first, then this file and the specific milestone documentation. Verify the actual checkout and latest CI before assuming this snapshot is current.
 
 ## Mission and architecture
 
@@ -25,29 +25,29 @@ Design details: [README](README.md), [resource budget](docs/resource-budget.md),
 | M2.3a | Synthetic account-bound authorization and durable suspension. |
 | M2.3b–c | Official OAuth utility, encrypted vault, strict JSON and catalog support. |
 | M2.3d | Owner ran actual WSL sign-in, reopened vault, 18/18 local tests, retrieved 10 account-specific model identifiers. Owner screenshot showed enabled 50% personal app limit. Live refresh subsequently verified; revocation not tested. |
-| M2.4 | PR #19 merged, PR CI/post-merge CI/full scale all green. One-shot qualification harness ready for owner-run WSL build/preflight. Owner WSL build at 30df9b6 and 26/26 Node tests passed. First live attempt returned HTTP 200 but failed combined media/encoding validation; unknown usage retained, no successful inference validated. Owner refresh then succeeded and reservation remained present. |
+| M2.4 | PR #19 merged, PR CI/post-merge CI/full scale all green. One-shot qualification harness ready for owner-run WSL build/preflight. Owner WSL build at 30df9b6 and 26/26 Node tests passed. First two live attempts rejected at headers; third delivered 8,465 bytes and eight validated SSE events, then unsupported event. All three reservations consumed with unknown usage. Owner refresh verified; no successful terminal response validated. |
 
 ## Latest verified test and benchmark baseline
 
-2026-11-26 local date, PR #24 [CI 45914977721](https://github.com/idmfrank/atomos/actions/runs/45914977721) and [scale 45915135417](https://github.com/idmfrank/atomos/actions/runs/45915135417) passed. 86 distinct Rust + 11 Python + 38 Node = 135 tests. Owner WSL 33/33 at 5ec8b3f. Default CLI 466,512 bytes; decoder p95 23.4/15.0/13.4 microseconds at 1/64/4096-byte reads; RSS 2,236 KiB. Five real loopback groups passed.
+2026-11-26 local date, PR #25 [PR CI 45916521007](https://github.com/idmfrank/atomos/actions/runs/45916521007), [post-merge CI 45916700932](https://github.com/idmfrank/atomos/actions/runs/45916700932) and [scale 45916868587](https://github.com/idmfrank/atomos/actions/runs/45916868587) passed. 86 distinct Rust + 11 Python + 43 Node = 140 tests. Owner WSL 43/43 at 49c6cf2; rebuilt release decoder in 6.67 s. Default CLI 466,512 bytes; decoder p95 26.6/17.6/17.8 microseconds at 1/64/4096-byte reads; RSS 2,132 KiB.
 
 | Full-scale metric (p95 unless noted) | 1K | 10K | 100K |
 | --- | ---: | ---: | ---: |
 | Active assertions | 2,500 | 25,000 | 250,000 |
-| Exact recall (ms) | 0.0583 | 0.0715 | 0.0968 |
-| Graph traversal (ms) | 0.1643 | 0.1844 | 0.1873 |
-| Selective context (ms) | 0.2763 | 0.3548 | 0.3958 |
-| Common-term context (ms) | 0.3271 | 0.7151 | 3.4682 |
-| Reference common term (ms) | 0.5440 | 5.1282 | 44.6299 |
-| Remember (ms) | 1.2080 | 1.2186 | 1.1835 |
-| Correct (ms) | 1.3188 | 1.2593 | 1.3060 |
-| Forget (ms) | 1.1900 | 1.0989 | 1.1810 |
-| Active CLI RSS (KiB) | 4,304 | 4,304 | 4,116 |
+| Exact recall (ms) | 0.0606 | 0.0667 | 0.0903 |
+| Graph traversal (ms) | 0.1826 | 0.1950 | 0.2162 |
+| Selective context (ms) | 0.3186 | 0.3696 | 0.4165 |
+| Common-term context (ms) | 0.3555 | 0.7379 | 2.9926 |
+| Reference common term (ms) | 0.6000 | 4.3302 | 44.7725 |
+| Remember (ms) | 1.3983 | 1.6535 | 1.5620 |
+| Correct (ms) | 1.5960 | 1.5164 | 1.7371 |
+| Forget (ms) | 1.4620 | 1.3673 | 1.5467 |
+| Active CLI RSS (KiB) | 4,232 | 4,084 | 4,152 |
 | Ranked context / same-scope bytes (100 requests) | 38,842 / 90,072 | 39,400 / 91,000 | 40,012 / 92,020 |
-| Restore (s) | 0.151 | 1.673 | 17.309 |
-| Recovery RSS (KiB) | 7,536 | 9,240 | 9,048 |
+| Restore (s) | 0.148 | 1.650 | 17.542 |
+| Recovery RSS (KiB) | 7,428 | 9,116 | 9,152 |
 
-Same-run no-store CLI RSS 2,768 KiB; 100K incremental 1,348 KiB (1.316 MiB) versus 8 MiB target. All three datasets: 300/300 fixture facts matched, 100/100 complete packets, precision/recall 1, 0/30 parity mismatches, zero recovery verification errors and remote calls. Hosted-runner variability is not a controlled hardware performance comparison. Bytes are not tokens; RSS is not whole-system RAM; synthetic recall is not general answer quality. Actual power, token savings, physical speech and subscription usage not measured.
+Same-run no-store CLI RSS 2,684 KiB; 100K incremental 1,468 KiB (1.434 MiB) versus 8 MiB target. All three datasets: 300/300 fixture facts matched, 100/100 complete packets, precision/recall 1, 0/30 parity mismatches, zero recovery verification errors and remote calls. Hosted-runner variability is not a controlled hardware performance comparison. Bytes are not tokens; RSS is not whole-system RAM; synthetic recall is not general answer quality. Actual power, token savings, physical speech and subscription usage not measured.
 
 ## Current working environments
 
@@ -57,15 +57,15 @@ Same-run no-store CLI RSS 2,768 KiB; 100K incremental 1,348 KiB (1.316 MiB) vers
 - GitHub Actions: CI and scale. No credentials or provider inference in CI. Human reviews and merges runtime changes.
 - Existing owner vault: `$HOME/.config/atomos-auth` on WSL. Do not read/decrypt outside the existing owner-run utility, copy it, inspect secret-bearing files, print tokens/passphrase, or move it to another environment. Never commit local state. No new registration needed.
 
-## Immediate objective: M2.4 suspended pending transport investigation
+## Immediate objective: M2.4 live harness closed; offline protocol compatibility
 
-**Both authorized attempts are consumed.** Original historical combined header rejection: unknown, 1,024 planning units retained. Owner WSL follow-up at 5ec8b3f: HTTP 200, content_type_class missing, content_encoding_class missing, probe_content_type, headers_ms 1124, elapsed_ms 1125, first_body_ms null, wire_bytes 0, reported_tokens null, unknown usage. Cumulative local reservation 2,048 planning units; actual provider usage unknown for both. Zero received bytes at rejection does not mean empty provider body. No validated response or actual usage; no new live inference authorization. Preserve both records, no deletion, registration changes or alternate vault workaround. Existing attempts cannot be repeated; any new final compatibility test needs a separately reviewed gate and new owner consent.
+**All three authorized attempts consumed.** Preserve the three durable records; cumulative 3,072 local planning units retained, actual provider usage unknown. No fourth attempt, reset, alternate vault, re-registration or unattended inference. First two attempts rejected at headers. Final owner-run result at 49c6cf2 (2026-11-26): HTTP 200, missing content-type and encoding, headers 874 ms, first body byte 875 ms, HTTP body end 1591 ms, 8,465 wire/decoded bytes. Rust category Unsupported; stage part, event_class other, item_class none, 8 validated events. Missing-MIME transport successfully received bounded body and invoked decoder. No terminal response/expected text/actual usage validated. First byte is not TTFT. Unknown event name was not recorded; cannot infer annotation, reasoning, completion, output text or provider defect. No raw stream retained.
 
-Official [Sign in with ChatGPT inference documentation](https://developers.openai.com/siwc/token-sharing-open-source/models-and-inference) checked 2026-11-26: public Responses route, stream true, store false, terminal response.completed. Examples do not impose our additional response MIME gate. Missing response header is observed in this client's HTTP response, not proof of provider defect or proof body is SSE. Root cause not yet established. Do not broadly relax declared non-SSE/unknown encoding checks.
+Owner spending settings observed enabled 50% app limit, purchased credits access and reload disabled, zero credit balance; analytics lagged attempts, no attributable usage. This is settings evidence, not a billing attestation.
 
-PR #24 real loopback investigation passed: absent MIME permits only strictly validated SSE; empty/JSON/HTML/malformed/truncated/invalid usage rejected. Actual provider body unknown. Owner confirmed spending controls: app enabled 50% cap, purchased credit access and automatic reload disabled, zero credit balance; aggregate analytics lag both attempts, no attributable consumption. No provider settings change requested.
+Official [SIWC inference guide](https://developers.openai.com/siwc/token-sharing-open-source/models-and-inference) and [Responses streaming reference](https://developers.openai.com/api/reference/resources/responses/streaming-events) reviewed 2026-11-26. Official examples handle text delta, failure, completion and do not require every other event to be a text lifecycle event; success requires completed terminal. API reference has additional documented events including annotations. Exact historical event remains unknown.
 
-Current proposed revision introduces a final explicitly gated compatibility qualification, superseding the previous stop only after reviewed merge and new owner approval. Both old records retained, new separate marker binds both historical hashes, reserves 1024 additional planning units (3072 total initially). No fourth attempt, no replay. Old commands still strict, new path missing-MIME only, Rust parser unchanged in acceptance; adds static decoder stage/event/item classes and validated-event count, no raw content. Expected 43 Node / 140 distinct tests pending CI. Rebuild Rust decoder before local tests; check app controls and authorization again. See latest section of qualification doc for exact gates. No unattended execution.
+Next work: offline reference-based protocol compatibility audit. Retain strict framing, sequence/accounting/terminal/resource constraints. Compare official SDK event consumption with current narrow state machine on identical synthetic fixtures; classify documented auxiliary events explicitly, reject unsupported capability-bearing events, do not simply ignore arbitrary event types or infer usage from partial streams. Test complete/incomplete/failed terminal and trailing/duplicate/invalid usage. Consider SDK as reference oracle, not an automatic production dependency; measure overhead before choice. No new live reservation command or live execution in this harness. M2.5 account-bound Token Governor integration and hardware qualification can proceed offline while provider compatibility remains outstanding.
 
 ## Outstanding gates and next direction
 
