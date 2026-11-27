@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {withStore} from './store.mjs';
 import {SCOPES,hostId} from './protocol.mjs';
-import {MODEL,body,qualify,intent,resultRecord,decodeWire,decoderPath,sendOnce,qualifyFollowup,followupEligible} from './live-probe.mjs';
+import {MODEL,body,qualify,intent,resultRecord,decodeWire,decoderPath,sendOnce,qualifyFollowup,followupEligible,replayLoopbackCandidate} from './live-probe.mjs';
 const now=1700000000000;
 function profile(host=hostId()){return {version:1,host,client_id:'oaiapp_fixture',subject:'fixture',status:'active',scopes:SCOPES,access_token:'fixture-access',refresh_token:'fixture-refresh',id_token:'fixture-id',nonce:'fixture-nonce',saved_at:now/1000,expires_at:now/1000+3600};}
 const available=[{slug:MODEL}];
@@ -251,4 +251,80 @@ test('follow-up pending marker and original removal cannot permit another first 
   });
   fs.unlinkSync(path.join(dir,'m2-4-probe.json')); // synthetic tamper
   await withStore(dir,pass,async s=>assert.rejects(qualify(s,available,{now:()=>now+2000,send:async()=>assert.fail('no dispatch'),decode:()=>decoded}),/probe_already_attempted/));
+});
+
+
+// Exercise Node's actual HTTP parser on a loopback server, not mocked
+// IncomingMessage objects. Synthetic request only; no vault/provider access.
+async function localResponse(t,headers,bytes,{status=200,truncate=false}={}){
+  const {createServer}=await import('node:http');
+  let calls=0,seen;
+  const server=createServer({requestTimeout:3000,headersTimeout:3000},(req,res)=>{
+    calls++;let data='';
+    req.on('data',b=>{data+=b.toString();if(data.length>4096)req.destroy();});
+    req.on('end',()=>{
+      seen={method:req.method,url:req.url,authorization:req.headers.authorization,body:data};
+      res.writeHead(status,{connection:'close',...headers});
+      if(truncate){
+        res.write(bytes);
+        setImmediate(()=>res.destroy());
+      }else{
+        for(let i=0;i<bytes.length;i+=127)res.write(bytes.subarray(i,i+127));
+        res.end();
+      }
+    });
+  });
+  server.setTimeout(3000,s=>s.destroy());
+  await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolve);});
+  t.after(()=>new Promise(resolve=>{server.close(resolve);server.closeAllConnections();}));
+  const port=server.address().port;
+  return {port,seen:()=>seen,calls:()=>calls};
+}
+function syntheticWire(){return fs.readFileSync(new URL('../../crates/atomos-core/tests/fixtures/responses-text.sse',import.meta.url));}
+test('real loopback: current strict transport rejects missing MIME; offline candidate validates the identical stream',async t=>{
+  const {request}=await import('node:http');
+  const wire=syntheticWire(),f=await localResponse(t,{},wire);
+  const adapter=(_url,opts,cb)=>request({hostname:'127.0.0.1',port:f.port,path:'/v1/responses',method:opts.method,headers:opts.headers,agent:false},cb);
+  await assert.rejects(sendOnce('fixture-access',adapter),e=>e.message==='probe_content_type'&&e.metrics.content_type_class==='missing'&&e.metrics.wire_bytes===0);
+  const r=await replayLoopbackCandidate(f.port);
+  assert.equal(r.metrics.http_status,200);assert.equal(r.metrics.content_type_class,'missing');assert.equal(r.metrics.content_encoding_class,'missing');
+  assert.equal(r.metrics.decoded_bytes,wire.length);assert.equal(r.decoded.terminal,'completed');assert.deepEqual(r.decoded.usage,usage);
+  assert.equal(r.decoded.expected_text,false);assert.equal('wire' in r,false);
+  assert.deepEqual(f.seen(),{method:'POST',url:'/v1/responses',authorization:'Bearer fixture-access',body:body()});assert.equal(f.calls(),2);
+});
+test('real loopback: missing MIME does not authorize empty, JSON, HTML, malformed or nonterminal bodies',async t=>{
+  const wire=syntheticWire();
+  const terminal=wire.indexOf(Buffer.from('event: response.completed'));
+  assert.ok(terminal>0);
+  for(const bytes of [Buffer.alloc(0),Buffer.from('{"fixture":true}'),Buffer.from('<html>fixture</html>'),Buffer.from('event: response.created\ndata: {bad}\n\n'),wire.subarray(0,terminal),Buffer.from(wire.toString().replace('"total_tokens":47','"total_tokens":48'))]){
+    const f=await localResponse(t,{},bytes);
+    const r=await replayLoopbackCandidate(f.port);
+    assert.equal(r.metrics.content_type_class,'missing');assert.equal(r.decoded.terminal,'unvalidated');
+    assert.equal(resultRecord(intent(profile(),now),r.decoded,{}).state,'unknown');assert.equal(f.calls(),1);
+  }
+});
+test('real loopback: explicit non-SSE media or unsupported encoding stays rejected',async t=>{
+  for(const [h,code] of [[{'content-type':'application/json'},'probe_content_type'],[{'content-type':'text/html'},'probe_content_type'],[{'content-type':'text/plain'},'probe_content_type'],[{'content-type':''},'probe_content_type'],[{'content-encoding':'br'},'probe_content_encoding'],[{'content-encoding':'gzip, identity'},'probe_content_encoding']]){
+    const f=await localResponse(t,h,syntheticWire());
+    await assert.rejects(replayLoopbackCandidate(f.port),e=>e.message===code&&e.metrics.wire_bytes===0);
+    assert.equal(f.calls(),1);
+  }
+});
+test('real loopback: gzip, independent byte limits, invalid compression and declared truncation',async t=>{
+  const {gzipSync}=await import('node:zlib');
+  const wire=syntheticWire(),zipped=gzipSync(wire);
+  const valid=await localResponse(t,{'content-encoding':'gzip'},zipped);
+  const r=await replayLoopbackCandidate(valid.port);
+  assert.equal(r.metrics.wire_bytes,zipped.length);assert.equal(r.metrics.decoded_bytes,wire.length);assert.deepEqual(r.decoded.usage,usage);
+  for(const [h,bytes,code] of [[{},Buffer.alloc(256*1024+1),'probe_wire_limit'],[{'content-encoding':'gzip'},gzipSync(Buffer.alloc(256*1024+1)),'probe_decoded_limit'],[{'content-encoding':'gzip'},Buffer.from('not gzip'),'probe_invalid_compression']]){
+    const f=await localResponse(t,h,bytes);
+    await assert.rejects(replayLoopbackCandidate(f.port),e=>e.message===code);
+  }
+  const truncated=await localResponse(t,{'content-length':wire.length+100},wire,{truncate:true});
+  await assert.rejects(replayLoopbackCandidate(truncated.port),/probe_stream_interrupted|probe_transport_error/);
+});
+test('real loopback: no redirect or alternate endpoint, no invalid port',async t=>{
+  const f=await localResponse(t,{location:'http://127.0.0.1:1/'},Buffer.alloc(0),{status:302});
+  await assert.rejects(replayLoopbackCandidate(f.port),/probe_http_302/);assert.equal(f.calls(),1);
+  for(const port of [0,-1,65536,'1234',null])await assert.rejects(replayLoopbackCandidate(port),/invalid_fixture_port/);
 });

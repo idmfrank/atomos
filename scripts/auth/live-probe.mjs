@@ -1,5 +1,6 @@
 // Explicit one-attempt qualification only; never a general inference API.
 import https from 'node:https';
+import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -58,6 +59,18 @@ class ProbeTransportError extends AuthError{
 // Gzip is optional; both received and decompressed bodies have independent
 // 256 KiB ceilings. No MIME sniffing or acceptance of JSON as SSE.
 export function sendOnce(access,request=https.request){
+  return transport(access,request,false);
+}
+// Offline experiment only. Fixed synthetic token and numeric loopback address;
+// cannot target a provider, accept real credentials or be selected by the CLI.
+export async function replayLoopbackCandidate(port){
+  require(Number.isInteger(port)&&port>=1&&port<=65535,'invalid_fixture_port');
+  const request=(_url,options,callback)=>http.request({hostname:'127.0.0.1',port,path:'/v1/responses',method:options.method,agent:false,headers:options.headers},callback);
+  const r=await transport('fixture-access',request,true);
+  const {wire,...metrics}=r;
+  return {metrics,decoded:decodeWire(decoderPath(),wire)};
+}
+function transport(access,request,allowMissingMedia){
   return new Promise((resolve,reject)=>{
     const payload=body(),start=performance.now();
     let timer,finished=false,req,res,first=null,headers=null,total=0,chunks=[];
@@ -78,7 +91,7 @@ export function sendOnce(access,request=https.request){
         r.on('error',()=>finish('probe_stream_interrupted'));
         r.on('aborted',()=>finish('probe_stream_interrupted'));
         if(status!==200){finish(status===null?'probe_transport_error':'probe_http_'+status);return;}
-        if(media!=='sse'){finish('probe_content_type');return;}
+        if(media!=='sse'&&!(allowMissingMedia&&media==='missing')){finish('probe_content_type');return;}
         if(!['missing','identity','gzip'].includes(encoding)){finish('probe_content_encoding');return;}
         r.on('data',b=>{
           if(finished)return;

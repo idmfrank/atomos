@@ -29,25 +29,25 @@ Design details: [README](README.md), [resource budget](docs/resource-budget.md),
 
 ## Latest verified test and benchmark baseline
 
-2026-11-26, PR #22 [CI 45913123800](https://github.com/idmfrank/atomos/actions/runs/45913123800) and [post-merge CI 45913847075](https://github.com/idmfrank/atomos/actions/runs/45913847075) passed; owner WSL at 5ec8b3f passed 33/33 Node tests. 86 Rust + 11 Python + 33 Node = 130 distinct tests. Full-scale and decoder measurements below remain the previous verified PR #21 baseline ([CI 45912523399](https://github.com/idmfrank/atomos/actions/runs/45912523399), [scale 45912716094](https://github.com/idmfrank/atomos/actions/runs/45912716094)); no new full-scale run asserted. Default CLI 466,512 bytes at PR #21; decoder p95 25.2/18.0/17.9 microseconds at 1/64/4096-byte reads, RSS 2,116 KiB.
+2026-11-26, PR #22 [CI 45913123800](https://github.com/idmfrank/atomos/actions/runs/45913123800) and [post-merge CI 45913847075](https://github.com/idmfrank/atomos/actions/runs/45913847075) passed; owner WSL at 5ec8b3f passed 33/33 Node tests. 86 Rust + 11 Python + 33 Node = 130 distinct tests. PR #23 documentation-only merge 6dca0d5 [CI 45914518212](https://github.com/idmfrank/atomos/actions/runs/45914518212) and [scale 45914610881](https://github.com/idmfrank/atomos/actions/runs/45914610881) passed. Latest measurements below are from those runs. Default CLI 466,512 bytes; decoder p95 16.0/11.6/11.2 microseconds at 1/64/4096-byte reads, RSS 2,204 KiB.
 
 | Full-scale metric (p95 unless noted) | 1K | 10K | 100K |
 | --- | ---: | ---: | ---: |
 | Active assertions | 2,500 | 25,000 | 250,000 |
-| Exact recall (ms) | 0.0332 | 0.0405 | 0.0709 |
-| Graph traversal (ms) | 0.0971 | 0.1048 | 0.1203 |
-| Selective context (ms) | 0.2074 | 0.2074 | 0.2671 |
-| Common-term context (ms) | 0.2802 | 0.4498 | 2.0268 |
-| Reference common term (ms) | 0.4963 | 3.1314 | 30.5340 |
-| Remember (ms) | 1.1544 | 1.1732 | 1.4952 |
-| Correct (ms) | 1.4794 | 1.2451 | 1.4890 |
-| Forget (ms) | 1.1822 | 1.1257 | 1.1802 |
-| Active CLI RSS (KiB) | 4,200 | 4,092 | 4,272 |
+| Exact recall (ms) | 0.0602 | 0.0735 | 0.0907 |
+| Graph traversal (ms) | 0.1856 | 0.2104 | 0.2175 |
+| Selective context (ms) | 0.3252 | 0.3694 | 0.4279 |
+| Common-term context (ms) | 0.3767 | 0.7211 | 2.9899 |
+| Reference common term (ms) | 0.6271 | 5.2753 | 44.5215 |
+| Remember (ms) | 1.9301 | 1.6385 | 1.7605 |
+| Correct (ms) | 1.8385 | 1.5412 | 1.8823 |
+| Forget (ms) | 1.6882 | 1.4953 | 1.6698 |
+| Active CLI RSS (KiB) | 4,276 | 4,200 | 4,248 |
 | Ranked context / same-scope bytes (100 requests) | 38,842 / 90,072 | 39,400 / 91,000 | 40,012 / 92,020 |
-| Restore (s) | 0.099 | 1.156 | 11.982 |
-| Recovery RSS (KiB) | 7,460 | 9,296 | 9,188 |
+| Restore (s) | 0.148 | 1.647 | 17.412 |
+| Recovery RSS (KiB) | 7,448 | 9,268 | 9,096 |
 
-Same-run no-store CLI RSS 2,608 KiB; 100K incremental 1,664 KiB (1.625 MiB) versus 8 MiB target. All three datasets: 300/300 fixture facts matched, 100/100 complete packets, precision/recall 1, 0/30 parity mismatches, zero recovery verification errors and remote calls. Hosted-runner variability is not a controlled hardware performance comparison. Bytes are not tokens; RSS is not whole-system RAM; synthetic recall is not general answer quality. Actual power, token savings, physical speech and subscription usage not measured.
+Same-run no-store CLI RSS 2,620 KiB; 100K incremental 1,628 KiB (1.590 MiB) versus 8 MiB target. All three datasets: 300/300 fixture facts matched, 100/100 complete packets, precision/recall 1, 0/30 parity mismatches, zero recovery verification errors and remote calls. Hosted-runner variability is not a controlled hardware performance comparison. Bytes are not tokens; RSS is not whole-system RAM; synthetic recall is not general answer quality. Actual power, token savings, physical speech and subscription usage not measured.
 
 ## Current working environments
 
@@ -63,7 +63,9 @@ Same-run no-store CLI RSS 2,608 KiB; 100K incremental 1,664 KiB (1.625 MiB) vers
 
 Official [Sign in with ChatGPT inference documentation](https://developers.openai.com/siwc/token-sharing-open-source/models-and-inference) checked 2026-11-26: public Responses route, stream true, store false, terminal response.completed. Examples do not impose our additional response MIME gate. Missing response header is observed in this client's HTTP response, not proof of provider defect or proof body is SSE. Root cause not yet established. Do not broadly relax declared non-SSE/unknown encoding checks.
 
-Next work is offline only: compare documented curl/SDK transport semantics with native HTTPS; test a real local HTTP fixture including missing Content-Type, empty/truncated streams, non-SSE JSON/HTML, malformed events, gzip and body limits. Evaluate a narrowly scoped missing-MIME candidate path that retains all bounds, rejects explicit wrong media/encoding, and requires existing strict terminal lifecycle and usage validation. No live activation or additional reservation command in this investigation. Review provider app usage and current saved cap with owner; seek provider clarification if needed. General live inference remains disabled.
+Next work is offline only. Proposed loopback experiment adds five tests, pending CI (38 Node, 135 distinct total expected). Native live transport still requires explicit SSE MIME; candidate fixed to 127.0.0.1 with synthetic token and no CLI selection. No ledger or authorization changes.
+
+Investigation: compare documented curl/SDK transport semantics with native HTTPS; test a real local HTTP fixture including missing Content-Type, empty/truncated streams, non-SSE JSON/HTML, malformed events, gzip and body limits. Evaluate a narrowly scoped missing-MIME candidate path that retains all bounds, rejects explicit wrong media/encoding, and requires existing strict terminal lifecycle and usage validation. No live activation or additional reservation command in this investigation. Review provider app usage and current saved cap with owner; seek provider clarification if needed. General live inference remains disabled.
 
 ## Outstanding gates and next direction
 
