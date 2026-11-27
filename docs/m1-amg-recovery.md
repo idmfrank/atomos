@@ -1,5 +1,8 @@
 # M1.4d — Memory disclosure and logical recovery
 
+> **Milestone context (reviewed through PR #28, 2026-11-26):** M1.4d's schema v2 disclosure/recovery behavior below is the historical slice. M1.4e adds schema v3 indexed deletion and M1.4f adds bounded streaming backup/restore and storage accounting. See [optimization](m1-amg-optimization.md). No private authenticated deployment, encryption/key recovery or forensic deletion guarantee. [Current project state](../PROJECT_STATE.md) is authoritative; status and next-step statements below describe the original milestone unless explicitly updated.
+
+
 Status: merged in PR #8; locked offline post-merge CI passed. Synthetic data only.
 
 Schema v2 adds explicit revision-specific voice grants expiring after 1–86,400

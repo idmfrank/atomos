@@ -1,5 +1,8 @@
 # M2.3 — Synthetic account authorization boundary
 
+> **Milestone context (reviewed through PR #28, 2026-11-26):** This is the historical synthetic account-policy implementation, not a production provider permit. Owner-run official OAuth/catalog/refresh later succeeded, and three separate fixed live qualification attempts were consumed without validated completion/usage. Integrated account-bound Governor admission remains M2.5 work; no general live inference. See [auth hardening](m2-auth-hardening.md), [qualification closure](m2-first-live-qualification.md) and [inference architecture](inference-architecture.md). [Current project state](../PROJECT_STATE.md) is authoritative; status and next-step statements below describe the original milestone unless explicitly updated.
+
+
 Status: merged PR #14; post-merge CI and full scale passed. Live inference is unconditionally disabled.
 No OAuth exchange, real account grant, access token, refresh token,
 credential store, HTTP client or private AMG context is implemented.

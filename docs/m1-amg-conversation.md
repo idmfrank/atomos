@@ -1,5 +1,8 @@
 # M1.4b — Read-only conversational AMG integration
 
+> **Milestone context (reviewed through PR #28, 2026-11-26):** The original read-only conversation interface is retained. M1.4d adds explicit revision-specific expiring demo voice grants; M1.4e–f add deletion and retrieval improvements. Use the [current AMG architecture](amg-architecture.md) and [recovery/disclosure](m1-amg-recovery.md) for the newer boundary; voice is not authentication. Physical speech remains unqualified. [Current project state](../PROJECT_STATE.md) is authoritative; status and next-step statements below describe the original milestone unless explicitly updated.
+
+
 Status: merged in PR #6; locked offline post-merge CI passed. Physical audio and active-store resource validation pending. M1.4a was merged and validated in [run 45754844830](https://github.com/idmfrank/atomos/actions/runs/45754844830) (35 Rust, 5 Python tests plus smoke checks).
 
 The Rust CLI and voice event coordinator now accept an explicit existing AMG store through --memory DIR OWNER before the mode flag. Without the flag, prior local/mock behavior is unchanged. A separate SQLite read-only connection and MemoryReader trait expose identity and exact lookup only. No implicit creation, migration, fact mutation, SQL execution or remote inference. Wrong scope, missing store and unsupported schema fail closed at startup. Busy timeout is 100 ms; this is a lock wait limit, not a full query execution deadline. Indexed reads happen after a valid final turn, never in the microphone callback.

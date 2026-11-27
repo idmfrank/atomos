@@ -1,14 +1,14 @@
 # AtomOS Memory Graph (AMG)
 
-Status: accepted target architecture. M1.4a–e and scale deletion correction merged and tested. M1.4f optimization/recovery in development; full security and hardware validation pending.
+Status: accepted target architecture. M1.4a–f, schema v3 deletion, scoped context, grants, optimization and logical recovery merged and tested through 100K entities. Private deployment security and physical hardware validation pending. See [current state](../PROJECT_STATE.md).
 See [system architecture](architecture.md), [inference architecture](inference-architecture.md), [resource budget](resource-budget.md), and [threat model](threat-model.md).
 
 ## Implemented baseline versus remaining design
 
 - M1.4a: SQLite v1, local agent ID, entity keys, typed single-valued assertions/edges, source IDs, recorded-time correction history, FTS5, bounded graph traversal and data-only exact context formatting. Explicit local administration, no automatic learning. [Implementation](m1-amg-foundation.md).
 - M1.4b: explicit read-only conversational reader, persistent display name, exact owner/entity recall, bounded subject follow-up, live correction/deletion visibility, startup scope/schema checks and restricted synthetic voice preferences. [Implementation](m1-amg-conversation.md). [Post-merge CI](https://github.com/idmfrank/atomos/actions/runs/45755478646) passed 35 Rust and 9 Python tests.
-- M1.4c next: bounded graph/FTS retrieval through read-only interfaces, relevance fusion, conflict/truncation metadata and compact policy-separated context compilation. No live model calls.
-- M1.4d/e: authenticated controls, export/recovery, deletion and quota assurance, active-store benchmarks and alternative engine comparison. Valid-world-time intervals, alias resolution, multiple/conflicting assertions, complete episodic/procedural/prospective classes and key recovery are not implemented yet.
+- M1.4c: bounded graph/FTS retrieval, deterministic ranking, required facts, connector/truncation flags and byte-bounded local context preview implemented. [Implementation](m1-amg-context.md). No live model calls or private context egress.
+- M1.4d–f: expiring revision-specific demo voice grants, logical export/restore without grants, indexed deletion/schema v3, reference parity, streaming recovery and storage accounting implemented. SQLite retained; alternative engines deferred, not equivalently benchmarked. Authenticated private-memory access, encryption/key recovery, hard aggregate quota, complete memory classes and valid-world-time semantics remain unqualified or unimplemented. [Recovery](m1-amg-recovery.md) | [Optimization](m1-amg-optimization.md).
 
 The schema and architecture below specify the target, not a claim that every control or memory class exists. Current reader exposes identity, exact recall, expiring revision-specific demo voice recall and scoped graph/FTS retrieval; administration owns mutation. Voice is not authentication. Synthetic fixtures only.
 

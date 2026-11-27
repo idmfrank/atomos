@@ -1,10 +1,10 @@
 # OpenAI-native inference architecture
 
-Status: target architecture, M2.1 offline broker merged and CI-validated; M2.2 offline bounded Responses stream parsing in development. [Architecture](architecture.md) | [Resource budget](resource-budget.md). No live inference is enabled by this document.
+Status: target architecture; M2.1–M2.4c isolated offline broker, account policy and decoder profiles verified. Actual owner OAuth/catalog/refresh succeeded. Three fixed live attempts consumed without validated completion or usage. M2.5 offline account-bound integration next; no general live inference. [Current state](../PROJECT_STATE.md) | [Architecture](architecture.md) | [Resource budget](resource-budget.md).
 
 ## Integration contract
 
-Use official [Sign in with ChatGPT](https://developers.openai.com/siwc/token-sharing-open-source) documentation and verify current app eligibility, scopes, supported models, endpoint requirements and spending controls before any implementation is enabled against a real account. Private prototype eligibility is unresolved. ChatGPT Plus is not an API-key credit balance or a guaranteed raw-token quota. No undocumented endpoints, credential reuse from other clients, browser automation, account rotation or paid fallback.
+Use official [Sign in with ChatGPT](https://developers.openai.com/siwc/token-sharing-open-source) documentation and verify current app eligibility, scopes, supported models, endpoint requirements and spending controls before any implementation is enabled against a real account. Owner prototype authorization and catalog retrieval succeeded; continuing eligibility and production policy must still be verified. ChatGPT Plus is not an API-key credit balance or a guaranteed raw-token quota. No undocumented endpoints, credential reuse from other clients, browser automation, account rotation or paid fallback.
 
 Implement the supported OAuth flow with PKCE and securely stored registration/credentials; use only the authorized account and scope. Discover supported capabilities; authorized streaming Responses requests use the documented parameters (including store:false and stream:true where required). Keep conversation state locally. Do not assume access to ChatGPT memory/history or zero provider retention. Do not assume audio/Realtime is included. Verify owner has disabled additional credit spending in provider controls; if subscription-only operation cannot be established, keep live adapter disabled. The application does not change billing settings.
 
@@ -12,7 +12,7 @@ Implement the supported OAuth flow with PKCE and securely stored registration/cr
 
 Local intent resolver -> context compilation -> estimate -> governor reservation -> broker -> stream -> reconcile. The broker is the only inference egress and accepts single-use permits tied to request digest, account, maximum output, expiry and task ID. Revalidate any altered request. Concurrency reservations and durable usage updates must be atomic. An admission permit is not authorization to execute tools.
 
-Local defaults: 750,000 raw tokens per calendar month, 10% maximum background allocation, 30% reserve for interactive tasks, routine 1024 input / 256 output target, routine total ceiling 1500. Use configurable rolling short-window ceilings and per-task call/deadline limits in addition to monthly budget. Do not invent provider quota or reset timing; provider limits override local estimates. Define UTC for accounting windows and record policy versions. All retries, follow-up requests and consolidation consume the same budget. Never double-count reasoning tokens already included in reported output.
+Proposed local planning defaults (not provider entitlement or implemented monthly quota): 750,000 raw tokens per calendar month, 10% maximum background allocation, 30% reserve for interactive tasks, routine 1024 input / 256 output target, routine total ceiling 1500. Use configurable rolling short-window ceilings and per-task call/deadline limits in addition to monthly budget. Do not invent provider quota or reset timing; provider limits override local estimates. Define UTC for accounting windows and record policy versions. All retries, follow-up requests and consolidation consume the same budget. Never double-count reasoning tokens already included in reported output.
 
 Ledger fields: request ID, task ID, turn/epoch, account alias, model, priority, reservation estimate, actual input/output, cached/reasoning detail where supplied, status, timestamp, policy version. Never store OAuth tokens or complete prompts in the usage ledger. For cancellation, ambiguous dispatch or missing usage, conservatively charge the outstanding reservation until authoritative reconciliation; do not assume a refund. Handle crash recovery and expired undispatched permits distinctly from possibly dispatched calls. Estimates may be imperfect; surface discrepancies and block further admissions when over budget.
 
@@ -45,9 +45,8 @@ SQLite + FTS5 retained for M2 development; selective retrieval and memory
 benchmarks pass on CI; no cross-engine superiority claim. M2.1 merged and passed [CI](https://github.com/idmfrank/atomos/actions/runs/45833540395) (61 Rust and 11 Python tests). It implements
 an isolated typed synthetic replay broker, durable admission/settlement,
 conservative unknown usage, persistent overrun halt and local-first
-resolution. No live transport, OAuth, private-memory context, or actual
-token estimation. Existing CLI/voice remain mock-only; no bypass into a live
-provider exists. See [M2.1 implementation](m2-inference-broker.md) for
+resolution. At M2.1 no live transport, OAuth, private-memory context, or actual
+token estimation existed. Existing conversational CLI/voice remain mock-only. See [M2.1 implementation](m2-inference-broker.md) for
 implemented invariants versus remaining request-binding, parsing, account,
 window, consent and live integration gates.
 
@@ -59,4 +58,6 @@ M2.3a merged and tested. M2.3b adds [official auth-only utility](m2-official-sig
 
 M2.3b merged and offline-tested. M2.3c [hardening](m2-auth-hardening.md) adds passphrase-encrypted auth profile, bounded duplicate-key audit, owner-run read-only account-specific model discovery and checkout v7.0.1. No live inference, bearer handoff, actual eligibility proof or autonomous credential unlock. Transport and authoritative spending/generation-bound verification remain gates.
 
-M2.4 [qualification harness](m2-first-live-qualification.md): explicitly owner-run fixed nonpersonal one-shot, same account catalog and encrypted session, separate non-reusable fsynced intent/settlement, bounded HTTPS stream replay through existing Rust decoder. This is not integrated governor admission or conversational transport; no arbitrary prompts, no automatic retry, no paid fallback. A provider generation cap is unavailable; require informed acceptance for this one experiment only. No runtime integration or real inference result yet.
+M2.4 [qualification harness](m2-first-live-qualification.md): explicitly owner-run fixed nonpersonal one-shot, same account catalog and encrypted session, separate non-reusable fsynced intent/settlement, bounded HTTPS stream replay through existing Rust decoder. This is not integrated governor admission or conversational transport; no arbitrary prompts, no automatic retry, no paid fallback. A provider generation cap is unavailable; require informed acceptance for this one experiment only. No runtime integration or validated inference result. The three authorized historical attempts are consumed; final HTTP body received and eight SSE events validated, then unsupported event. Preserve all 3,072 local planning units (actual usage unknown), no fourth attempt.
+
+M2.4b–c [protocol compatibility](m2-protocol-compatibility.md) validated separate offline queued/null-annotation, bounded opaque reasoning and typed refusal profiles. No SDK parity, full model compatibility, raw reasoning, tool execution or automatic fallback. M2.5 must bind admission to a compiled request/account/model/turn, integrate durable reservation and settlement, cancellation and provider suspension, secure credentials and handle refusal without normal answer or retry. No production inference until separately reviewed security, consent and spending policy. Existing live harness stays closed.

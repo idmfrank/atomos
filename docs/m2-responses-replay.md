@@ -1,5 +1,8 @@
 # M2.2 — Bounded Responses SSE/JSON replay
 
+> **Milestone context (reviewed through PR #28, 2026-11-26):** The strict reference profile and original tests below remain intact. M2.4b–c add separate offline compatibility and extended profiles for queued/null-annotation events, bounded opaque reasoning and typed refusal. They do not change the original broker or authorize live inference. See [protocol compatibility](m2-protocol-compatibility.md) and [qualification closure](m2-first-live-qualification.md). [Current project state](../PROJECT_STATE.md) is authoritative; status and next-step statements below describe the original milestone unless explicitly updated.
+
+
 Status: merged in PR #13; locked feature-enabled CI and scale validation passed. No live
 provider traffic, OAuth, credentials, account eligibility or private AMG
 disclosure. Existing local text and voice remain mock-only.

@@ -1,6 +1,6 @@
 # AtomOS — current engineering state
 
-Updated 2026-11-26 (owner WSL qualification findings). Verified executable baseline: `61a7efc5810c67c20abdc4431f1806f41b40807c` ([PR #27](https://github.com/idmfrank/atomos/pull/27)). This is the shared handoff between the ChatGPT AtomOS Project, Codex coding sessions and human maintainers. Read [AGENTS.md](AGENTS.md) first, then this file and the specific milestone documentation. Verify the actual checkout and latest CI before assuming this snapshot is current.
+Updated 2026-11-26 (PR #28 verification and documentation reconciliation). Verified executable baseline: `f422abf14be672ab20009b2294854a02308e1f5f` ([PR #28](https://github.com/idmfrank/atomos/pull/28)). This is the shared handoff between the ChatGPT AtomOS Project, Codex coding sessions and human maintainers. Read [AGENTS.md](AGENTS.md) first, then this file and the specific milestone documentation. Verify the actual checkout and latest CI before assuming this snapshot is current.
 
 ## Mission and architecture
 
@@ -27,27 +27,29 @@ Design details: [README](README.md), [resource budget](docs/resource-budget.md),
 | M2.3d | Owner ran actual WSL sign-in, reopened vault, 18/18 local tests, retrieved 10 account-specific model identifiers. Owner screenshot showed enabled 50% personal app limit. Live refresh subsequently verified; revocation not tested. |
 | M2.4 | PR #19 merged, PR CI/post-merge CI/full scale all green. One-shot qualification harness ready for owner-run WSL build/preflight. Owner WSL build at 30df9b6 and 26/26 Node tests passed. First two live attempts rejected at headers; third delivered 8,465 bytes and eight validated SSE events, then unsupported event. All three reservations consumed with unknown usage. Owner refresh verified; no successful terminal response validated. |
 
+| M2.4b–c | PR #27 and #28 merged and verified: separate offline auxiliary and opaque reasoning/refusal profiles; strict decoder/broker and live harness unchanged. 18,000 synthetic replays passed. Actual model event compatibility still unqualified. |
+
 ## Latest verified test and benchmark baseline
 
-2026-11-26 local date, PR #27 [CI 45918304938](https://github.com/idmfrank/atomos/actions/runs/45918304938), [scale 45918448554](https://github.com/idmfrank/atomos/actions/runs/45918448554) passed. 91 Rust + 11 Python + 43 Node = 145 distinct tests; owner WSL last verified 43/43 at 49c6cf2. Default CLI 466,512 bytes; strict p95 38.1/25.5/25.1 µs, same-wire compat 42.9/25.8/25.3 µs, auxiliary 49.1/37.6/30.1 µs (1/64/4096-byte reads); combined RSS 2,144 KiB. 9,000 replays, zero errors.
+2026-11-26 local date, PR #28 [PR CI 45918815563](https://github.com/idmfrank/atomos/actions/runs/45918815563), [post-merge CI 45919051196](https://github.com/idmfrank/atomos/actions/runs/45919051196), [scale 45919185353](https://github.com/idmfrank/atomos/actions/runs/45919185353) passed. 96 Rust + 11 Python + 43 Node = 150 distinct tests; owner WSL last verified 43/43 at 49c6cf2. Default CLI 466,512 bytes. 18,000 decoder replays zero errors, combined process RSS 2,216 KiB. Decoder p95 at 1/64/4096-byte reads (µs): strict 23.4/16.5/16.3, same-wire compat 23.0/16.8/16.1, auxiliary 26.9/19.4/18.7, same-wire extended 22.6/16.6/19.8, opaque reasoning 29.1/20.9/20.1, refusal 22.3/15.6/15.2.
 
 | Full-scale metric (p95 unless noted) | 1K | 10K | 100K |
 | --- | ---: | ---: | ---: |
 | Active assertions | 2,500 | 25,000 | 250,000 |
-| Exact recall (ms) | 0.0244 | 0.0317 | 0.0504 |
-| Graph traversal (ms) | 0.0845 | 0.0876 | 0.1001 |
-| Selective context (ms) | 0.1270 | 0.1655 | 0.2163 |
-| Common-term context (ms) | 0.1569 | 0.3736 | 1.8022 |
-| Reference common term (ms) | 0.2824 | 2.4933 | 28.7214 |
-| Remember (ms) | 13.5059 | 2.4336 | 1.6047 |
-| Correct (ms) | 5.6239 | 2.1907 | 1.2718 |
-| Forget (ms) | 3.9707 | 3.3273 | 1.1674 |
-| Active CLI RSS (KiB) | 4,268 | 4,304 | 4,136 |
+| Exact recall (ms) | 0.0619 | 0.0666 | 0.0892 |
+| Graph traversal (ms) | 0.1984 | 0.2883 | 0.2099 |
+| Selective context (ms) | 0.3305 | 0.3664 | 0.4145 |
+| Common-term context (ms) | 0.3612 | 0.7336 | 3.0721 |
+| Reference common term (ms) | 0.5762 | 4.4162 | 44.0512 |
+| Remember (ms) | 1.4814 | 1.4589 | 1.5711 |
+| Correct (ms) | 1.5336 | 1.9090 | 1.9869 |
+| Forget (ms) | 1.4328 | 1.4388 | 1.4984 |
+| Active CLI RSS (KiB) | 4,104 | 4,080 | 4,144 |
 | Ranked context / same-scope bytes (100 requests) | 38,842 / 90,072 | 39,400 / 91,000 | 40,012 / 92,020 |
-| Restore (s) | 0.079 | 0.967 | 10.471 |
-| Recovery RSS (KiB) | 7,380 | 9,184 | 9,012 |
+| Restore (s) | 0.151 | 1.646 | 17.411 |
+| Recovery RSS (KiB) | 7,528 | 9,292 | 9,124 |
 
-Same-run no-store CLI RSS 2,684 KiB; 100K incremental 1,452 KiB (1.418 MiB) versus 8 MiB target. All three datasets: 300/300 fixture facts matched, 100/100 complete packets, precision/recall 1, 0/30 parity mismatches, zero recovery verification errors and remote calls. Hosted-runner variability is not a controlled hardware performance comparison. Bytes are not tokens; RSS is not whole-system RAM; synthetic recall is not general answer quality. Actual power, token savings, physical speech and subscription usage not measured.
+Same-run no-store CLI RSS 2,576 KiB; 100K incremental 1,568 KiB (1.531 MiB) versus 8 MiB target. All three datasets: 300/300 fixture facts matched, 100/100 complete packets, precision/recall 1, 0/30 parity mismatches, zero recovery verification errors and remote calls. Hosted-runner variability is not a controlled hardware performance comparison. Bytes are not tokens; RSS is not whole-system RAM; synthetic recall is not general answer quality. Actual power, token savings, physical speech and subscription usage not measured.
 
 ## Current working environments
 
@@ -65,7 +67,7 @@ Owner spending settings observed enabled 50% app limit, purchased credits access
 
 Official [SIWC inference guide](https://developers.openai.com/siwc/token-sharing-open-source/models-and-inference) and [Responses streaming reference](https://developers.openai.com/api/reference/resources/responses/streaming-events) reviewed 2026-11-26. Official examples handle text delta, failure, completion and do not require every other event to be a text lifecycle event; success requires completed terminal. API reference has additional documented events including annotations. Exact historical event remains unknown.
 
-Current work: [offline protocol compatibility audit](docs/m2-protocol-compatibility.md). M2.4b validated queued state, 0/1 sequence base and explicit null annotations. M2.4c proposes separate bounded opaque reasoning and typed refusal profile, five added Rust tests (150 distinct expected), pending CI. Strict reference, compatibility entry point and live harness unchanged. No raw reasoning, summary streaming, tool calls or fallback. Next work: offline reference-based protocol compatibility audit. Retain strict framing, sequence/accounting/terminal/resource constraints. Compare official SDK event consumption with current narrow state machine on identical synthetic fixtures; classify documented auxiliary events explicitly, reject unsupported capability-bearing events, do not simply ignore arbitrary event types or infer usage from partial streams. Test complete/incomplete/failed terminal and trailing/duplicate/invalid usage. Consider SDK as reference oracle, not an automatic production dependency; measure overhead before choice. No new live reservation command or live execution in this harness. M2.5 account-bound Token Governor integration and hardware qualification can proceed offline while provider compatibility remains outstanding.
+M2.4b–c offline [protocol compatibility](docs/m2-protocol-compatibility.md) validated queued/null-annotation events, bounded opaque reasoning item and typed refusal, with strict reference and broker unchanged. No raw reasoning/summary stream, tool calls, fallback or fourth attempt. Exact live event unknown; SDK differential execution and actual model profile qualification remain open. Next engineering objective: M2.5 offline integrated account-bound admission, cancellation and Governor settlement with the validated decoder profiles; design secure credential handoff and durable provider error suspension without enabling live requests. Physical hardware qualification may proceed independently.
 
 ## Outstanding gates and next direction
 
@@ -76,4 +78,8 @@ Current work: [offline protocol compatibility audit](docs/m2-protocol-compatibil
 
 ## Maintenance protocol
 
-Every new Codex session: read AGENTS.md and this file, inspect current commit and open PRs, verify evidence and report discrepancies before changing behavior. Maintain these files together with README and relevant technical docs when a milestone is merged or validated. Record exact commit and run URLs, test counts, measured results, remaining gates, next action and evidence provenance. Distinguish owner-reported physical/live results from synthetic CI. Never mark unrun tests as passed or an unqualified feature as complete. Do not include owner identity, secrets, network addresses, private content or raw provider responses in this public repository. Use a reviewed branch/PR for executable changes; do not merge on the owner's behalf.
+Every new Codex session: read AGENTS.md and this file, inspect current commit and open PRs, verify evidence and report discrepancies before changing behavior. Follow the [per-commit documentation rule](AGENTS.md#documentation-is-part-of-every-commit): review and update PROJECT_STATE in every authored commit; update README and all affected technical docs in the same change, then reconcile verified evidence after every merge/test run. Preserve historical milestone evidence and explicitly distinguish current instructions from superseded ones. Record exact commit and run URLs, test counts, measured results, remaining gates, next action and evidence provenance. Distinguish owner-reported physical/live results from synthetic CI. Never mark unrun tests as passed or an unqualified feature as complete. Do not include owner identity, secrets, network addresses, private content or raw provider responses in this public repository. Use a reviewed branch/PR for executable changes; do not merge on the owner's behalf.
+
+## Documentation reconciliation
+
+This documentation-only change audits the 24 Markdown files at the PR #28 baseline, updates current architecture/status/benchmark summaries and marks older milestone procedures as historical with links to current guidance. New per-commit documentation rule in AGENTS.md. No runtime or test behavior changes; this documentation PR's CI is pending until actually run. Latest executable evidence remains PR #28. No new inference authorization. Review scope: status, operational guidance and cross-document consistency; not a fresh external dependency, provider contract, full source or security audit. Historical measurements remain labeled and unchanged.

@@ -1,6 +1,6 @@
 # AtomOS architecture
 
-Status: target architecture; M1.1–M1.4b merged and automated validation passed. M1.4c retrieval/context compilation next. Conversation-first baseline. See [README](../README.md), [threat model](threat-model.md), [resource budget](resource-budget.md), [inference architecture](inference-architecture.md), [AMG architecture](amg-architecture.md).
+Status: target architecture with M1.1–M1.4f and M2.1–M2.4c offline implementation verified. Owner-run OAuth/catalog/refresh succeeded; three historical live qualification attempts consumed without a validated terminal response. M2.5 offline integration next. See [current state](../PROJECT_STATE.md), [README](../README.md), [threat model](threat-model.md), [resource budget](resource-budget.md), [inference architecture](inference-architecture.md), [AMG architecture](amg-architecture.md).
 
 ## System boundary
 
@@ -28,7 +28,7 @@ flowchart LR
   V -. Barge-in .-> T
 ```
 
-The diagram is logical: the governor makes the final admission decision after context compilation and before any provider dispatch. Speech engines must not access OpenAI credentials. Only the broker may open inference connections.
+The diagram is the target runtime, not the current executable wiring. The diagram is logical: the governor makes the final admission decision after context compilation and before any provider dispatch. Speech engines must not access OpenAI credentials. Only the broker may open inference connections.
 
 ## Runtime boundaries and proposed interfaces
 
@@ -67,7 +67,7 @@ Candidates: local wake word (openWakeWord), VAD (Silero or simpler baseline), st
 
 ## State and concurrency
 
-One turn manager owns active conversation state. Use bounded asynchronous channels and cancellation tokens; do not hold database transactions across inference. A single durable journal records committed state transitions. AMG models memory as a temporal property graph with provenance, event journal, exact/graph/FTS retrieval and bounded context compilation. SQLite is the provisional reference engine behind typed interfaces; benchmark embedded graph and KV alternatives. Use schema versioning, bounded retention, explicit migration/recovery. See [AMG architecture](amg-architecture.md). Preserve provenance, distinguish untrusted retrieved content from instructions, and enforce deletion in derived indexes. No plaintext credentials in journal.
+One turn manager owns active conversation state. Use bounded asynchronous channels and cancellation tokens; do not hold database transactions across inference. A single durable journal records committed state transitions. AMG models memory as a temporal property graph with provenance, event journal, exact/graph/FTS retrieval and bounded context compilation. SQLite + FTS5 is the retained reference engine behind typed interfaces; alternatives are deferred, not equivalently benchmarked. Use schema versioning, bounded retention, explicit migration/recovery. See [AMG architecture](amg-architecture.md). Preserve provenance, distinguish untrusted retrieved content from instructions, and enforce deletion in derived indexes. No plaintext credentials in journal.
 
 The scheduler is event-driven. Background work competes for neither interactive audio nor reserved inference capacity. Prioritize audio callbacks, local interaction and active user requests over consolidation. Avoid real-time priority changes until tested against starvation.
 
@@ -81,4 +81,4 @@ Run on a normal headless Linux development host before building a minimal distri
 
 AMG v1 implements persistent local identity, scoped entities and typed assertions/edges, recorded-time revision history, transactional correction/deletion and FTS5. The explicit administration CLI owns mutation. M1.4b adds MemoryReader and a SQLite read-only connection to the text and voice host. Exact lookup only in conversation; follow-up retains a subject key, never a cached value. Final-turn validation precedes lookup; no database operation on microphone callback. Voice demo allowlist is not authentication. No implicit store creation/migration or remote inference. See [AMG foundation](m1-amg-foundation.md) and [conversational integration](m1-amg-conversation.md).
 
-Wake word, neural VAD, physical AEC/audio, full context compiler, authenticated memory access, export/recovery, scheduler and live broker remain pending. The fixed-budget governor journal remains separate from AMG. See [AMG architecture](amg-architecture.md) for target requirements.
+M1.4c–f subsequently implemented scoped graph/FTS context, revision-specific demo voice grants, schema v3 deletion and bounded streaming logical recovery; see [AMG optimization](m1-amg-optimization.md). Private authenticated memory, encrypted recovery and aggregate quota remain gates. M2.1–M2.4c add separate offline broker, authorization, decoder profiles and owner-run auth/qualification utilities; no integrated live broker or private AMG egress. Wake word, neural VAD, physical AEC/audio and scheduler remain pending. The fixed-budget governor journal remains separate from AMG. See [AMG architecture](amg-architecture.md) for target requirements.

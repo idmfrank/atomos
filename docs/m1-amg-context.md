@@ -1,5 +1,8 @@
 # M1.4c — Scoped retrieval and context compilation
 
+> **Milestone context (reviewed through PR #28, 2026-11-26):** The original scoped context preview remains implemented; later M1.4d–f added disclosure grants, logical recovery and retrieval optimization. Private provider disclosure and integrated policy-aware inference remain gated. See [AMG architecture](amg-architecture.md) and [optimization](m1-amg-optimization.md). [Current project state](../PROJECT_STATE.md) is authoritative; status and next-step statements below describe the original milestone unless explicitly updated.
+
+
 Status: merged in PR #7; locked offline CI passed (40 Rust and 10 Python tests). M1.4b baseline passed [CI](https://github.com/idmfrank/atomos/actions/runs/45755478646).
 
 The read-only MemoryReader now accepts an explicit ContextRequest (anchor entity,

@@ -1,6 +1,6 @@
 # AtomOS threat model
 
-Status: proposed, M0. Applies from the first executable prototype. [Architecture](architecture.md).
+Status: active engineering threat model, target controls plus implemented boundaries below; not production security certification. Updated through PR #28. [Architecture](architecture.md) | [Current state](../PROJECT_STATE.md).
 
 ## Assets and trust boundaries
 
@@ -47,6 +47,15 @@ See [AMG architecture](amg-architecture.md). Explicit owner scope and authentica
 
 Conversational access is opt-in and read-only both at the typed Rust interface and SQLite open mode. Voice accepts only demonstration owner preference text fields (favorite_color, favorite_food, favorite_music) and display name; this is not a sensitivity classifier or authenticated authorization. Anyone in earshot can hear responses. Text administration trusts the OS account; owner scope is not authentication. No real private data yet. Missing stores, wrong scope, stale finals and mutation requests are covered by regression tests; no automatic learning or remote inference. Corrected/deleted values are re-read on subsequent turns, but already spoken content is not retractable. Remaining controls include authenticated scope/sensitivity policy, encryption, full source/derived-data deletion, backup/restore, crash/disk-full and aggregate quota validation. See [M1.4b](m1-amg-conversation.md).
 
-### M1.4d development
+### M1.4d–f implemented boundaries
 
 Schema v2 adds default-deny revision-specific expiring voice grants, explicit revoke and grant retirement on correction/deletion. Restore never carries grants. Logical backup/restore preserves scope, identity and history but is plaintext and not authenticated; trusted private directory only. Explicit new-directory restore may resurrect older deleted data; retention reconciliation and encrypted backup/key recovery remain gates. No provider disclosure, no real private data. See [M1.4d](m1-amg-recovery.md).
+
+M1.4e/f adds affected-record deletion indexes, scoped reference parity and bounded streaming backup verification. Hard aggregate quota, forensic erasure, encrypted backup, restore rollback/reconciliation and authenticated private-memory use remain open.
+
+## M2 verified boundaries and residual risks
+
+- Owner-run official OAuth PKCE, signed identity, scope validation, explicit refresh, encrypted private vault and catalog succeeded. Revocation untested; same-UID/root tampering, rollback, trusted time, autonomous unlock and secure broker credential handoff remain unresolved. No credential access by speech workers. See [auth hardening](m2-auth-hardening.md).
+- Offline governor and synthetic authorization reserve before dispatch, retain unknown usage, and halt/suspend under documented conditions. Integrated atomic account-bound request admission, rolling/monthly windows and real usage reconciliation remain open. Provider output ceiling is unavailable on the documented preview route; local byte/deadline caps cannot guarantee upstream generation limits. Owner settings observed, not a programmatic billing attestation.
+- Three historical fixed live attempts consumed; preserve all markers, no fourth attempt, no paid fallback or alternate vault workaround. Final body reached strict decoder, no completed response or usage validated. Sanitized diagnostics only. [Qualification closure](m2-first-live-qualification.md).
+- Offline compatibility profiles validate bounded known lifecycle events, opaque reasoning and typed refusal. Unknown events, tool execution and raw reasoning are denied. No live broker or private AMG disclosure; refusal does not trigger fallback. [Protocol compatibility](m2-protocol-compatibility.md).

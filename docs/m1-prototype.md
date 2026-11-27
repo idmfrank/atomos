@@ -1,5 +1,8 @@
 # M1 implementation slice 1: offline foundation
 
+> **Milestone context (reviewed through PR #28, 2026-11-26):** This records the original offline text foundation and its historical tests. Subsequent slices implemented the local voice coordinator, AMG and separate offline broker/account-policy/decoder components. Use [current architecture](architecture.md) and [README](../README.md) for present setup and status. The conversational CLI remains offline; no general live inference. [Current project state](../PROJECT_STATE.md) is authoritative; status and next-step statements below describe the original milestone unless explicitly updated.
+
+
 This is the first executable slice, not the completed voice prototype.
 
 ## Run on Linux
