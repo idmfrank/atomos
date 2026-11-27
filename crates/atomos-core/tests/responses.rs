@@ -1,5 +1,5 @@
 #![cfg(feature="responses-replay")]
-use atomos_core::{broker::{Broker,Error,Event,Failure,Request,Usage},governor::{Limits,Priority},responses::{decode,DecodeError,Terminal}};
+use atomos_core::{broker::{Broker,Error,Event,Failure,Request,Usage},governor::{Limits,Priority},responses::{decode,decode_compat,DecodeError,Terminal}};
 use std::{fs,io::{self,Read},path::PathBuf,sync::atomic::{AtomicU64,Ordering}};
 const WIRE:&[u8]=include_bytes!("fixtures/responses-text.sse");
 const TEXT:&str="Café 🚀\nReady.";
@@ -180,4 +180,75 @@ fn escaped_unicode_and_data_only_events_match_literal_fixture(){
     let escaped=wire().replace("é","\\u00e9").replace("🚀","\\ud83d\\ude80");
     let data_only=escaped.lines().filter(|l|!l.starts_with("event: ")).collect::<Vec<_>>().join("\n")+"\n";
     assert_eq!(decode(data_only.as_bytes(),||false).unwrap().text,TEXT);
+}
+
+
+const COMPAT:&[u8]=include_bytes!("fixtures/responses-compat.sse");
+fn compat_wire()->String{std::str::from_utf8(COMPAT).unwrap().to_owned()}
+fn compat_bad(s:&str)->DecodeError{decode_compat(s.as_bytes(),||false).0.unwrap_err()}
+#[test]
+fn compatibility_profile_matches_reference_on_original_wire_and_fragmentation(){
+    for size in [1,7,64,4096]{
+        let reference=decode(Chunks{data:WIRE,size},||false).unwrap();
+        let (candidate,diag)=decode_compat(Chunks{data:WIRE,size},||false);
+        assert_eq!(candidate.unwrap(),reference);
+        assert_eq!(diag.validated_events,10);
+        let (candidate,diag)=decode_compat(Chunks{data:COMPAT,size},||false);
+        let candidate=candidate.unwrap();assert_eq!(candidate.text,TEXT);assert_eq!(candidate.terminal,Terminal::Completed(U));
+        assert_eq!(diag.validated_events,12);assert_eq!(diag.stage,"terminal");
+    }
+    // The original reference remains strict and cannot accept this profile.
+    assert_eq!(decode(COMPAT,||false),Err(DecodeError::Protocol));
+}
+#[test]
+fn compatibility_queue_is_bound_to_response_and_before_output(){
+    let s=compat_wire();
+    assert_eq!(compat_bad(&s.replacen("\"type\":\"response.queued\",\"response\":{\"id\":\"resp_synthetic\"","\"type\":\"response.queued\",\"response\":{\"id\":\"resp_wrong\"",1)),DecodeError::Protocol);
+    let mut parts:Vec<_>=s.split("\n\n").filter(|p|!p.is_empty()).collect();
+    parts.swap(1,2);
+    assert_eq!(compat_bad(&(parts.join("\n\n")+"\n\n")),DecodeError::Protocol);
+    let bad_queue=s.replacen("\"status\":\"queued\",\"output\":[]","\"status\":\"queued\",\"output\":[{}]",1);
+    assert_eq!(compat_bad(&bad_queue),DecodeError::Protocol);
+}
+#[test]
+fn compatibility_annotation_noop_is_explicit_and_bound_to_part(){
+    let s=compat_wire();
+    for (a,b,err) in [
+        ("\"annotation\":null","\"annotation\":{\"type\":\"url_citation\",\"url\":\"https://example.invalid\"}",DecodeError::Unsupported),
+        (",\"annotation\":null","",DecodeError::Unsupported),
+        ("\"annotation_index\":0","\"annotation_index\":1",DecodeError::Protocol),
+        ("\"annotation_index\":0","\"annotation_index\":-1",DecodeError::Protocol),
+    ]{assert!(s.contains(a));assert_eq!(compat_bad(&s.replacen(a,b,1)),err);}
+    let wrong=s.replacen("\"annotation_index\":0","\"annotation_index\":0,\"annotation_index\":0",1);
+    assert_eq!(compat_bad(&wrong),DecodeError::Json);
+    let p=s.replace("\"annotations\":[]","\"annotations\":[{\"type\":\"file_citation\"}]");
+    assert_eq!(compat_bad(&p),DecodeError::Unsupported);
+}
+#[test]
+fn compatibility_retains_unknown_capability_sequence_and_terminal_denial(){
+    let s=compat_wire();
+    for kind in ["response.function_call_arguments.delta","response.reasoning_summary_text.delta","response.refusal.delta","response.future_event"]{
+        let x=s.replace("response.output_text.annotation.added",kind);
+        assert_eq!(compat_bad(&x),DecodeError::Unsupported);
+    }
+    assert_eq!(compat_bad(&s.replacen("\"sequence_number\":1","\"sequence_number\":2",1)),DecodeError::Protocol);
+    assert_eq!(compat_bad(&s.replacen("\"sequence_number\":8","\"sequence_number\":9",1)),DecodeError::Protocol);
+    let at=s.rfind("event: response.completed").unwrap();
+    assert_eq!(compat_bad(&s[..at]),DecodeError::MissingTerminal);
+    assert_eq!(compat_bad(&s.replace("\"total_tokens\":47","\"total_tokens\":48")),DecodeError::Usage);
+    assert_eq!(compat_bad(&(s.clone()+&s[at..])),DecodeError::Protocol);
+}
+#[test]
+fn compatibility_failure_never_releases_partial_text_and_event_count_not_sequence_base(){
+    let s=compat_wire();
+    let at=s.find("event: response.output_text.annotation.added").unwrap();
+    let failed=s[..at].to_owned()+&frame(serde_json::json!({"type":"response.failed","sequence_number":8,"response":{"id":"resp_synthetic","object":"response","status":"failed","error":{"code":"subscription_sharing_usage_unavailable"},"usage":null}}));
+    let d=decode_compat(failed.as_bytes(),||false).0.unwrap();
+    assert_eq!(d.terminal,Terminal::Failed(Failure::Unavailable,None));assert!(d.text.is_empty());
+    let mut many=s[..s.find("event: response.output_text.delta").unwrap()].to_owned();
+    // Five initial frames, first sequence is 1. Exactly 128 events allowed.
+    for seq in 6..=128{many+=&frame(serde_json::json!({"type":"response.output_text.delta","sequence_number":seq,"item_id":"msg_synthetic","output_index":0,"content_index":0,"delta":"x"}));}
+    assert_eq!(compat_bad(&many),DecodeError::MissingTerminal);
+    many+=&frame(serde_json::json!({"type":"response.output_text.delta","sequence_number":129,"item_id":"msg_synthetic","output_index":0,"content_index":0,"delta":"x"}));
+    assert_eq!(compat_bad(&many),DecodeError::Limit);
 }
