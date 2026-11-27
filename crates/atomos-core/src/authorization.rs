@@ -21,7 +21,7 @@ pub struct Policy {
     pub limits:Limits,
 }
 impl Policy {
-    fn valid(self)->bool {
+    pub(crate) fn valid(self)->bool {
         let l=self.limits;
         self.account!=0&&self.host!=0&&self.grant!=0
             &&self.window_start!=0&&self.window_end>self.window_start
@@ -31,11 +31,11 @@ impl Policy {
             &&l.per_request>0&&l.per_request<=l.total
             &&l.background<=l.total&&l.interactive_reserve<=l.total
     }
-    fn included_fixture(self)->bool {
+    pub(crate) fn included_fixture(self)->bool {
         self.eligible&&self.direct_scope&&self.credits_disabled&&self.auto_purchase_disabled
             &&(1..100).contains(&self.app_limit_percent)
     }
-    fn header(self)->String {
+    pub(crate) fn header(self)->String {
         format!("A1 {} {} {} {} {} {} {} {} {} {} {} {} {} {} {}",
             self.account,self.host,self.grant,self.window_start,self.window_end,self.grant_expiry,
             u8::from(self.eligible),u8::from(self.direct_scope),u8::from(self.credits_disabled),

@@ -1,6 +1,6 @@
 # AtomOS threat model
 
-Status: active engineering threat model, target controls plus implemented boundaries below; not production security certification. Updated through PR #28. [Architecture](architecture.md) | [Current state](../PROJECT_STATE.md).
+Status: active engineering threat model, target controls plus implemented boundaries below; not production security certification. Main evidence through PR #29; isolated M2.5a candidate boundary below. [Architecture](architecture.md) | [Current state](../PROJECT_STATE.md).
 
 ## Assets and trust boundaries
 
@@ -54,6 +54,8 @@ Schema v2 adds default-deny revision-specific expiring voice grants, explicit re
 M1.4e/f adds affected-record deletion indexes, scoped reference parity and bounded streaming backup verification. Hard aggregate quota, forensic erasure, encrypted backup, restore rollback/reconciliation and authenticated private-memory use remain open.
 
 ## M2 verified boundaries and residual risks
+
+- M2.5a [atomic admission candidate](m2-atomic-admission.md): synthetic account/host/grant/model/version binding, SHA-256 immutable request identity, one synced admission/reservation record, private 0700/0600 namespace, exclusive writer and bounded replay. Torn/malformed/missing/incompatible records fail closed; no reset or migration. Unknown dispatch retains reservation and blocks admission; revocation and provider suspension are durable. This trusted-local-directory prototype does not protect against same-UID tampering, hash-based content guessing, rollback, root compromise, malicious filesystem/hardware or untrusted clock sources. No live transport, credentials or private AMG egress is introduced.
 
 - Owner-run official OAuth PKCE, signed identity, scope validation, explicit refresh, encrypted private vault and catalog succeeded. Revocation untested; same-UID/root tampering, rollback, trusted time, autonomous unlock and secure broker credential handoff remain unresolved. No credential access by speech workers. See [auth hardening](m2-auth-hardening.md).
 - Offline governor and synthetic authorization reserve before dispatch, retain unknown usage, and halt/suspend under documented conditions. Integrated atomic account-bound request admission, rolling/monthly windows and real usage reconciliation remain open. Provider output ceiling is unavailable on the documented preview route; local byte/deadline caps cannot guarantee upstream generation limits. Owner settings observed, not a programmatic billing attestation.

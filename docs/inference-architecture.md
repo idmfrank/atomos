@@ -10,6 +10,8 @@ Implement the supported OAuth flow with PKCE and securely stored registration/cr
 
 ## Admission and accounting
 
+M2.5a implements an isolated, opt-in [atomic synthetic admission candidate](m2-atomic-admission.md), not the target live egress below. An owned immutable request and account/model/policy identity are checked before one fsynced admission/reservation record. No public detachable permit exists. Reference two-journal authorization, broker and strict/extended decoder implementations remain available; this candidate uses only the strict decoder. M2.5b will address extended decoder integration separately.
+
 Local intent resolver -> context compilation -> estimate -> governor reservation -> broker -> stream -> reconcile. The broker is the only inference egress and accepts single-use permits tied to request digest, account, maximum output, expiry and task ID. Revalidate any altered request. Concurrency reservations and durable usage updates must be atomic. An admission permit is not authorization to execute tools.
 
 Proposed local planning defaults (not provider entitlement or implemented monthly quota): 750,000 raw tokens per calendar month, 10% maximum background allocation, 30% reserve for interactive tasks, routine 1024 input / 256 output target, routine total ceiling 1500. Use configurable rolling short-window ceilings and per-task call/deadline limits in addition to monthly budget. Do not invent provider quota or reset timing; provider limits override local estimates. Define UTC for accounting windows and record policy versions. All retries, follow-up requests and consolidation consume the same budget. Never double-count reasoning tokens already included in reported output.

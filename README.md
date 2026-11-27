@@ -8,6 +8,8 @@ AtomOS is an experimental project to build a persistent, conversational AI agent
 
 **Session handoff:** [PROJECT_STATE.md](PROJECT_STATE.md) records the current verified baseline, next steps and gates for ChatGPT and Codex.
 
+**M2.5a candidate:** opt-in [atomic account-bound synthetic admission](docs/m2-atomic-admission.md), immutable request identity and one durable admission/reservation record. The M2.3 two-journal reference remains available; extended decoder integration is M2.5b. Offline validation is recorded in the handoff; no merge or live inference is authorized.
+
 ## Current implementation
 
 | Slice | Implemented (automated tests passed) |
@@ -30,7 +32,7 @@ AtomOS is an experimental project to build a persistent, conversational AI agent
 | M2.4 | [Historical owner-run qualification](docs/m2-first-live-qualification.md), three consumed attempts; final bounded body received, no completed inference or actual usage validated. No fourth attempt. |
 | M2.4b–c | [Offline protocol compatibility](docs/m2-protocol-compatibility.md): auxiliary events, optional opaque reasoning and typed refusal; PR #27–28 passed. Existing broker and live harness unchanged. |
 
-Latest verified executable baseline: [f422abf](https://github.com/idmfrank/atomos/commit/f422abf14be672ab20009b2294854a02308e1f5f), [Actions run 45919051196](https://github.com/idmfrank/atomos/actions/runs/45919051196), [full scale 45919185353](https://github.com/idmfrank/atomos/actions/runs/45919185353). 96 distinct Rust, 11 Python and 43 Node tests passed (150 total). No real inference in CI. Rust/Cargo 1.100.0; locked dependencies provisioned before offline build/test.
+Latest verified main baseline: [5f564ad](https://github.com/idmfrank/atomos/commit/5f564ad5641ea716d86efc894b2b132aaae9fa77), PR #29 documentation reconciliation over PR #28's runtime. [Post-merge CI 45919844209](https://github.com/idmfrank/atomos/actions/runs/45919844209), [full scale 45919947851](https://github.com/idmfrank/atomos/actions/runs/45919947851): 96 distinct Rust, 11 Python and 43 Node tests passed (150 total). No real inference in CI. Rust/Cargo 1.100.0; locked dependencies provisioned before offline build/test. M2.5a candidate evidence is separate in [the milestone document](docs/m2-atomic-admission.md).
 
 ### Benchmark results
 
@@ -54,43 +56,44 @@ Latest verified executable baseline: [f422abf](https://github.com/idmfrank/atomo
 | M2.3c | 466,512 | 2,524 | 86 | 11 |
 | M2.4 (PR #19, historical) | 466,512 | 2,588 (full-scale no-store baseline) | 86 | 11 |
 | M2.4c (PR #28) | 466,512 | 2,576 (full-scale no-store baseline) | 96 | 11 |
+| PR #29 (documentation reconciliation) | 466,512 | 2,588 (full-scale no-store baseline) | 96 | 11 |
 
 Each release CLI benchmark executes 1,000 local text interactions. Rust/Python test counts refer to the workspace suite, not benchmark samples. PR #28 passed 43 Node tests (150 distinct total); owner last reported 43/43 local Node tests at PR #25. Peak RSS is measured process memory; runner variation can affect comparisons. M2.1's broker is a separate synthetic replay example, not linked into the measured conversational CLI. Excludes OS, speech engines, Python adapter, active AMG, ledger and administration executable. See [resource budget and run links](docs/resource-budget.md).
 
-**Active AMG scale — verified PR #28 [combined benchmark](https://github.com/idmfrank/atomos/actions/runs/45919185353)**
+**Active AMG scale — verified PR #29 [combined benchmark](https://github.com/idmfrank/atomos/actions/runs/45919947851)**
 
 | Metric | 1K entities | 10K entities | 100K entities |
 | --- | ---: | ---: | ---: |
 | Active assertions | 2,500 | 25,000 | 250,000 |
 | Main DB / restore bytes | 1,216,512 | 11,186,176 | 116,084,736 |
-| Active CLI peak RSS (KiB) | 4,104 | 4,080 | 4,144 |
-| Exact recall p95 (ms) | 0.0619 | 0.0666 | 0.0892 |
-| Graph traversal p95 (ms) | 0.1984 | 0.2883 | 0.2099 |
-| Selective context p95 (ms) | 0.3305 | 0.3664 | 0.4145 |
-| Common-term context p95 (ms) | 0.3612 | 0.7336 | 3.0721 |
-| Reference common-term p95 (ms) | 0.5762 | 4.4162 | 44.0512 |
-| Remember p95 (ms) | 1.4814 | 1.4589 | 1.5711 |
-| Correct p95 (ms) | 1.5336 | 1.9090 | 1.9869 |
-| Forget p95 (ms) | 1.4328 | 1.4388 | 1.4984 |
+| Active CLI peak RSS (KiB) | 4,304 | 4,132 | 4,196 |
+| Exact recall p95 (ms) | 0.0261 | 0.0320 | 0.0474 |
+| Graph traversal p95 (ms) | 0.0812 | 0.0828 | 0.0919 |
+| Selective context p95 (ms) | 0.1382 | 0.1677 | 0.2051 |
+| Common-term context p95 (ms) | 0.2141 | 0.3829 | 1.6446 |
+| Reference common-term p95 (ms) | 0.3023 | 3.1094 | 24.9433 |
+| Remember p95 (ms) | 1.1667 | 1.0571 | 1.1274 |
+| Correct p95 (ms) | 1.2695 | 1.1047 | 1.1296 |
+| Forget p95 (ms) | 1.1991 | 1.0683 | 1.0602 |
 | Fixture precision / recall | 100% / 100% | 100% / 100% | 100% / 100% |
 | Retrieval parity mismatches | 0 / 30 | 0 / 30 | 0 / 30 |
-| Restore (seconds) | 0.151 | 1.646 | 17.411 |
-| Recovery peak RSS (KiB) | 7,528 | 9,292 | 9,124 |
+| Restore (seconds) | 0.0791 | 0.9551 | 9.8047 |
+| Recovery peak RSS (KiB) | 7,388 | 9,216 | 9,108 |
 
-Same-run no-store RSS 2,576 KiB; 100K incremental 1,568 KiB (1.531 MiB). All recovery checks passed. Hosted-runner variation is not a controlled hardware comparison; synthetic graph only, no physical voice, energy, hard aggregate quota or measured token savings. Historical export measurements remain in [resource budget](docs/resource-budget.md) and [M1.4f](docs/m1-amg-optimization.md).
+Same-run no-store RSS 2,588 KiB; 100K incremental 1,608 KiB. All recovery checks passed. Hosted-runner variation is not a controlled hardware comparison; synthetic graph only, no physical voice, energy, hard aggregate quota or measured token savings. Historical PR #28/export measurements remain in [resource budget](docs/resource-budget.md), [handoff](PROJECT_STATE.md) and [M1.4f](docs/m1-amg-optimization.md).
 
-**Responses decoder — verified PR #28 [post-merge CI](https://github.com/idmfrank/atomos/actions/runs/45919051196)**
+**Responses decoder — verified PR #29 [post-merge CI](https://github.com/idmfrank/atomos/actions/runs/45919844209)**
 
 | Profile | Fixture bytes | p95 1-byte (µs) | p95 64-byte (µs) | p95 4 KiB (µs) |
 | --- | ---: | ---: | ---: | ---: |
-| Strict reference | 2,497 | 23.4 | 16.5 | 16.3 |
-| Compatibility, same wire | 2,497 | 23.0 | 16.8 | 16.1 |
-| Auxiliary events | 2,930 | 26.9 | 19.4 | 18.7 |
-| Extended, same wire | 2,497 | 22.6 | 16.6 | 19.8 |
-| Opaque reasoning | 3,080 | 29.1 | 20.9 | 20.1 |
-| Refusal | 2,394 | 22.3 | 15.6 | 15.2 |
+| Strict reference | 2,497 | 43.7 | 26.5 | 26.0 |
+| Compatibility, same wire | 2,497 | 37.1 | 26.5 | 26.2 |
+| Auxiliary events | 2,930 | 47.0 | 31.0 | 31.0 |
+| Extended, same wire | 2,497 | 38.3 | 26.2 | 26.1 |
+| Opaque reasoning | 3,080 | 51.8 | 32.2 | 31.7 |
+| Refusal | 2,394 | 58.6 | 31.2 | 24.2 |
 
-1,000 samples per profile/read size; 18,000 synthetic replays, zero errors and provider calls. Combined decoder benchmark peak RSS 2,216 KiB; excludes network, broker fsync and speech. Default conversational CLI does not link the decoder/broker. Expanded fixtures are not equivalent inputs; compare same-wire rows for overhead, not a controlled latency claim.
+1,000 samples per profile/read size; 18,000 synthetic replays, zero errors and provider calls. Combined decoder benchmark peak RSS 2,116 KiB; excludes network, broker fsync and speech. Default conversational CLI does not link the decoder/broker. Expanded fixtures are not equivalent inputs; compare same-wire rows for overhead, not a controlled latency claim.
 
 ### Development quick start
 

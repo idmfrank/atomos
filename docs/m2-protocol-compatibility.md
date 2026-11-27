@@ -4,6 +4,8 @@ Status: M2.4b and M2.4c merged and verified; no provider calls, no new live comm
 
 ## Public contract audit (2026-11-26)
 
+M2.5a adds a separate [atomic admission candidate](m2-atomic-admission.md) using only the existing strict decoder. Compatibility and extended decoder profiles described here remain independent references; their admission integration is deferred to M2.5b. No live qualification command is reopened.
+
 [SIWC inference guide](https://developers.openai.com/siwc/token-sharing-open-source/models-and-inference): successful completion requires the terminal completed event; example consumes text deltas and handles failure, not a complete event validator. [Streaming API reference](https://developers.openai.com/api/reference/resources/responses/streaming-events): documents response.queued with queued snapshot, output_text.annotation.added with nullable annotation and item/part/annotation indices, text deltas and final snapshots, reasoning/refusal/tool events. Public examples illustrate sequence number 1; not a universal stream-start guarantee. [SDK source](https://github.com/openai/openai-node/blob/main/src/lib/responses/ResponseStream.ts) is a potential further reference, not executed or used as a differential oracle here (raw source retrieval unavailable). General API features do not imply entitlement under SIWC.
 
 | Event class | AtomOS candidate policy |

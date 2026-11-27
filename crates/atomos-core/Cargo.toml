@@ -9,6 +9,11 @@ rust-version.workspace = true
 [features]
 default = []
 responses-replay = ["dep:serde", "dep:serde_json"]
+atomic-admission = ["responses-replay", "dep:sha2"]
+
+[dependencies.sha2]
+version = "=0.10.9"
+optional = true
 
 [dependencies.serde]
 version = "=1.0.228"
@@ -24,4 +29,8 @@ required-features = ["responses-replay"]
 
 [[example]]
 name = "responses_qualify"
+required-features = ["responses-replay"]
+
+[[example]]
+name = "admission_bench"
 required-features = ["responses-replay"]

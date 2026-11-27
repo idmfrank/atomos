@@ -23,6 +23,8 @@ No unofficial endpoint or paid fallback.
 
 ## Implemented
 
+The M2.1 broker remains the reference. [M2.5a](m2-atomic-admission.md) adds an isolated atomic account-bound admission candidate; the shared checked Governor reservation decision preserves existing total/background/per-request/interactive limits. No reference decoder or broker event behavior is replaced. No transport or credential integration is added.
+
 The std-only core `broker` module is an isolated synchronous synthetic replay
 harness. The current CLI and voice pipeline remain local/mock; no code path
 from conversational AMG to the broker. No network, HTTP, JSON/SSE, tool

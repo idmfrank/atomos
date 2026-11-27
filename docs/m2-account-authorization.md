@@ -59,6 +59,8 @@ disabled. No fallback to paid API. store:false is not zero retention.
 
 ## Implemented offline policy
 
+This section describes the preserved M2.3 two-journal reference. M2.5a adds a separate [atomic admission candidate](m2-atomic-admission.md) with an immutable compiled request, synthetic model/policy binding and one admission/reservation journal. Budget denial does not consume an ID; outstanding ambiguous reservations block further inference, and local revocation can be recorded while one is outstanding. These intentional differences are isolated from the reference. Fixture eligibility is still not real account evidence.
+
 Unix-only std module authorization::AuthorizedReplay, no new dependencies.
 A separate synthetic namespace under an existing private directory contains
 an immutable policy header and dedicated existing Broker/Governor ledger.

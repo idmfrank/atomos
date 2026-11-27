@@ -4,6 +4,8 @@ pub mod audio;
 pub mod broker;
 #[cfg(unix)]
 pub mod authorization;
+#[cfg(all(unix, feature = "atomic-admission"))]
+pub mod atomic_admission;
 #[cfg(feature = "responses-replay")]
 pub mod responses;
 pub mod governor;

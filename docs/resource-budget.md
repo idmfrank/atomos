@@ -1,8 +1,12 @@
 # Resource budget and conversational benchmarks
 
-Status: engineering targets and historical measured baselines; latest verified PR #28 evidence below and in [PROJECT_STATE](../PROJECT_STATE.md). Physical voice, whole-device power and reference-device active-AMG measurements remain pending; CI scale benchmarks passed.
+Status: engineering targets and historical measured baselines; PR #29 post-merge evidence reconciled below and in [PROJECT_STATE](../PROJECT_STATE.md). M2.5a isolated admission measurements are in [atomic admission](m2-atomic-admission.md). Physical voice, whole-device power and reference-device active-AMG measurements remain pending; CI scale benchmarks passed.
 
 ## Reference configuration
+
+M2.5a candidate resource bounds: one 1 MiB journal, records at most 512 bytes, at most 1 MiB + 1 byte replay input and constant accounting/pending state. Optional pinned `sha2` 0.10.9 provides compiled identity without custom cryptography; no default runtime dependency is added. Existing strict decoder retains its own caps. `scripts/benchmark-admission.sh` separates memory validation/compilation from fsynced admission, complete replay/settlement and restart; syscall tracing is a separate run, with per-process RSS and executable sizes reported. Local storage and clock trust remain explicit limitations.
+
+PR #29 [post-merge CI](https://github.com/idmfrank/atomos/actions/runs/45919844209) / [scale](https://github.com/idmfrank/atomos/actions/runs/45919947851) verified on 5f564ad: same 150 tests and 18,000 replays, CLI 466,512 bytes; 100K active 4,196 KiB vs no-store 2,588 KiB, selective p95 0.2051 ms, common 1.6446 vs 24.9433 reference, restore 9.8047 s / 9,108 KiB; decoder process 2,116 KiB. All parity/recovery checks passed. Historical PR #28 evidence below is preserved. M2.5a local WSL final admission results: reference/candidate p95 8.3572/3.4981 ms, trace fsyncs 2/1, harness sizes 416,528/439,944 bytes, RSS 2,416/2,316 KiB, journal bytes/completed request 52.560/104.280. Larger journal buys durable request identity. No inference, energy, whole-system memory or hardware certification claim; full local scale and caveats are in PROJECT_STATE and the candidate document.
 
 Efficient x86-64 mini PC: N100/N150-class baseline or better, 16 GB RAM preferred, 256 GB SSD, wired network where practical. Compare a refurbished Core i5/Ryzen 5 host against an efficient low-power new host. USB far-field array with hardware DSP (ReSpeaker XVF3800 is a candidate) and a speaker connected through an AEC-compatible playback path. Target complete cost $300 (planning range $230–$330), not a purchase authorization. Do not purchase GPU/NPU until profiling demonstrates benefit. Reuse an existing PC for initial tests.
 
