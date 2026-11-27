@@ -133,11 +133,15 @@ PR #31 was merged externally at `a91ccd9e9190334f1d7259c9413e40494121a01c`. [Pos
 
 Candidate validation p50/p95/p99 0.077/0.170/1.021 microseconds; compilation 0.476/7.449/14.439 microseconds. Elevated compilation and reference-restart tails are retained; cause unisolated. No change in durability, accounting or input policy; hosted timing variability prevents cross-run performance claims. Candidate background charge 7,050. Full-scale post-merge tables in README/PROJECT_STATE supersede their PR-head tables while earlier evidence above is preserved.
 
-### Latest PR #32 repository baseline
+### Historical PR #32 repository baseline
 
 Repository main `5bca8a15e8245e9631d8a978a988c01cdc812f7a` has the same runtime as PR #31 and passed [post-merge CI](https://github.com/idmfrank/atomos/actions/runs/46025742630) and [full scale](https://github.com/idmfrank/atomos/actions/runs/46026109238). Same 173 distinct tests, Rust 1.75 candidate core targets and 18,000 decoder samples; zero inference. Admission p50/p95/p99 reference 0.338799/0.402973/0.492505 ms versus candidate 0.170752/0.216750/0.350707 ms; completion 0.701052/0.820529/3.705018 versus 0.367051/0.454600/0.859276 ms; restart 0.360311/0.395412/0.488649 versus 0.240815/0.259973/0.447549 ms. Traced writes/fsyncs remain 4/2 versus 2/1; RSS 2,236/2,200 KiB, harness 416,520/440,144 bytes, journal 52.560/104.280 bytes/request, exact charge 14,100 each and candidate background 7,050. No accounting errors. Validation p50/p95/p99 0.101/0.150/0.301 microseconds; compilation 0.391/0.691/1.072. Earlier runs above remain historical; do not infer controlled performance changes.
 
 The owner changed the first product target to a [CLI MVP over existing SSH](cli-mvp-roadmap.md) on 2026-11-27. Voice qualification is paused while code/tests are retained. M2.5a semantics and runtime remain unchanged. Next, define M2.5b's offline text-outcome, admission, cancellation and settlement contract; then the CLI integration slice. Add settlement persistence-failure and cancellation-boundary coverage with that behavioral change. Forced process death is separate from clean reopen tests; stale crash locks remain a manual investigation gate.
+
+## M2.5b contract, implementation pending
+
+The [text-outcome contract](m2-text-outcomes.md) specifies an explicit extended replay entry point reusing this admission/settlement state machine, fresh Context and unchanged v1 journal. The current strict API remains the frozen reference. Extended refusal settles known usage with no text; failed unknown usage remains charged/pending; rate/auth and overrun suspension remain durable. The contract adds settlement/H persistence-fault, cancellation-boundary and bounded crash-lock tests. It does not change the runtime, introduce a permit/transport, persist typed response history or claim real model qualification. Known-usage outcomes are delivered only after their required durable transitions.
 
 ## Residual risks and next milestone
 

@@ -45,6 +45,10 @@ Keep existing Rust crate/interface boundaries where useful; do not create new pr
 6. On cancellation, EOF, disconnect or errors, stop stale delivery and expose local status. Define signal/exit behavior in the CLI contract. A disconnect/socket close does not prove upstream generation or usage stopped.
 7. Persist explicit memory commits and accounting outcomes. Restart restores identity and committed facts, not necessarily volatile working turns. No automatic retry, transcript archive, reminders or background consolidation.
 
+## M2.5b contract boundary
+
+The [offline text-outcome contract](m2-text-outcomes.md) specifies explicit extended atomic replay with Local/Completed/Refused/Failed final results. It reuses existing decoder profiles, immutable request identity, fresh context and v1 accounting records; preserves the strict reference; and adds outcome/cancellation/persistence-fault tests. Implementation is pending. No CLI command/session wiring, transport, incremental display or private memory access is added by the contract.
+
 ## State, persistence and concurrency
 
 M2.5a [atomic admission](m2-atomic-admission.md) owns a private bounded ledger and one outstanding reservation. Unknown outcomes remain charged and block further synthetic admission; revocation/overrun suspension are durable. The implementation is not connected to conversational AMG, OAuth or a network. Real crash locks require manual investigation; clean reopen tests do not qualify automatic crash recovery.

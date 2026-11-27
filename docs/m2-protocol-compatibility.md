@@ -4,7 +4,7 @@ Status: M2.4b and M2.4c merged and verified; no provider calls, no new live comm
 
 ## CLI MVP direction (2026-11-27)
 
-The [active roadmap](cli-mvp-roadmap.md) prioritizes text CLI access over existing SSH and pauses voice development/physical qualification. These decoder profiles and strict reference remain unchanged. Next, define M2.5b's offline typed outcomes, admission, cancellation and settlement contract for text conversation, including refused/failed/unknown-usage cases and persistence faults. CLI integration follows. No credential/transport wiring, private AMG disclosure or new live attempt is authorized by the roadmap.
+The [active roadmap](cli-mvp-roadmap.md) prioritizes text CLI access over existing SSH and pauses voice development/physical qualification. These decoder profiles and strict reference remain unchanged. The [M2.5b offline integration contract](m2-text-outcomes.md) is prepared for review; implementation remains pending. It specifies explicit profile selection and typed local/completed/refused/failed results, known/unknown usage, cancellation and persistence faults without changing the existing decoder profiles or acceptance caps. CLI integration follows. No credential/transport wiring, private AMG disclosure or new live attempt is authorized by the roadmap.
 
 ## Public contract audit (2026-11-26)
 
