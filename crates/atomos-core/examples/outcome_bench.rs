@@ -1,20 +1,32 @@
 //! Isolated frozen-strict and extended outcome comparison; synthetic data only.
 #![allow(unknown_lints)]
 #![allow(unexpected_cfgs)]
+#[cfg(atomos_extended_candidate)]
+use atomos_core::atomic_admission::ReplayOutcome;
 use atomos_core::{
     atomic_admission::{AtomicReplay, CompiledRequest, Configuration, Context},
     authorization::{Envelope, Policy},
     broker::{Request, Usage},
     governor::{Limits, Priority},
 };
-#[cfg(atomos_extended_candidate)]
-use atomos_core::atomic_admission::ReplayOutcome;
-use std::{cell::Cell, fs, io::{Cursor, Read}, path::Path, rc::Rc, time::{Duration, Instant}};
+use std::{
+    cell::Cell,
+    fs,
+    io::{Cursor, Read},
+    path::Path,
+    rc::Rc,
+    time::{Duration, Instant},
+};
 const SSE: &[u8] = include_bytes!("../tests/fixtures/responses-text.sse");
 const AUX: &[u8] = include_bytes!("../tests/fixtures/responses-compat.sse");
 const REASON: &[u8] = include_bytes!("../tests/fixtures/responses-reasoning.sse");
 const REFUSAL: &[u8] = include_bytes!("../tests/fixtures/responses-refusal.sse");
-const EXPECTED: Usage = Usage { input:35, output:12, cached_input:10, reasoning_output:4 };
+const EXPECTED: Usage = Usage {
+    input: 35,
+    output: 12,
+    cached_input: 10,
+    reasoning_output: 4,
+};
 fn policy() -> Policy {
     Policy {
         account: 1,
@@ -111,84 +123,109 @@ fn main() {
     assert!((1..=1000).contains(&samples));
     let trace = args.get(4).map_or(false, |s| s == "trace");
     let wire = match case {
-        "strict" => SSE, "auxiliary" => AUX, "reasoning" => REASON,
-        "refusal" => REFUSAL, _ => panic!("unsupported synthetic workload"),
+        "strict" => SSE,
+        "auxiliary" => AUX,
+        "reasoning" => REASON,
+        "refusal" => REFUSAL,
+        _ => panic!("unsupported synthetic workload"),
     };
     #[cfg(not(atomos_extended_candidate))]
     assert_eq!(case, "strict");
-    let c = Configuration { policy:policy(), version:1, model:7, model_eligible:true };
-    let mut b = AtomicReplay::initialize(root,c).unwrap();
+    let c = Configuration {
+        policy: policy(),
+        version: 1,
+        model: 7,
+        model_eligible: true,
+    };
+    let mut b = AtomicReplay::initialize(root, c).unwrap();
     let initial = bytes(root);
-    let (mut admission,mut completion,mut restart,mut validation,mut compilation) =
-        (Vec::new(),Vec::new(),Vec::new(),Vec::new(),Vec::new());
+    let (mut admission, mut completion, mut restart, mut validation, mut compilation) =
+        (Vec::new(), Vec::new(), Vec::new(), Vec::new(), Vec::new());
     let mut completed = 0u64;
     #[allow(unused_mut)]
     let mut refused = 0u64;
     for id in 1..=samples {
         let t = Instant::now();
-        let r = CompiledRequest::compile(env(id),7,1,req(id)).unwrap();
+        let r = CompiledRequest::compile(env(id), 7, 1, req(id)).unwrap();
         compilation.push(t.elapsed());
-        let ctx = Context { now:200, active_turn:4, task:5 };
+        let ctx = Context {
+            now: 200,
+            active_turn: 4,
+            task: 5,
+        };
         let t = Instant::now();
-        b.validate(&r,ctx).unwrap();
+        b.validate(&r, ctx).unwrap();
         validation.push(t.elapsed());
         let measured = Rc::new(Cell::new(None));
-        if trace { println!("TRACE_START"); }
+        if trace {
+            println!("TRACE_START");
+        }
         let start = Instant::now();
-        let source = Boundary {input:Cursor::new(wire), start, time:measured.clone(), trace};
+        let source = Boundary {
+            input: Cursor::new(wire),
+            start,
+            time: measured.clone(),
+            trace,
+        };
         #[cfg(atomos_extended_candidate)]
-        let result = b.run_sse_extended(&r,ctx,source,||false);
+        let result = b.run_sse_extended(&r, ctx, source, || false);
         #[cfg(not(atomos_extended_candidate))]
-        let result = b.run_sse(&r,ctx,source,||false);
+        let result = b.run_sse(&r, ctx, source, || false);
         completion.push(start.elapsed());
         let outcome = result.expect("unexpected synthetic replay error");
         #[cfg(atomos_extended_candidate)]
         match outcome {
             ReplayOutcome::Completed(a) => {
-                assert_ne!(case,"refusal");
-                assert_eq!(a.text,"Café 🚀\nReady.");
-                assert_eq!(a.usage,Some(EXPECTED));
-                assert_eq!(a.turn,4);
+                assert_ne!(case, "refusal");
+                assert_eq!(a.text, "Café 🚀\nReady.");
+                assert_eq!(a.usage, Some(EXPECTED));
+                assert_eq!(a.turn, 4);
                 assert!(a.simulated);
                 completed += 1;
             }
-            ReplayOutcome::Refused {turn,usage} => {
-                assert_eq!(case,"refusal"); assert_eq!(turn,4);
-                assert_eq!(usage,EXPECTED); refused += 1;
+            ReplayOutcome::Refused { turn, usage } => {
+                assert_eq!(case, "refusal");
+                assert_eq!(turn, 4);
+                assert_eq!(usage, EXPECTED);
+                refused += 1;
             }
             _ => panic!("unexpected outcome"),
         }
         #[cfg(not(atomos_extended_candidate))]
         {
-            assert_eq!(outcome.text,"Café 🚀\nReady.");
-            assert_eq!(outcome.usage,Some(EXPECTED));
-            assert_eq!(outcome.turn,4); assert!(outcome.simulated);
+            assert_eq!(outcome.text, "Café 🚀\nReady.");
+            assert_eq!(outcome.usage, Some(EXPECTED));
+            assert_eq!(outcome.turn, 4);
+            assert!(outcome.simulated);
             completed += 1;
         }
         admission.push(measured.get().unwrap());
-        assert_eq!(b.charged(),id*47);
-        assert_eq!(b.background_charged(),(id/2)*47);
+        assert_eq!(b.charged(), id * 47);
+        assert_eq!(b.background_charged(), (id / 2) * 47);
         assert!(!b.suspended());
-        assert_eq!(b.next_request_id(),id+1);
-        if trace { println!("TRACE_END"); }
+        assert_eq!(b.next_request_id(), id + 1);
+        if trace {
+            println!("TRACE_END");
+        }
     }
-    assert_eq!(completed+refused,samples);
-    assert_eq!(b.persistence_counts(),(samples*2,samples*2));
+    assert_eq!(completed + refused, samples);
+    assert_eq!(b.persistence_counts(), (samples * 2, samples * 2));
     println!("case={case} samples={samples} completed={completed} refused={refused} failed=0 cancelled=0 unknown=0 unexpected_errors=0 accounting_answer_outcome_mismatches=0 real_calls=0 charged={} background={} journal_bytes={} journal_bytes_per_request={:.3} append_records={} file_syncs={}",
         b.charged(),b.background_charged(),bytes(root)-initial,(bytes(root)-initial) as f64/samples as f64,b.persistence_counts().0,b.persistence_counts().1);
     drop(b);
     for _ in 0..30 {
         let t = Instant::now();
-        let b = AtomicReplay::open(root,c).unwrap();
+        let b = AtomicReplay::open(root, c).unwrap();
         restart.push(t.elapsed());
-        assert_eq!(b.charged(),samples*47);
-        assert_eq!(b.background_charged(),(samples/2)*47);
-        assert_eq!(b.next_request_id(),samples+1); assert!(!b.suspended());
+        assert_eq!(b.charged(), samples * 47);
+        assert_eq!(b.background_charged(), (samples / 2) * 47);
+        assert_eq!(b.next_request_id(), samples + 1);
+        assert!(!b.suspended());
         drop(b);
     }
-    stats("durable_admission",admission);
-    stats("completion_including_decode_and_settlement",completion);
-    stats("restart_replay",restart);
-    stats("validation_memory",validation);
-    stats("compilation_memory",compilation);
+    stats("durable_admission", admission);
+    stats("completion_including_decode_and_settlement", completion);
+    stats("restart_replay", restart);
+    stats("validation_memory", validation);
+    stats("compilation_memory", compilation);
 }
