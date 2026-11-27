@@ -15,6 +15,16 @@ const MAX_TEXT:usize=4096;
 pub enum DecodeError { Io, Limit, Framing, Json, Protocol, Unsupported, MissingTerminal, Usage, Cancelled }
 type Result<T>=std::result::Result<T,DecodeError>;
 
+/// Bounded diagnostics: only static labels and a count, never raw events,
+/// IDs, provider metadata or text. Not a second parser or acceptance path.
+#[derive(Clone,Copy,Debug,PartialEq,Eq)]
+pub struct DecodeDiagnostics {
+    pub stage:&'static str,
+    pub event_class:&'static str,
+    pub item_class:&'static str,
+    pub validated_events:u64,
+}
+
 #[derive(Clone,Copy,Debug,PartialEq,Eq)]
 pub enum Terminal { Completed(Usage), Failed(Failure,Option<Usage>) }
 #[derive(Debug,PartialEq,Eq)]
@@ -127,9 +137,16 @@ struct State{
     item:String,
     text:String,
     terminal:Option<Terminal>,
+    event_class:&'static str,
+    item_class:&'static str,
+    validated_events:u64,
 }
 impl State{
-    fn new()->Self{Self{stage:Stage::Initial,seq:0,response:String::new(),item:String::new(),text:String::new(),terminal:None}}
+    fn new()->Self{Self{stage:Stage::Initial,seq:0,response:String::new(),item:String::new(),text:String::new(),terminal:None,event_class:"none",item_class:"none",validated_events:0}}
+    fn diagnostics(&self)->DecodeDiagnostics{
+        let stage=match self.stage{Stage::Initial=>"initial",Stage::Created=>"created",Stage::InProgress=>"in_progress",Stage::Item=>"item",Stage::Part=>"part",Stage::TextDone=>"text_done",Stage::PartDone=>"part_done",Stage::ItemDone=>"item_done",Stage::Terminal=>"terminal"};
+        DecodeDiagnostics{stage,event_class:self.event_class,item_class:self.item_class,validated_events:self.validated_events}
+    }
     fn response<'a>(&self,v:&'a Value,status:&str)->Result<&'a Value>{
         let r=object(v,"response")?;
         require(string(r,"object")?=="response"&&string(r,"status")?==status)?;
@@ -151,10 +168,24 @@ impl State{
         require(number(v,"output_index")?==0&&number(v,"content_index")?==0&&string(v,"item_id")?==self.item)
     }
     fn event(&mut self,data:&[u8],name:Option<&str>)->Result<()>{
+        self.event_class="unparsed";self.item_class="none";
         if self.seq>=MAX_EVENTS{return Err(DecodeError::Limit);}
         require(self.stage!=Stage::Terminal)?;
         let v=json(data)?;
         let kind=string(&v,"type")?;
+        self.event_class=match kind{
+            "response.created"=>"response.created","response.in_progress"=>"response.in_progress",
+            "response.output_item.added"=>"response.output_item.added","response.output_item.done"=>"response.output_item.done",
+            "response.content_part.added"=>"response.content_part.added","response.content_part.done"=>"response.content_part.done",
+            "response.output_text.delta"=>"response.output_text.delta","response.output_text.done"=>"response.output_text.done",
+            "response.completed"=>"response.completed","response.failed"=>"response.failed","response.incomplete"=>"response.incomplete","error"=>"error",
+            "response.reasoning_summary_part.added"|"response.reasoning_summary_part.done"|"response.reasoning_summary_text.delta"|"response.reasoning_summary_text.done"|"response.reasoning_text.delta"|"response.reasoning_text.done"=>"reasoning_event",
+            "response.refusal.delta"|"response.refusal.done"=>"refusal_event",_=>"other",
+        };
+        if matches!(kind,"response.output_item.added"|"response.output_item.done"|"response.content_part.added"|"response.content_part.done"){
+            let key=if matches!(kind,"response.output_item.added"|"response.output_item.done"){"item"}else{"part"};
+            self.item_class=match v.get(key).and_then(|x|x.get("type")).and_then(Value::as_str){Some("message")=>"message",Some("reasoning")=>"reasoning",Some("output_text")=>"output_text",Some("refusal")=>"refusal",Some("function_call")=>"function_call",Some(_)=>"other",None=>"missing"};
+        }
         require(name.map_or(true,|s|s==kind))?;
         require(number(&v,"sequence_number")?==self.seq)?;
         self.seq+=1;
@@ -230,6 +261,7 @@ impl State{
             }
             _=>return Err(DecodeError::Unsupported),
         }
+        self.validated_events+=1;
         Ok(())
     }
 }
@@ -283,24 +315,31 @@ impl Frame{
 /// supplies a cooperative cancellation check; a blocking Read is not timed.
 /// Limit includes comments, framing and ignored metadata. EOF is required
 /// after the terminal frame so duplicate/trailing events cannot be hidden.
-pub fn decode(mut input:impl Read,mut cancelled:impl FnMut()->bool)->Result<Decoded>{
+pub fn decode(input:impl Read,cancelled:impl FnMut()->bool)->Result<Decoded>{
+    decode_diagnostic(input,cancelled).0
+}
+/// Same parser, with fixed-label diagnostic snapshot on success or failure.
+pub fn decode_diagnostic(mut input:impl Read,mut cancelled:impl FnMut()->bool)->(Result<Decoded>,DecodeDiagnostics){
     let mut frame=Frame::default();let mut state=State::new();
-    let mut total=0usize;let mut buf=[0u8;4096];
-    loop{
+    let result=(||->Result<Decoded>{
+        let mut total=0usize;let mut buf=[0u8;4096];
+        loop{
+            if cancelled(){return Err(DecodeError::Cancelled);}
+            let n=match input.read(&mut buf){
+                Ok(n) if n<=buf.len()=>n,
+                Ok(_)=>return Err(DecodeError::Io),
+                Err(e) if e.kind()==ErrorKind::Interrupted=>return Err(DecodeError::Cancelled),
+                Err(_)=>return Err(DecodeError::Io),
+            };
+            if n==0{break;}
+            total+=n;if total>MAX_WIRE{return Err(DecodeError::Limit);}
+            for b in &buf[..n]{frame.byte(*b,&mut state)?;}
+        }
         if cancelled(){return Err(DecodeError::Cancelled);}
-        let n=match input.read(&mut buf){
-            Ok(n) if n<=buf.len()=>n,
-            Ok(_)=>return Err(DecodeError::Io),
-            Err(e) if e.kind()==ErrorKind::Interrupted=>return Err(DecodeError::Cancelled),
-            Err(_)=>return Err(DecodeError::Io),
-        };
-        if n==0{break;}
-        total+=n;if total>MAX_WIRE{return Err(DecodeError::Limit);}
-        for b in &buf[..n]{frame.byte(*b,&mut state)?;}
-    }
-    if cancelled(){return Err(DecodeError::Cancelled);}
-    if !frame.line.is_empty()||frame.has_data||frame.name.is_some(){return Err(DecodeError::Framing);}
-    let terminal=state.terminal.ok_or(DecodeError::MissingTerminal)?;
-    if !matches!(terminal,Terminal::Completed(_)){state.text.clear();}
-    Ok(Decoded{text:state.text,terminal})
+        if !frame.line.is_empty()||frame.has_data||frame.name.is_some(){return Err(DecodeError::Framing);}
+        let terminal=state.terminal.ok_or(DecodeError::MissingTerminal)?;
+        if !matches!(terminal,Terminal::Completed(_)){state.text.clear();}
+        Ok(Decoded{text:std::mem::take(&mut state.text),terminal})
+    })();
+    (result,state.diagnostics())
 }
