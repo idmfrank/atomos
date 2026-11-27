@@ -10,7 +10,7 @@ AtomOS is an experimental project to build a persistent, conversational AI agent
 
 **Session handoff:** [PROJECT_STATE.md](PROJECT_STATE.md) records the current verified baseline, next steps and gates for ChatGPT and Codex.
 
-**M2.5a:** opt-in [atomic account-bound synthetic admission](docs/m2-atomic-admission.md), immutable request identity and one durable admission/reservation record. Initial PR #30 was merged externally; [PR #31](https://github.com/idmfrank/atomos/pull/31) adds fresh admission time/active task checks and was also merged externally; PR #32 reconciled its evidence and is merged. The M2.3 two-journal reference remains available; the next scope to define is M2.5b offline decoder outcome integration for the CLI MVP. No live inference is authorized.
+**M2.5a:** opt-in [atomic account-bound synthetic admission](docs/m2-atomic-admission.md), immutable request identity and one durable admission/reservation record. Initial PR #30 was merged externally; [PR #31](https://github.com/idmfrank/atomos/pull/31) adds fresh admission time/active task checks and was also merged externally; PR #32 reconciled its evidence and is merged. The M2.3 two-journal reference remains available; the [M2.5b implementation contract](docs/m2-text-outcomes.md) now defines offline decoder outcomes, cancellation and atomic settlement for the CLI MVP; runtime implementation is pending. No live inference is authorized.
 
 ## Current implementation
 
@@ -34,7 +34,9 @@ AtomOS is an experimental project to build a persistent, conversational AI agent
 | M2.4 | [Historical owner-run qualification](docs/m2-first-live-qualification.md), three consumed attempts; final bounded body received, no completed inference or actual usage validated. No fourth attempt. |
 | M2.4b–c | [Offline protocol compatibility](docs/m2-protocol-compatibility.md): auxiliary events, optional opaque reasoning and typed refusal; PR #27–28 passed. Existing broker and live harness unchanged. |
 
-Verified repository baseline: `5bca8a15e8245e9631d8a978a988c01cdc812f7a` (PR #32), whose runtime is unchanged from PR #31. [Post-merge CI 46025742630](https://github.com/idmfrank/atomos/actions/runs/46025742630) and [full scale 46026109238](https://github.com/idmfrank/atomos/actions/runs/46026109238) are successful; jobs/logs rechecked 2026-11-27. Same 173 distinct tests (119 Rust, 11 Python, 43 Node), Rust 1.75 candidate core all-target tests and 18,000 decoder samples passed. Default CLI 466,512 bytes; decoder process peak RSS 2,180 KiB. Whole-workspace Rust 1.75 remains unverified because of the existing edition-2024 dependency. This roadmap changes documentation only; its own PR CI is pending until actually run.
+Verified main baseline: `c563599f2e2c8b5abb7e03c75bb85e67e831e75d` (PR #33 CLI roadmap), with unchanged runtime from PR #31. [Post-merge CI 46029012445](https://github.com/idmfrank/atomos/actions/runs/46029012445) passed, including the same 173 distinct tests, Rust 1.75 candidate core targets, decoder/admission/text benchmarks and 1K AMG smoke. The last full 1K/10K/100K scale run remains [46026109238](https://github.com/idmfrank/atomos/actions/runs/46026109238) on PR #32 `5bca8a15e8245e9631d8a978a988c01cdc812f7a`. PR #33 and this contract revision are documentation-only; no M2.5b runtime result is claimed. This contract revision's CI is pending at authoring; completed results belong on its PR and in the next reviewed evidence reconciliation.
+
+Detailed benchmark tables below retain their PR #32 run provenance; they are not measurements of the proposed M2.5b implementation.
 
 ### Benchmark results
 
@@ -65,7 +67,7 @@ Verified repository baseline: `5bca8a15e8245e9631d8a978a988c01cdc812f7a` (PR #32
 
 Each release CLI benchmark executes 1,000 local text interactions. Rust/Python test counts refer to the workspace suite, not benchmark samples. PR #28 passed 43 Node tests (150 distinct total); owner last reported 43/43 local Node tests at PR #25. Peak RSS is measured process memory; runner variation can affect comparisons. M2.1's broker is a separate synthetic replay example, not linked into the measured conversational CLI. Excludes OS, speech engines, Python adapter, active AMG, ledger and administration executable. See [resource budget and run links](docs/resource-budget.md).
 
-| Latest full scale, p95 unless stated | 1K | 10K | 100K |
+| Last full scale (PR #32), p95 unless stated | 1K | 10K | 100K |
 | --- | ---: | ---: | ---: |
 | Exact recall (ms) | 0.0451 | 0.0537 | 0.0718 |
 | Graph traversal (ms) | 0.1278 | 0.1349 | 0.1571 |
@@ -81,7 +83,7 @@ Each release CLI benchmark executes 1,000 local text interactions. Rust/Python t
 
 Same-run no-store RSS 2,592 KiB; 100K incremental 1,640 KiB. All sizes: 300/300 expected facts, 100 complete packets, precision/recall 1, 0/30 parity mismatches, zero recovery verification errors and remote calls. Main/restore DB bytes 1,216,512 / 11,186,176 / 116,084,736. Ranked context bytes per 100 requests 38,842 / 39,400 / 40,012 versus same-scope 90,072 / 91,000 / 92,020; bytes are not tokens.
 
-| Latest admission benchmark | Reference | Candidate |
+| Historical admission benchmark (PR #32) | Reference | Candidate |
 | --- | ---: | ---: |
 | Admission p50 / p95 / p99 (ms), 300 samples | 0.338799 / 0.402973 / 0.492505 | 0.170752 / 0.216750 / 0.350707 |
 | Completion p50 / p95 / p99 (ms) | 0.701052 / 0.820529 / 3.705018 | 0.367051 / 0.454600 / 0.859276 |
@@ -94,7 +96,7 @@ Same-run no-store RSS 2,592 KiB; 100K incremental 1,640 KiB. All sizes: 300/300 
 
 Candidate background charge 7,050; validation p50/p95/p99 0.101/0.150/0.301 microseconds; compilation 0.391/0.691/1.072 microseconds. Candidate 600 append records/syncs include admission and settlement. Each process asserts independent expected charges; direct answer/usage parity is additionally covered by integration tests. Larger candidate journal and harness are explicit tradeoffs.
 
-| Decoder profile, latest CI | p95 1-byte (microseconds) | p95 64-byte | p95 4096-byte |
+| Decoder profile, PR #32 CI | p95 1-byte (microseconds) | p95 64-byte | p95 4096-byte |
 | --- | ---: | ---: | ---: |
 | Strict reference | 27.6 | 19.7 | 19.8 |
 | Compatibility, same wire | 28.9 | 19.8 | 19.8 |
@@ -331,7 +333,7 @@ The owner-approved [CLI MVP roadmap](docs/cli-mvp-roadmap.md) supersedes the ear
 | Stage | Deliverable / exit criteria |
 | --- | --- |
 | M1 through M2.5a foundations | Existing local/mock text, AMG and synthetic inference/admission components; optional voice assets retained |
-| M2.5b: next scope to define | Offline extended decoder outcomes with atomic admission, cancellation and settlement for text conversation; preserve strict reference and accounting |
+| M2.5b: contract prepared, implementation pending | [Offline extended decoder outcomes](docs/m2-text-outcomes.md) with atomic admission, cancellation and settlement; preserve strict reference/accounting and test persistence faults |
 | CLI integration | One owner/session, bounded working context, explicit local memory operations, clear cancellation/error/accounting status, mock/synthetic responses |
 | Provider gate and integration | Separately reviewed credentials, eligibility, spending/output exposure, trusted time and usage reconciliation; new live checks need explicit owner authorization |
 | CLI MVP acceptance | Owner journey over existing SSH with persistence, local failure behavior and separately authorized real text conversation evidence |

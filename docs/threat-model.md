@@ -1,6 +1,6 @@
 # AtomOS threat model
 
-Status: active engineering threat model, target controls plus implemented boundaries below; not production security certification. Main evidence through PR #32 post-merge CI/full scale; runtime remains the PR #31 M2.5a admission-context follow-up. CLI MVP scope replaces the former voice-first release gate. [Architecture](architecture.md) | [Current state](../PROJECT_STATE.md).
+Status: active engineering threat model, target controls plus implemented boundaries below; not production security certification. PR #33 post-merge CI passed; last full-scale evidence remains PR #32, with unchanged PR #31 M2.5a runtime. CLI MVP scope replaces the former voice-first release gate. [Architecture](architecture.md) | [Current state](../PROJECT_STATE.md).
 
 ## CLI MVP security boundary
 
@@ -11,6 +11,10 @@ Treat terminal input, retrieved text and model output as untrusted at their resp
 Define cancellation, EOF, disconnect and process termination behavior. Preserve unknown usage and stale-crash-lock investigation; disconnect is not proof of cancellation/refund. Keep scope, journal caps, budget checks and fail-closed storage behavior. No unattended inference or automatic retries.
 
 Voice risks and controls below are retained for optional later use. Physical mute, AEC and bystander-capture qualification are deferred; they no longer block the text MVP. Existing offline tests remain mandatory.
+
+## Planned M2.5b outcome boundary
+
+The [offline integration contract](m2-text-outcomes.md) preserves strict/extended parser caps and explicit profile selection. Refusal and failure carry no answer/raw refusal/reasoning text. Validated known usage settles once; unknown/cancelled/invalid outcomes retain the reservation. Rate/auth failures and overrun suspend durably. Admission, settlement and revocation storage faults must suppress delivery and poison the instance; complete surviving records may have committed despite a returned sync error. Forced termination leaves a stale writer lock for investigation, not automatic cleanup. These are planned acceptance requirements, not newly verified runtime controls.
 
 ## Assets and trust boundaries
 
