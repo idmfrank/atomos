@@ -145,6 +145,10 @@ PR #34 main `5869e205167a3dde3a6a77392af294101e6a46c3` passed all 173 host tests
 
 Initial default-temp measurements were on tmpfs and are RAM-backed observations only. Persistent-directory benchmarks were rerun without weakening sync or accounting; no device power-loss, energy or actual token-spend claim. Runtime identity, v1 records, caps and suspension semantics are unchanged.
 
+## M2.5b candidate, validation pending
+
+The new explicit run_sse_extended method preserves the strict method byte-for-byte and reuses existing validation/persistence/accounting primitives. Final outcomes distinguish local/completed/refused/failed, with conservative known/unknown usage and durable suspension. Independent integration tests and unit-only real OS failure injection are drafted; compile, regression and benchmark evidence remain pending. No v1 record, header, digest, decoder, transport or CLI behavior change.
+
 ## M2.5b contract, implementation pending
 
 The [text-outcome contract](m2-text-outcomes.md) specifies an explicit extended replay entry point reusing this admission/settlement state machine, fresh Context and unchanged v1 journal. The current strict API remains the frozen reference. Extended refusal settles known usage with no text; failed unknown usage remains charged/pending; rate/auth and overrun suspension remain durable. The contract adds settlement/H persistence-fault, cancellation-boundary and bounded crash-lock tests. It does not change the runtime, introduce a permit/transport, persist typed response history or claim real model qualification. Known-usage outcomes are delivered only after their required durable transitions.

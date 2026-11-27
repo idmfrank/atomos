@@ -35,6 +35,12 @@ Design details: [README](README.md), [resource budget](docs/resource-budget.md),
 | M2.5a | PR #30 atomic synthetic admission and PR #31 fresh time/task fix merged; PR #32 documentation reconciliation merged. 173 distinct tests and current-main CI/full scale passed. No production provider wiring. |
 | CLI scope revision | Owner approved a CLI over SSH as the first MVP on 2026-11-27. Documentation only; implementation acceptance and future interface choices remain pending. |
 
+## M2.5b development revision: validation pending
+
+The extended replay implementation and independent integration/unit tests are now drafted on a review branch. Adds explicit Local/Completed/Refused/Failed outcomes through run_sse_extended; the strict method, v1 format and decoder profiles remain unchanged. Admission, settlement and halt faults are unit-only injections with actual OS errors, plus forced-child termination and conservative clean-reopen tests. Production CLI/provider wiring is not included. Compile/test/benchmark/MSRV/CI validation is pending; do not treat this development snapshot as verified. The installed local/mock release remains pinned to the previously tested SHA.
+
+Development, tests and deployment are performed directly from this chat on the owner-authorized host; no separate Codex handoff is required. Actual host/account/key identifiers remain private. No runtime merge/deployment, real account or owner vault operation is authorized by this development commit.
+
 ## Latest verified test and benchmark baseline
 
 Latest main `5869e205167a3dde3a6a77392af294101e6a46c3` (PR #34) passed [post-merge CI 46055361823](https://github.com/idmfrank/atomos/actions/runs/46055361823). The owner-authorized Linux host additionally passed all 173 distinct tests (119 Rust / 11 Python / 43 Node), 18,000 decoder samples, the existing admission comparison and 1K/10K/100K AMG scale/recovery. Release binaries were copied into a versioned owner-local release, SHA-256 verified, and smoke-tested with a new generic identity store; a single idle local/mock CLI runs in tmux. Host source is clean main at that SHA. No private facts, vault access or provider inference. [Commands, private log location and provenance](docs/linux-cli-deployment.md).

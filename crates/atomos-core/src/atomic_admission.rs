@@ -5,7 +5,7 @@ use crate::{
     broker::{Answer, Failure, Request, Usage},
     governor::{reservation_allowed, Priority},
     resolve_local,
-    responses::{self, Terminal},
+    responses::{self, ExtendedTerminal, Terminal},
 };
 use sha2::{Digest, Sha256};
 use std::os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt};
@@ -68,6 +68,14 @@ pub enum Error {
     Cancelled,
     Provider(Failure),
     Overrun,
+}
+/// Final offline replay outcome. Refusal/failure never carry provider text.
+#[derive(Debug, PartialEq, Eq)]
+pub enum ReplayOutcome {
+    Local(Answer),
+    Completed(Answer),
+    Refused { turn: u64, usage: Usage },
+    Failed { turn: u64, failure: Failure, usage: Option<Usage> },
 }
 fn io<T>(r: std::io::Result<T>) -> Result<T, Error> {
     r.map_err(|_| Error::Storage)
@@ -280,6 +288,8 @@ pub struct AtomicReplay {
     dispatches: u64,
     writes: u64,
     syncs: u64,
+    #[cfg(test)]
+    fault: Option<(u64, bool)>,
 }
 impl AtomicReplay {
     /// Explicit create-once; any existing namespace is an error, including partial creation.
@@ -310,6 +320,8 @@ impl AtomicReplay {
             dispatches: 0,
             writes: 0,
             syncs: 0,
+            #[cfg(test)]
+            fault: None,
         })
     }
     pub fn open(root: &Path, c: Configuration) -> Result<Self, Error> {
@@ -348,6 +360,8 @@ impl AtomicReplay {
             dispatches: 0,
             writes: 0,
             syncs: 0,
+            #[cfg(test)]
+            fault: None,
         })
     }
     pub fn charged(&self) -> u64 {
@@ -385,8 +399,19 @@ impl AtomicReplay {
                 return Err(Error::Storage);
             }
             self.writes = self.writes.checked_add(1).ok_or(Error::Storage)?;
+            #[cfg(test)]
+            if self.fault == Some((self.writes, true)) {
+                // Actual OS write failure, private to unit-test builds.
+                io(OpenOptions::new().write(true).open("/dev/full")
+                    .and_then(|mut f| f.write_all(line.as_bytes())))?;
+            }
             io(writeln!(self.file, "{line}"))?;
             self.syncs = self.syncs.checked_add(1).ok_or(Error::Storage)?;
+            #[cfg(test)]
+            if self.fault == Some((self.writes, false)) {
+                // Preserve complete journal bytes while simulating ambiguous sync.
+                io(File::open("/dev/null").and_then(|f| f.sync_all()))?;
+            }
             io(self.file.sync_all())?;
             self.state = next;
             Ok(())
@@ -460,6 +485,97 @@ impl AtomicReplay {
     }
     /// Same immutable owned request is validated, recorded and used in this stack frame.
     /// Strict decoder only. Unknown/interrupted outcomes retain reservation and block admission.
+    /// Explicit extended offline profile; no transport, retry or dispatch permit.
+    pub fn run_sse_extended(
+        &mut self,
+        r: &CompiledRequest,
+        context: Context,
+        input: impl Read,
+        cancelled: impl FnMut() -> bool,
+    ) -> Result<ReplayOutcome, Error> {
+        self.validate(r, context)?;
+        if let Some(text) = resolve_local(&r.text) {
+            return Ok(ReplayOutcome::Local(Answer {
+                turn: r.turn,
+                text: text.into(),
+                simulated: false,
+                usage: None,
+            }));
+        }
+        let e = r.envelope;
+        let input_bound = (r.text.len() as u64)
+            .checked_add(128)
+            .ok_or(Error::Budget)?;
+        let amount = input_bound.checked_add(r.max_output).ok_or(Error::Budget)?;
+        let priority = if r.priority == Priority::Interactive {
+            "I"
+        } else {
+            "B"
+        };
+        self.persist(&format!(
+            "A {} {} {} {} {} {} {} {} {} {}",
+            e.request_id,
+            context.now,
+            e.expires_at,
+            r.turn,
+            r.task,
+            r.text.len(),
+            r.max_output,
+            priority,
+            r.digest,
+            amount
+        ))?;
+        self.dispatches = self.dispatches.checked_add(1).ok_or(Error::Suspended)?;
+        let d = responses::decode_extended(input, cancelled).0.map_err(|e| match e {
+            responses::DecodeError::Cancelled => Error::Cancelled,
+            responses::DecodeError::MissingTerminal
+            | responses::DecodeError::Io
+            | responses::DecodeError::Usage => Error::UnknownUsage,
+            responses::DecodeError::Unsupported => Error::Provider(Failure::Unsupported),
+            _ => Error::Stream,
+        })?;
+        let (usage, failure, refused) = match d.terminal {
+            ExtendedTerminal::Completed(u) => (Some(u), None, false),
+            ExtendedTerminal::Refused(u) => (Some(u), None, true),
+            ExtendedTerminal::Failed(k, u) => (u, Some(k), false),
+        };
+        let halt = matches!(failure, Some(Failure::RateLimited | Failure::Authorization));
+        if let Some(u) = usage {
+            let actual = usage_total(u).ok_or(Error::UnknownUsage)?;
+            if actual > 1_000_000_000 {
+                return Err(Error::UnknownUsage);
+            }
+            let overrun = actual > amount || u.input > input_bound || u.output > r.max_output;
+            self.persist(&format!(
+                "S {} {} {}",
+                e.request_id,
+                actual,
+                u8::from(halt || overrun)
+            ))?;
+            if overrun {
+                return Err(Error::Overrun);
+            }
+        } else if halt {
+            self.revoke()?;
+        }
+        if let Some(k) = failure {
+            return Ok(ReplayOutcome::Failed { turn: r.turn, failure: k, usage });
+        }
+        let u = usage.ok_or(Error::UnknownUsage)?;
+        if refused {
+            return Ok(ReplayOutcome::Refused { turn: r.turn, usage: u });
+        }
+        if d.text.trim().is_empty() || u.output == 0 {
+            return Err(Error::Stream);
+        }
+        Ok(ReplayOutcome::Completed(Answer {
+            turn: r.turn,
+            text: d.text,
+            simulated: true,
+            usage: Some(u),
+        }))
+    }
+
     pub fn run_sse(
         &mut self,
         r: &CompiledRequest,
@@ -667,4 +783,128 @@ mod arithmetic_tests {
             fs::remove_dir_all(&root).unwrap();
         }
     }
+}
+
+#[cfg(test)]
+mod extended_fault_tests {
+ use super::*;
+ use crate::governor::Limits;
+ use std::sync::atomic::{AtomicU64,Ordering};
+ static NEXT:AtomicU64=AtomicU64::new(0);
+ struct Root(std::path::PathBuf);
+ impl Root{fn new()->Self{
+  let p=std::env::temp_dir().join(format!("atomos-outcome-fault-{}-{}",std::process::id(),NEXT.fetch_add(1,Ordering::Relaxed)));
+  fs::DirBuilder::new().mode(0o700).create(&p).unwrap();Self(p)
+ }}
+ impl Drop for Root{fn drop(&mut self){let _=fs::remove_dir_all(&self.0);}}
+fn config() -> Configuration {
+    Configuration {
+        version: 1,
+        model: 7,
+        model_eligible: true,
+        policy: Policy {
+            account: 1,
+            host: 2,
+            grant: 3,
+            window_start: 100,
+            window_end: 1000,
+            grant_expiry: 900,
+            eligible: true,
+            direct_scope: true,
+            credits_disabled: true,
+            auto_purchase_disabled: true,
+            app_limit_percent: 90,
+            limits: Limits::default(),
+        },
+    }
+}
+fn context() -> Context {
+    Context {
+        now: 200,
+        active_turn: 4,
+        task: 5,
+    }
+}
+fn env(id: u64) -> Envelope {
+    Envelope {
+        account: 1,
+        host: 2,
+        grant: 3,
+        request_id: id,
+        now: 200,
+        expires_at: 230,
+    }
+}
+fn req() -> Request<'static> {
+    Request {
+        turn: 4,
+        task: 5,
+        text: "question",
+        priority: Priority::Interactive,
+        max_output: 64,
+    }
+}
+fn compiled(id: u64) -> CompiledRequest {
+    CompiledRequest::compile(env(id), 7, 1, req()).unwrap()
+}
+
+ const SSE:&[u8]=include_bytes!("../tests/fixtures/responses-text.sse");
+ const REFUSAL:&[u8]=include_bytes!("../tests/fixtures/responses-refusal.sse");
+ fn auth_failure()->Vec<u8>{
+  let text=std::str::from_utf8(SSE).unwrap().replace("\r\n","\n");
+  let created=text.split("\n\n").next().unwrap();
+  format!("{created}\n\nevent: error\ndata: {{\"type\":\"error\",\"sequence_number\":1,\"code\":\"invalid_api_key\",\"message\":\"synthetic secret must not escape\"}}\n\n").into_bytes()
+ }
+ #[test]
+ fn admission_write_and_ambiguous_sync_fail_before_read(){
+  struct Never;
+  impl Read for Never{fn read(&mut self,_:&mut[u8])->std::io::Result<usize>{panic!("read before durable admission")}}
+  for write in [true,false]{
+   let f=Root::new();let mut b=AtomicReplay::initialize(&f.0,config()).unwrap();b.fault=Some((1,write));
+   assert_eq!(b.run_sse_extended(&compiled(1),context(),Never,||false),Err(Error::Storage));
+   assert_eq!(b.charged(),0);assert_eq!(b.dispatches(),0);assert!(b.suspended());drop(b);
+   let b=AtomicReplay::open(&f.0,config()).unwrap();
+   assert_eq!(b.charged(),if write{0}else{200});assert_eq!(b.suspended(),!write);
+  }
+ }
+ #[test]
+ fn settlement_write_and_ambiguous_sync_never_release_text_or_refusal(){
+  for fixture in [SSE,REFUSAL]{for write in [true,false]{
+   let f=Root::new();let mut b=AtomicReplay::initialize(&f.0,config()).unwrap();b.fault=Some((2,write));
+   assert_eq!(b.run_sse_extended(&compiled(1),context(),fixture,||false),Err(Error::Storage));
+   assert_eq!(b.charged(),200);assert!(b.suspended());assert_eq!(b.dispatches(),1);drop(b);
+   let b=AtomicReplay::open(&f.0,config()).unwrap();
+   assert_eq!(b.charged(),if write{200}else{47});assert_eq!(b.suspended(),write);assert_eq!(b.next_request_id(),2);
+  }}
+ }
+ #[test]
+ fn permanent_halt_write_and_sync_fail_closed_without_provider_payload(){
+  let wire=auth_failure();
+  for write in [true,false]{
+   let f=Root::new();let mut b=AtomicReplay::initialize(&f.0,config()).unwrap();b.fault=Some((2,write));
+   let result=b.run_sse_extended(&compiled(1),context(),wire.as_slice(),||false);
+   assert_eq!(result,Err(Error::Storage));assert!(!format!("{result:?}").contains("synthetic secret"));
+   assert_eq!(b.charged(),200);assert!(b.suspended());drop(b);
+   let b=AtomicReplay::open(&f.0,config()).unwrap();assert_eq!(b.charged(),200);assert!(b.suspended());
+   assert_eq!(b.state.halted,!write);
+  }
+ }
+ #[test]
+ fn full_capacity_and_torn_settlement_block_delivery_and_repair(){
+  struct Grow{path:std::path::PathBuf,sent:bool}
+  impl Read for Grow{fn read(&mut self,out:&mut[u8])->std::io::Result<usize>{
+   if self.sent{return Ok(0);}self.sent=true;
+   OpenOptions::new().write(true).open(&self.path)?.set_len(MAX_LOG)?;
+   out[..REFUSAL.len()].copy_from_slice(REFUSAL);Ok(REFUSAL.len())
+  }}
+  let f=Root::new();let mut b=AtomicReplay::initialize(&f.0,config()).unwrap();
+  assert_eq!(b.run_sse_extended(&compiled(1),context(),Grow{path:f.0.join(NAMESPACE).join("admission.log"),sent:false},||false),Err(Error::Storage));
+  assert_eq!(b.charged(),200);assert!(b.suspended());drop(b);
+  assert!(AtomicReplay::open(&f.0,config()).is_err());
+  let g=Root::new();let mut b=AtomicReplay::initialize(&g.0,config()).unwrap();
+  let _=b.run_sse_extended(&compiled(1),context(),&b""[..],||false);drop(b);
+  let mut file=OpenOptions::new().append(true).open(g.0.join(NAMESPACE).join("admission.log")).unwrap();
+  file.write_all(b"S 1 4").unwrap();file.sync_all().unwrap();
+  assert!(matches!(AtomicReplay::open(&g.0,config()),Err(Error::Corrupt)));
+ }
 }

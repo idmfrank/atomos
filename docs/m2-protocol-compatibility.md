@@ -6,6 +6,8 @@ Status: M2.4b and M2.4c merged and verified; no provider calls, no new live comm
 
 The [active roadmap](cli-mvp-roadmap.md) prioritizes text CLI access over existing SSH and pauses voice development/physical qualification. These decoder profiles and strict reference remain unchanged. The [M2.5b offline integration contract](m2-text-outcomes.md) is prepared for review; implementation remains pending. It specifies explicit profile selection and typed local/completed/refused/failed results, known/unknown usage, cancellation and persistence faults without changing the existing decoder profiles or acceptance caps. CLI integration follows. No credential/transport wiring, private AMG disclosure or new live attempt is authorized by the roadmap.
 
+M2.5b development now adds an explicit extended atomic entry point using the existing decoder. No profile/capability acceptance changes are proposed; new integration/fault tests are pending validation. Strict decoding remains the reference and the live harness stays closed.
+
 ## Public contract audit (2026-11-26)
 
 M2.5a adds a separate [atomic admission candidate](m2-atomic-admission.md) using only the existing strict decoder. Compatibility and extended decoder profiles described here remain independent references; their admission integration is deferred to M2.5b. No live qualification command is reopened.

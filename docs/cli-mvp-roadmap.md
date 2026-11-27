@@ -60,6 +60,8 @@ The existing trusted-local-directory model and same-UID/root/rollback limitation
 
 All three historical owner qualification attempts remain consumed, with 3,072 retained local planning units and unknown actual provider usage. Preserve the existing records; do not reset markers, register another vault/account, or reopen the historical harness. This roadmap authorizes documentation only, not live inference, credential access, private memory deployment, installs or host configuration changes.
 
+M2.5b implementation/tests are now under development directly on the authorized host; their validation is pending. The installed local/mock release remains unchanged, and no separate task handoff is needed.
+
 ## Immediate next step
 
 The [M2.5b offline implementation contract](m2-text-outcomes.md) merged in PR #34. The [Linux development/local deployment host](linux-cli-deployment.md) is ready and running the existing local/mock CLI. It defines an explicit extended atomic replay entry point and Local/Completed/Refused/Failed outcomes, durable usage/suspension rules, cancellation and persistence-fault cases, frozen-reference parity and required test/benchmark evidence. Its runtime implementation is still pending. Implement that reviewed slice first; then define the CLI command/session integration contract. This documentation change implements no runtime behavior or provider access.

@@ -14,6 +14,8 @@ The [Linux CLI deployment](linux-cli-deployment.md) at merged PR #34 is tested a
 
 The owner authorized host provisioning and local deployment, not a fourth live qualification attempt. Exact host/account/key data remain local. Local recall and bounded context use measured host resources before future remote admission; context bytes and RSS do not establish actual token, power or billing savings.
 
+M2.5b's extended synthetic replay and typed Local/Completed/Refused/Failed results are drafted, with validation pending. Known usage settles; unknown outcomes stay charged/pending; refusal contains no answer text. This is library integration only, not a provider adapter or conversational CLI integration.
+
 ## Integration contract
 
 Use official [Sign in with ChatGPT](https://developers.openai.com/siwc/token-sharing-open-source) documentation and verify current app eligibility, scopes, supported models, endpoint requirements and spending controls before any implementation is enabled against a real account. Owner prototype authorization and catalog retrieval succeeded; continuing eligibility and production policy must still be verified. ChatGPT Plus is not an API-key credit balance or a guaranteed raw-token quota. No undocumented endpoints, credential reuse from other clients, browser automation, account rotation or paid fallback.

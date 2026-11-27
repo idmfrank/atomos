@@ -8,6 +8,8 @@ AtomOS is an experimental project to build a persistent, conversational AI agent
 
 **Status:** M1.1–M1.4f local runtime and AMG foundations merged and offline/scale-tested. M2.1–M2.3d synthetic broker/authorization, bounded replay, official owner-run OAuth, encrypted vault, model discovery and token refresh verified at their respective gates. M2.4's three live qualification attempts are consumed with unknown usage; the final attempt received 8,465 bytes and validated eight SSE events before an unsupported event. M2.4b–c isolated offline auxiliary-event, opaque reasoning and refusal profiles merged and tested. General live inference, integrated account-bound admission, physical speech/power, private memory deployment and bootable OS remain unqualified. M2.5a offline admission is implemented; its time/task follow-up is merged, and M2.5b extended decoder integration is next.
 
+**M2.5b development:** an explicit extended atomic replay implementation and typed outcomes are under development, with independent cancellation/fault/crash tests. Validation is pending; ordinary conversation still uses the installed local/mock CLI. Development proceeds directly on the authorized Linux host without a separate handoff.
+
 **Session handoff:** [PROJECT_STATE.md](PROJECT_STATE.md) records the current verified baseline, next steps and gates for ChatGPT and Codex.
 
 **Linux deployment:** the existing local/mock CLI is now built, tested and running under the selected owner account on the headless Linux reference host. [Setup, launch and evidence](docs/linux-cli-deployment.md). Main `5869e20` (PR #34) passed post-merge CI and all 173 host tests, 18,000 decoder samples and SSD-backed 1K/10K/100K scale/recovery. M2.5b runtime and real provider conversation remain pending.

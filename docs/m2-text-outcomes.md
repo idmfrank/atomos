@@ -1,6 +1,6 @@
 # M2.5b: Offline text outcomes and atomic settlement contract
 
-Status: implementation contract prepared 2026-11-27 for review; runtime not implemented by this document. Baseline `c563599f2e2c8b5abb7e03c75bb85e67e831e75d` (merged PR #33) passed [post-merge CI 46029012445](https://github.com/idmfrank/atomos/actions/runs/46029012445). It has the same executable behavior as PR #31. The last full 1K/10K/100K run remains [46026109238](https://github.com/idmfrank/atomos/actions/runs/46026109238) on PR #32 `5bca8a15e8245e9631d8a978a988c01cdc812f7a`. These are baseline results, not M2.5b validation.
+Status: accepted contract (merged PR #34); runtime implementation and independent tests are now drafted on a review branch. Compilation, complete validation and benchmarks are pending. The installed CLI remains local/mock; no provider connection is introduced. Baseline `c563599f2e2c8b5abb7e03c75bb85e67e831e75d` (merged PR #33) passed [post-merge CI 46029012445](https://github.com/idmfrank/atomos/actions/runs/46029012445). It has the same executable behavior as PR #31. The last full 1K/10K/100K run remains [46026109238](https://github.com/idmfrank/atomos/actions/runs/46026109238) on PR #32 `5bca8a15e8245e9631d8a978a988c01cdc812f7a`. These are baseline results, not M2.5b validation.
 
 [CLI roadmap](cli-mvp-roadmap.md) | [Current state](../PROJECT_STATE.md) | [Atomic admission](m2-atomic-admission.md) | [Protocol profiles](m2-protocol-compatibility.md) | [Inference architecture](inference-architecture.md)
 

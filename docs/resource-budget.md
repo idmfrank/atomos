@@ -18,6 +18,10 @@ PR #33's documentation-only CLI roadmap is now merged at `c563599f2e2c8b5abb7e03
 
 The [implementation contract](m2-text-outcomes.md#benchmark-contract) requires equal-wire frozen strict-atomic versus extended-atomic measurements on identical policies, request sequences, state, filesystem and durability. Preserve 300-request mixed-priority independent expectations (14,100 total / 7,050 background), separate compilation/validation, first-read admission, complete decode/settlement and restart timings, actual syscall traces, peak RSS, harness/CLI bytes and journal growth. Auxiliary/reasoning/refusal workloads are reported separately with typed outcome/error counts; different fixtures are not equal-input overhead evidence. Full runtime regression/1K/10K/100K validation remains required for the future implementation PR. No M2.5b measurements or performance improvement are claimed by this documentation-only contract.
 
+## M2.5b measurements pending
+
+The extended replay implementation is a development candidate, not a new measured baseline. Equal-wire frozen-reference comparison, isolated extended workloads, actual syscall tracing, MSRV, complete regression and persistent-filesystem scale validation remain required before verification. Previous measurements below retain their original source/toolchain/provenance. No unrun result is reported as passed.
+
 ## Verified Linux CLI host baseline
 
 Direct host verification on 2026-11-27 at `5869e205167a3dde3a6a77392af294101e6a46c3` (merged PR #34), distinct from [main CI](https://github.com/idmfrank/atomos/actions/runs/46055361823). Headless Ubuntu 26.04, kernel 7.0.0-44, i7-6700 (4C/8T), 16 GB RAM, SATA SSD/ext4; Rust 1.95.0, Node 22.22.1, SQLite 3.46.1; eight build jobs and sequential timing runs. No runtime code/profile change. [Reproduction, deployment layout and local log provenance](linux-cli-deployment.md).
