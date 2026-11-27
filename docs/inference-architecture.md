@@ -1,6 +1,6 @@
 # OpenAI-native inference architecture
 
-Status: target architecture; M2.1–M2.4c isolated offline broker, account policy and decoder profiles verified. Actual owner OAuth/catalog/refresh succeeded. Three fixed live attempts consumed without validated completion or usage. M2.5 offline account-bound integration next; no general live inference. [Current state](../PROJECT_STATE.md) | [Architecture](architecture.md) | [Resource budget](resource-budget.md).
+Status: target architecture; M2.1–M2.4c isolated offline broker, account policy and decoder profiles verified. Actual owner OAuth/catalog/refresh succeeded. Three fixed live attempts consumed without validated completion or usage. M2.5a isolated atomic admission merged with PR #31 time/task follow-up for review; extended decoder integration is M2.5b; no general live inference. [Current state](../PROJECT_STATE.md) | [Architecture](architecture.md) | [Resource budget](resource-budget.md).
 
 ## Integration contract
 

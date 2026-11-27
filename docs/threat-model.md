@@ -1,6 +1,6 @@
 # AtomOS threat model
 
-Status: active engineering threat model, target controls plus implemented boundaries below; not production security certification. Main evidence through PR #29; isolated M2.5a candidate boundary below. [Architecture](architecture.md) | [Current state](../PROJECT_STATE.md).
+Status: active engineering threat model, target controls plus implemented boundaries below; not production security certification. Main evidence through PR #30; isolated M2.5a admission-context follow-up in PR #31 verified offline and awaiting human review. [Architecture](architecture.md) | [Current state](../PROJECT_STATE.md).
 
 ## Assets and trust boundaries
 

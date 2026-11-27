@@ -1,6 +1,6 @@
 # M2.5a: Atomic account-bound synthetic inference admission
 
-Status: isolated offline candidate, not merged or wired to production. Base `5f564ad5641ea716d86efc894b2b132aaae9fa77` (PR #29). No transport, credentials, OAuth, private AMG, provider calls, new live command or paid fallback. All three previous owner qualification attempts remain consumed and all 3,072 retained planning units and markers remain unchanged. This namespace never reads or migrates owner records.
+Status: isolated offline implementation; initial [PR #30](https://github.com/idmfrank/atomos/pull/30) merged externally, current admission-context follow-up [PR #31](https://github.com/idmfrank/atomos/pull/31) for human review. Verified executable follow-up `3895b2bd1dd3c113397b9d685be03350156aa88d` passed CI/full scale; current documentation-only reconciliation does not change that code. Original base `5f564ad5641ea716d86efc894b2b132aaae9fa77` (PR #29). Not wired to production. No transport, credentials, OAuth, private AMG, provider calls, new live command or paid fallback. All three previous owner qualification attempts remain consumed and all 3,072 retained planning units and markers remain unchanged. This namespace never reads or migrates owner records.
 
 ## Implementation and boundary
 
@@ -97,9 +97,24 @@ Local WSL2 Ubuntu, Rust 1.100, Linux 5.15.167.4, private `/tmp` filesystem repor
 | Release harness bytes | 416,528 | 440,152 |
 | Final charged units / errors | 14,100 / 0 | 14,100 / 0 |
 
-Final candidate memory-only validation p50/p95/p99: 0.533/0.940/1.222 microseconds; compilation including SHA-256: 4.890/6.990/8.118 microseconds. Candidate 600 append records and 600 file syncs include 300 admissions plus 300 settlements. Background charge 7,050; independent total expectation 14,100 on both paths, zero parity mismatches. Larger candidate journal reflects durable identity/metadata, not accounting drift. This run includes fresh admission context checks and supersedes earlier development p95 7.2182/3.7824 ms and initially committed 57c1739 p95 8.3572/3.4981 ms. That earlier commit's [CI](https://github.com/idmfrank/atomos/actions/runs/46022140907) and [full scale](https://github.com/idmfrank/atomos/actions/runs/46022161437) passed; final-revision hosted evidence remains pending until verified. These uncontrolled runs support fewer durable syncs, not a general speed/energy claim.
+Final candidate memory-only validation p50/p95/p99: 0.533/0.940/1.222 microseconds; compilation including SHA-256: 4.890/6.990/8.118 microseconds. Candidate 600 append records and 600 file syncs include 300 admissions plus 300 settlements. Background charge 7,050; independent total expectation 14,100 on both paths, zero parity mismatches. Larger candidate journal reflects durable identity/metadata, not accounting drift. This run includes fresh admission context checks and supersedes earlier development p95 7.2182/3.7824 ms and initially committed 57c1739 p95 8.3572/3.4981 ms. That earlier commit's [CI](https://github.com/idmfrank/atomos/actions/runs/46022140907) and [full scale](https://github.com/idmfrank/atomos/actions/runs/46022161437) passed; final-revision hosted evidence below supersedes those initial runs. These uncontrolled runs support fewer durable syncs, not a general speed/energy claim.
 
-Full regression/decoder/Node and full-scale completion plus exact PR CI evidence are recorded in PROJECT_STATE as verified. Candidate PR CI and hosted full-scale results remain pending until run on an exact committed revision.
+### Verified hosted results
+
+Executable `3895b2bd1dd3c113397b9d685be03350156aa88d`: [CI 46023799399](https://github.com/idmfrank/atomos/actions/runs/46023799399), [full scale 46023520346](https://github.com/idmfrank/atomos/actions/runs/46023520346). All 173 distinct tests, Rust 1.75 core targets, 18,000 decoder samples and 1K/10K/100K AMG scales passed. Measurements below use the same methodology as the local run; no live requests.
+
+| Hosted metric | Reference | Candidate |
+| --- | ---: | ---: |
+| Admission p50 / p95 / p99 (ms), 300 samples | 0.332693 / 0.428936 / 0.631346 | 0.161890 / 0.206696 / 0.363438 |
+| Full completion p50 / p95 / p99 (ms) | 0.687799 / 0.885192 / 1.596407 | 0.344821 / 0.427323 / 1.004940 |
+| Restart p50 / p95 / p99 (ms), 30 samples | 0.344601 / 0.384500 / 0.417929 | 0.237361 / 0.266946 / 0.296169 |
+| Journal write syscalls / fsyncs per admission (trace) | 4 / 2 | 2 / 1 |
+| Journal bytes per completed request | 52.560 | 104.280 |
+| Process peak RSS (KiB) | 2,240 | 2,200 |
+| Release harness bytes | 416,520 | 440,144 |
+| Final charge / errors / parity mismatches | 14,100 / 0 / 0 | 14,100 / 0 / 0 |
+
+Candidate validation p50/p95/p99 0.080/0.171/0.290 microseconds; compilation 0.391/0.651/1.122 microseconds. Candidate background charge 7,050; 600 logical writes/syncs include settlement. Toolchain/runner differences prevent controlled comparisons with local WSL or historical runs. Full-scale measurements and elevated 10K write tail are retained in PROJECT_STATE and README. Human review remains pending. Initial main `2bd3adef18abeaaf2a659696ab2944cd506d927c` also passed post-merge CI/scale; no merge was performed by this agent.
 
 ## Residual risks and next milestone
 
