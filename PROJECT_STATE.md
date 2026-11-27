@@ -1,6 +1,6 @@
 # AtomOS — current engineering state
 
-Updated 2026-11-26 (owner WSL qualification findings). Verified executable baseline: `986b6bf088b727d56223d2dab2289b6447b90a7d` ([PR #21](https://github.com/idmfrank/atomos/pull/21)). This is the shared handoff between the ChatGPT AtomOS Project, Codex coding sessions and human maintainers. Read [AGENTS.md](AGENTS.md) first, then this file and the specific milestone documentation. Verify the actual checkout and latest CI before assuming this snapshot is current.
+Updated 2026-11-26 (owner WSL qualification findings). Verified executable baseline: `5ec8b3f5ef7d7b7683b69e251bfdd01fb949e0d7` ([PR #22](https://github.com/idmfrank/atomos/pull/22)). This is the shared handoff between the ChatGPT AtomOS Project, Codex coding sessions and human maintainers. Read [AGENTS.md](AGENTS.md) first, then this file and the specific milestone documentation. Verify the actual checkout and latest CI before assuming this snapshot is current.
 
 ## Mission and architecture
 
@@ -29,7 +29,7 @@ Design details: [README](README.md), [resource budget](docs/resource-budget.md),
 
 ## Latest verified test and benchmark baseline
 
-2026-11-26, merged executable commit above. [PR CI 45912396851](https://github.com/idmfrank/atomos/actions/runs/45912396851), [post-merge CI 45912523399](https://github.com/idmfrank/atomos/actions/runs/45912523399), [scale 45912716094](https://github.com/idmfrank/atomos/actions/runs/45912716094). 86 distinct Rust + 11 Python + 29 Node (18 auth, 11 probe) = 126 distinct passing tests; zero actual inference in CI. Default release CLI 466,512 bytes. Separate synthetic decoder: 2,497-byte stream, 1,000 repetitions per chunk size; p95 25.2/18.0/17.9 microseconds at 1/64/4096-byte reads; zero errors; decoder process peak RSS 2,116 KiB.
+2026-11-26, PR #22 [CI 45913123800](https://github.com/idmfrank/atomos/actions/runs/45913123800) and [post-merge CI 45913847075](https://github.com/idmfrank/atomos/actions/runs/45913847075) passed; owner WSL at 5ec8b3f passed 33/33 Node tests. 86 Rust + 11 Python + 33 Node = 130 distinct tests. Full-scale and decoder measurements below remain the previous verified PR #21 baseline ([CI 45912523399](https://github.com/idmfrank/atomos/actions/runs/45912523399), [scale 45912716094](https://github.com/idmfrank/atomos/actions/runs/45912716094)); no new full-scale run asserted. Default CLI 466,512 bytes at PR #21; decoder p95 25.2/18.0/17.9 microseconds at 1/64/4096-byte reads, RSS 2,116 KiB.
 
 | Full-scale metric (p95 unless noted) | 1K | 10K | 100K |
 | --- | ---: | ---: | ---: |
@@ -57,29 +57,13 @@ Same-run no-store CLI RSS 2,608 KiB; 100K incremental 1,664 KiB (1.625 MiB) vers
 - GitHub Actions: CI and scale. No credentials or provider inference in CI. Human reviews and merges runtime changes.
 - Existing owner vault: `$HOME/.config/atomos-auth` on WSL. Do not read/decrypt outside the existing owner-run utility, copy it, inspect secret-bearing files, print tokens/passphrase, or move it to another environment. Never commit local state. No new registration needed.
 
-## Immediate objective: M2.4 transport qualification recovery
+## Immediate objective: M2.4 suspended pending transport investigation
 
-**Stop gate:** The original reservation is consumed. Owner reported state unknown, category probe_content_type, no reported usage, retained 1,024 planning units. Subsequent interactive refresh succeeded, active unexpired session and qualification_attempted:true. Exact response MIME and encoding were not recorded; root cause unknown. Do not run qualify-once again, delete the record, create another vault, or re-register to circumvent it. The diagnostic patch adds allowlisted HTTP status/media/encoding categories and bounded gzip handling; these changes are not proof of the actual root cause. PR #21 merged and CI/scale passed. A separate follow-up command is proposed in the current revision, limited to the exact original historical failure and preserving both reservations. No third attempt. See the dedicated follow-up section in the qualification document; do not run until reviewed/merged and separately authorized by owner. The steps below are historical preflight for the original attempt, not authority to repeat it.
+**Both authorized attempts are consumed.** Original historical combined header rejection: unknown, 1,024 planning units retained. Owner WSL follow-up at 5ec8b3f: HTTP 200, content_type_class missing, content_encoding_class missing, probe_content_type, headers_ms 1124, elapsed_ms 1125, first_body_ms null, wire_bytes 0, reported_tokens null, unknown usage. Cumulative local reservation 2,048 planning units; actual provider usage unknown for both. Zero received bytes at rejection does not mean empty provider body. No validated response or actual usage; no new live inference authorization. Preserve both records, no third attempt, no deletion, registration changes or alternate vault workaround.
 
-Codex can perform read-only environment checks, build and synthetic tests. It must not initiate a provider inference, prompt for secrets in agent chat, refresh/revoke tokens, delete reservations or change provider settings. The owner performs interactive commands in their terminal. Live execution needs specific owner acknowledgement even if earlier project discussion approved the milestone.
+Official [Sign in with ChatGPT inference documentation](https://developers.openai.com/siwc/token-sharing-open-source/models-and-inference) checked 2026-11-26: public Responses route, stream true, store false, terminal response.completed. Examples do not impose our additional response MIME gate. Missing response header is observed in this client's HTTP response, not proof of provider defect or proof body is SSE. Root cause not yet established. Do not broadly relax declared non-SSE/unknown encoding checks.
 
-1. Verify working directory, Git status, hostname/kernel and current commit; preserve existing user edits. Check `rustc --version`, `cargo --version`, `node --version`, `gcc --version`, `pkg-config --modversion sqlite3`. If dependencies missing, report and request owner approval for installation. Follow [official rustup](https://rustup.rs/) if needed.
-2. Update clean qualification worktree, provision locked dependencies and build the existing decoder. Run offline tests:
-
-   ```bash
-   cd ~/atomos-catalog-test
-   git fetch origin main
-   git switch --detach origin/main
-   cargo fetch --locked
-   cargo build --release --locked --offline -p atomos-core --features responses-replay --example responses_qualify
-   node --test scripts/auth/protocol.test.mjs scripts/auth/live-probe.test.mjs
-   ```
-
-   Expect 29/29 Node tests at the verified baseline; proposed follow-up adds 4 tests, pending CI. Report exact commit, versions, counts, failures. No inference during these commands.
-3. Owner runs `node scripts/auth/atomos-auth.mjs status "$HOME/.config/atomos-auth"` in interactive terminal and supplies sanitized status only. Require active grant, unexpired access, no pending registration, `qualification_attempted:false`. If expired, stop and review refresh separately. Do not re-register.
-4. Owner verifies saved app limit below 100% (last observed 50%) on eligible personal ChatGPT plan. Current documented route does not support `max_output_tokens`; a local response deadline or cap does not guarantee provider generation stops. Do not claim the 1,024-token reservation is a hard server ceiling or plan quota. Owner must accept this one-time exception explicitly. Follow [the exact owner-run qualification procedure](docs/m2-first-live-qualification.md); do not execute it unattended.
-5. Single fixed nonpersonal prompt, `gpt-6.2-sol`, official Responses endpoint, `store:false`, `stream:true`, fresh same-account catalog, no AMG, tools, retries, auto refresh or paid fallback. Durable intent in `m2-4-probe.json` before POST, bound to account/host/request hash, 30s HTTP deadline, 256 KiB body limit, 3s Rust decoder subprocess. One attempt per vault; unknown retains reservation, validated actual settles. No raw stream or output logged. Do not delete/reset marker or repeat after failure, including crash/overrun.
-6. Acceptance: owner reports sanitized JSON; valid terminal usage, exact expected text boolean, no unsupported stream/lifecycle events, durable settlement, check provider usage and any credit use if visible. First-body-byte time is not TTFT. Do not infer provider consumption from local raw token totals. Report discrepancies and stop rather than retry.
+Next work is offline only: compare documented curl/SDK transport semantics with native HTTPS; test a real local HTTP fixture including missing Content-Type, empty/truncated streams, non-SSE JSON/HTML, malformed events, gzip and body limits. Evaluate a narrowly scoped missing-MIME candidate path that retains all bounds, rejects explicit wrong media/encoding, and requires existing strict terminal lifecycle and usage validation. No live activation or additional reservation command in this investigation. Review provider app usage and current saved cap with owner; seek provider clarification if needed. General live inference remains disabled.
 
 ## Outstanding gates and next direction
 
