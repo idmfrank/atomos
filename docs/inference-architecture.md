@@ -8,6 +8,12 @@ The [CLI roadmap](cli-mvp-roadmap.md) is the active product boundary. Text input
 
 The CLI is a thin adapter: no terminal command can bypass admission, change billing route or silently authorize memory egress. Define bounded working-turn retention, cancellation, EOF and disconnect behavior. No full transcript persistence or automatic memory extraction. Synthetic current decoders buffer until validated terminal/settlement; choosing future incremental display requires explicit outcome/accounting semantics.
 
+## Deployed local/mock boundary
+
+The [Linux CLI deployment](linux-cli-deployment.md) at merged PR #34 is tested and running under the explicitly selected owner account. Rust stays on the hot path; Node/Python/compiler tools support offline development and are not resident inference workers. No real account session, transport, provider model, private AMG disclosure or inference quota is enabled. The M2.5b runtime contract still awaits implementation.
+
+The owner authorized host provisioning and local deployment, not a fourth live qualification attempt. Exact host/account/key data remain local. Local recall and bounded context use measured host resources before future remote admission; context bytes and RSS do not establish actual token, power or billing savings.
+
 ## Integration contract
 
 Use official [Sign in with ChatGPT](https://developers.openai.com/siwc/token-sharing-open-source) documentation and verify current app eligibility, scopes, supported models, endpoint requirements and spending controls before any implementation is enabled against a real account. Owner prototype authorization and catalog retrieval succeeded; continuing eligibility and production policy must still be verified. ChatGPT Plus is not an API-key credit balance or a guaranteed raw-token quota. No undocumented endpoints, credential reuse from other clients, browser automation, account rotation or paid fallback.

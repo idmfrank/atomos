@@ -139,6 +139,12 @@ Repository main `5bca8a15e8245e9631d8a978a988c01cdc812f7a` has the same runtime 
 
 The owner changed the first product target to a [CLI MVP over existing SSH](cli-mvp-roadmap.md) on 2026-11-27. Voice qualification is paused while code/tests are retained. M2.5a semantics and runtime remain unchanged. Next, define M2.5b's offline text-outcome, admission, cancellation and settlement contract; then the CLI integration slice. Add settlement persistence-failure and cancellation-boundary coverage with that behavioral change. Forced process death is separate from clean reopen tests; stale crash locks remain a manual investigation gate.
 
+## Direct Linux host deployment baseline
+
+PR #34 main `5869e205167a3dde3a6a77392af294101e6a46c3` passed all 173 host tests and 18,000 decoder samples. The [local CLI release](linux-cli-deployment.md) is deployed without integrating this isolated candidate into ordinary conversation. SSD-backed ext4 comparison: reference/candidate admission p95 5.150968/2.623407 ms, traced writes 4/2 and fsyncs 2/1; exact charge 14,100 each, candidate background 7,050 and zero errors. [Full measurements and method](resource-budget.md#verified-linux-cli-host-baseline).
+
+Initial default-temp measurements were on tmpfs and are RAM-backed observations only. Persistent-directory benchmarks were rerun without weakening sync or accounting; no device power-loss, energy or actual token-spend claim. Runtime identity, v1 records, caps and suspension semantics are unchanged.
+
 ## M2.5b contract, implementation pending
 
 The [text-outcome contract](m2-text-outcomes.md) specifies an explicit extended replay entry point reusing this admission/settlement state machine, fresh Context and unchanged v1 journal. The current strict API remains the frozen reference. Extended refusal settles known usage with no text; failed unknown usage remains charged/pending; rate/auth and overrun suspension remain durable. The contract adds settlement/H persistence-fault, cancellation-boundary and bounded crash-lock tests. It does not change the runtime, introduce a permit/transport, persist typed response history or claim real model qualification. Known-usage outcomes are delivered only after their required durable transitions.
