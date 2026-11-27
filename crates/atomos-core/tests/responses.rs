@@ -1,5 +1,5 @@
 #![cfg(feature="responses-replay")]
-use atomos_core::{broker::{Broker,Error,Event,Failure,Request,Usage},governor::{Limits,Priority},responses::{decode,decode_compat,DecodeError,Terminal}};
+use atomos_core::{broker::{Broker,Error,Event,Failure,Request,Usage},governor::{Limits,Priority},responses::{decode,decode_compat,decode_extended,DecodeError,Terminal,ExtendedTerminal}};
 use std::{fs,io::{self,Read},path::PathBuf,sync::atomic::{AtomicU64,Ordering}};
 const WIRE:&[u8]=include_bytes!("fixtures/responses-text.sse");
 const TEXT:&str="Café 🚀\nReady.";
@@ -251,4 +251,70 @@ fn compatibility_failure_never_releases_partial_text_and_event_count_not_sequenc
     assert_eq!(compat_bad(&many),DecodeError::MissingTerminal);
     many+=&frame(serde_json::json!({"type":"response.output_text.delta","sequence_number":129,"item_id":"msg_synthetic","output_index":0,"content_index":0,"delta":"x"}));
     assert_eq!(compat_bad(&many),DecodeError::Limit);
+}
+
+
+const REASON:&[u8]=include_bytes!("fixtures/responses-reasoning.sse");
+const REFUSAL:&[u8]=include_bytes!("fixtures/responses-refusal.sse");
+fn extended_bad(s:&str)->DecodeError{decode_extended(s.as_bytes(),||false).0.unwrap_err()}
+#[test]
+fn extended_opaque_reasoning_then_text_matches_fixture_and_never_exposes_reasoning(){
+    for size in [1,7,64,4096]{
+        let (d,diag)=decode_extended(Chunks{data:REASON,size},||false);
+        let d=d.unwrap();assert_eq!(d.text,TEXT);assert_eq!(d.terminal,ExtendedTerminal::Completed(U));
+        assert_eq!(diag.validated_events,12);
+        assert!(!format!("{d:?}{diag:?}").contains("synthetic_final"));
+        let baseline=decode_extended(Chunks{data:WIRE,size},||false).0.unwrap();
+        assert_eq!(baseline,d);
+    }
+    assert_eq!(decode_compat(REASON,||false).0,Err(DecodeError::Unsupported));
+}
+#[test]
+fn extended_reasoning_validates_order_ids_and_final_opaque_snapshot(){
+    let s=std::str::from_utf8(REASON).unwrap();
+    let at=s.rfind("synthetic_final").unwrap();
+    let mut changed=s.to_owned();changed.replace_range(at..at+"synthetic_final".len(),"different");
+    assert_eq!(extended_bad(&changed),DecodeError::Protocol);
+    assert_eq!(extended_bad(&s.replacen("\"output_index\":1","\"output_index\":0",1)),DecodeError::Protocol);
+    let wrong=s.replacen("\"id\":\"msg_synthetic\"","\"id\":\"rs_fixture\"",1);
+    assert_eq!(extended_bad(&wrong),DecodeError::Protocol);
+    let wrong=s.replacen("\"summary\":[]","\"summary\":[{\"type\":\"summary_text\",\"text\":\"fixture\"}]",1);
+    assert_eq!(extended_bad(&wrong),DecodeError::Unsupported);
+    let wrong=s.replacen("\"summary\":[]","\"summary\":[],\"content\":[{\"type\":\"reasoning_text\",\"text\":\"fixture\"}]",1);
+    assert_eq!(extended_bad(&wrong),DecodeError::Unsupported);
+    let large=s.replacen("synthetic_partial",&"x".repeat(16*1024+1),1);
+    assert_eq!(extended_bad(&large),DecodeError::Limit);
+}
+#[test]
+fn extended_refusal_is_typed_settlement_without_output_or_fallback(){
+    for size in [1,64,4096]{
+        let (d,diag)=decode_extended(Chunks{data:REFUSAL,size},||false);
+        let d=d.unwrap();assert!(d.text.is_empty());assert_eq!(d.terminal,ExtendedTerminal::Refused(U));
+        assert_eq!(diag.validated_events,10);
+        assert!(!format!("{d:?}{diag:?}").contains("Fixture refusal"));
+    }
+    assert_eq!(decode_compat(REFUSAL,||false).0,Err(DecodeError::Unsupported));
+}
+#[test]
+fn extended_refusal_rejects_mixed_text_or_inconsistent_snapshots(){
+    let s=std::str::from_utf8(REFUSAL).unwrap();
+    assert_eq!(extended_bad(&s.replacen("response.refusal.delta","response.output_text.delta",2)),DecodeError::Protocol);
+    let at=s.rfind("Fixture refusal.").unwrap();
+    let mut changed=s.to_owned();changed.replace_range(at..at+"Fixture refusal.".len(),"different");
+    assert_eq!(extended_bad(&changed),DecodeError::Protocol);
+    assert_eq!(extended_bad(&s.replace("\"total_tokens\":47","\"total_tokens\":48")),DecodeError::Usage);
+    let at=s.rfind("event: response.completed").unwrap();
+    assert_eq!(extended_bad(&s[..at]),DecodeError::MissingTerminal);
+}
+#[test]
+fn extended_keeps_unknown_tools_and_reasoning_streams_blocked(){
+    let s=std::str::from_utf8(REASON).unwrap();
+    for kind in ["response.reasoning_summary_part.added","response.reasoning_text.delta","response.function_call_arguments.delta","response.future_event"]{
+        let changed=s.replacen("response.output_item.done",kind,2);
+        assert_eq!(extended_bad(&changed),DecodeError::Unsupported);
+    }
+    let s=std::str::from_utf8(REFUSAL).unwrap();
+    let at=s.find("event: response.refusal.done").unwrap();
+    let failed=s[..at].to_owned()+&frame(serde_json::json!({"type":"response.incomplete","sequence_number":6,"response":{"id":"resp_synthetic","object":"response","status":"incomplete","usage":{"input_tokens":35,"output_tokens":12,"total_tokens":47,"input_tokens_details":{"cached_tokens":10},"output_tokens_details":{"reasoning_tokens":4}}}}));
+    let d=decode_extended(failed.as_bytes(),||false).0.unwrap();assert!(d.text.is_empty());assert_eq!(d.terminal,ExtendedTerminal::Failed(Failure::Incomplete,Some(U)));
 }
