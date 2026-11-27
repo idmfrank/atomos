@@ -10,6 +10,8 @@ Status: isolated offline candidate, not merged or wired to production. Base `5f5
 
 Before admission: valid/nonzero task and turn, bounded nonblank control-free input, output bound, active turn, exact synthetic account/host/grant/model/policy version, model eligibility and all M2.3 fixture eligibility/spending flags, sequential request identity, nondecreasing fixture time, request/window/grant expiry, priority and all Governor budgets. Numeric IDs and evidence are fixtures only. Model eligibility is an explicit policy flag tied to the model in the exact-match header; it is not a live catalog attestation. Task identity is required, immutable and recorded, not external task authorization.
 
+Every validation/replay call requires a fresh `Context { now, active_turn, task }` supplied by the trusted caller. Compilation time remains immutable in the digest; admission time is independently checked against it, the last admission, request expiry and grant/window end. The active task must match as well as the active turn. A request compiled while valid but presented after expiry is denied before reading. A time earlier than compilation or the last admission is rollback. The A record stores admission time; it must not reuse a stale compilation timestamp as current time. Context is caller state, never authorization or a dispatch permit; a trustworthy real clock/task manager remains an integration gate.
+
 The existing Governor's checked reservation decision is extracted into one internal shared function. Both paths use identical per-request, total, background and interactive-reserve rules. Candidate additions and settlement arithmetic are checked; no byte-to-provider-token claim. Estimate remains the reference fixture formula: UTF-8 bytes + 128 framing units + maximum output. Valid authoritative usage charges input + output; cached/reasoning counts are subsets. Overruns settle actual and halt in one record. Unknown/malformed/cancelled/interrupted outcomes retain the outstanding reservation.
 
 Pinned optional `sha2 = 0.10.9` is justified by exact compiled identity without custom cryptography. It adds seven locked packages (including hashing support) and no default feature/runtime dependency. Candidate core and hashing dependencies compile with Rust 1.75. The broader workspace's pre-existing `getrandom` 0.4.3 cannot be fetched by Cargo 1.75 because of edition 2024; this is not a whole-workspace minimum-version certification. No dependency upgrades are made to address that separate issue.
@@ -85,17 +87,17 @@ Local WSL2 Ubuntu, Rust 1.100, Linux 5.15.167.4, private `/tmp` filesystem repor
 
 | Metric | Reference | Candidate |
 | --- | ---: | ---: |
-| Admission p50 / p95 / p99 (ms), 300 samples | 6.2921 / 8.3572 / 24.9803 | 2.7969 / 3.4981 / 14.3612 |
-| Full completion p50 / p95 / p99 (ms) | 13.0139 / 20.5395 / 41.2268 | 5.7204 / 7.0509 / 19.2804 |
-| Restart p50 / p95 / p99 (ms), 30 samples | 3.6908 / 4.3270 / 7.9860 | 0.5005 / 0.8189 / 0.8253 |
+| Admission p50 / p95 / p99 (ms), 300 samples | 5.8979 / 8.6549 / 31.4788 | 3.5324 / 5.2026 / 18.7092 |
+| Full completion p50 / p95 / p99 (ms) | 12.0638 / 24.9337 / 49.2294 | 7.4768 / 10.6349 / 33.9943 |
+| Restart p50 / p95 / p99 (ms), 30 samples | 3.4235 / 4.6039 / 63.7204 | 0.4296 / 0.5260 / 0.5605 |
 | Journal write syscalls / fsyncs per admission (trace) | 4 / 2 | 2 / 1 |
 | Logical admission records | 2 | 1 |
 | Journal bytes per completed request | 52.560 | 104.280 |
-| Process peak RSS (KiB) | 2,416 | 2,316 |
-| Release harness bytes | 416,528 | 439,944 |
+| Process peak RSS (KiB) | 2,312 | 2,336 |
+| Release harness bytes | 416,528 | 440,152 |
 | Final charged units / errors | 14,100 / 0 | 14,100 / 0 |
 
-Final candidate memory-only validation p50/p95/p99: 0.313/0.596/0.773 microseconds; compilation including SHA-256: 2.966/4.983/6.017 microseconds. Candidate 600 append records and 600 file syncs include 300 admissions plus 300 settlements. Background charge 7,050; independent total expectation 14,100 on both paths, zero parity mismatches. Larger candidate journal reflects durable identity/metadata, not accounting drift. This run supersedes the earlier development measurement (reference/candidate admission p95 7.2182/3.7824 ms), after replay rejection of impossible settlement records was tightened. This run is evidence for fewer durable admission syncs, not a general speed/energy claim.
+Final candidate memory-only validation p50/p95/p99: 0.533/0.940/1.222 microseconds; compilation including SHA-256: 4.890/6.990/8.118 microseconds. Candidate 600 append records and 600 file syncs include 300 admissions plus 300 settlements. Background charge 7,050; independent total expectation 14,100 on both paths, zero parity mismatches. Larger candidate journal reflects durable identity/metadata, not accounting drift. This run includes fresh admission context checks and supersedes earlier development p95 7.2182/3.7824 ms and initially committed 57c1739 p95 8.3572/3.4981 ms. That earlier commit's [CI](https://github.com/idmfrank/atomos/actions/runs/46022140907) and [full scale](https://github.com/idmfrank/atomos/actions/runs/46022161437) passed; final-revision hosted evidence remains pending until verified. These uncontrolled runs support fewer durable syncs, not a general speed/energy claim.
 
 Full regression/decoder/Node and full-scale completion plus exact PR CI evidence are recorded in PROJECT_STATE as verified. Candidate PR CI and hosted full-scale results remain pending until run on an exact committed revision.
 

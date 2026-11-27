@@ -1,6 +1,6 @@
 #![cfg(all(unix, feature = "atomic-admission"))]
 use atomos_core::{
-    atomic_admission::{AtomicReplay, CompiledRequest, Configuration, Error, NAMESPACE},
+    atomic_admission::{AtomicReplay, CompiledRequest, Configuration, Context, Error, NAMESPACE},
     authorization::{AuthorizedReplay, Envelope, Policy},
     broker::Request,
     governor::{Limits, Priority},
@@ -54,6 +54,13 @@ fn config() -> Configuration {
         },
     }
 }
+fn context() -> Context {
+    Context {
+        now: 200,
+        active_turn: 4,
+        task: 5,
+    }
+}
 fn env(id: u64) -> Envelope {
     Envelope {
         account: 1,
@@ -89,7 +96,7 @@ fn admission_has_one_atomic_reservation_and_restart_retains_it() {
     let f = Fixture::new();
     let mut b = AtomicReplay::initialize(&f.0, config()).unwrap();
     assert_eq!(
-        b.run_sse(&compiled(1), 4, &b""[..], || false),
+        b.run_sse(&compiled(1), context(), &b""[..], || false),
         Err(Error::UnknownUsage)
     );
     assert_eq!(b.charged(), 200);
@@ -105,7 +112,7 @@ fn admission_has_one_atomic_reservation_and_restart_retains_it() {
     assert_eq!(b.next_request_id(), 2);
     assert!(b.suspended());
     assert_eq!(
-        b.run_sse(&compiled(2), 4, NeverRead, || false),
+        b.run_sse(&compiled(2), context(), NeverRead, || false),
         Err(Error::Suspended)
     );
 }
@@ -122,11 +129,17 @@ fn account_host_grant_model_and_policy_must_match() {
         Envelope { grant: 9, ..env(1) },
     ] {
         let r = CompiledRequest::compile(e, 7, 1, req()).unwrap();
-        assert_eq!(b.run_sse(&r, 4, NeverRead, || false), Err(Error::Scope));
+        assert_eq!(
+            b.run_sse(&r, context(), NeverRead, || false),
+            Err(Error::Scope)
+        );
     }
     for (m, v) in [(8, 1), (7, 2)] {
         let r = CompiledRequest::compile(env(1), m, v, req()).unwrap();
-        assert_eq!(b.run_sse(&r, 4, NeverRead, || false), Err(Error::Scope));
+        assert_eq!(
+            b.run_sse(&r, context(), NeverRead, || false),
+            Err(Error::Scope)
+        );
     }
     assert_eq!(b.charged(), 0);
     assert_eq!(b.persistence_counts(), (0, 0));
@@ -185,7 +198,7 @@ fn missing_or_invalid_eligibility_never_reads() {
         let f = Fixture::new();
         let mut b = AtomicReplay::initialize(&f.0, c).unwrap();
         assert_eq!(
-            b.run_sse(&compiled(1), 4, NeverRead, || false),
+            b.run_sse(&compiled(1), context(), NeverRead, || false),
             Err(Error::Evidence)
         );
         assert_eq!(b.charged(), 0);
@@ -232,27 +245,38 @@ fn immutable_compilation_binds_all_fields_and_active_turn() {
     }
     let f = Fixture::new();
     let mut b = AtomicReplay::initialize(&f.0, config()).unwrap();
-    assert_eq!(b.run_sse(&r, 5, NeverRead, || false), Err(Error::StaleTurn));
+    assert_eq!(
+        b.run_sse(
+            &r,
+            Context {
+                active_turn: 5,
+                ..context()
+            },
+            NeverRead,
+            || false
+        ),
+        Err(Error::StaleTurn)
+    );
     assert_eq!(b.charged(), 0);
 }
 #[test]
 fn successful_settlement_and_duplicate_identity_reject_after_restart() {
     let f = Fixture::new();
     let mut b = AtomicReplay::initialize(&f.0, config()).unwrap();
-    let a = b.run_sse(&compiled(1), 4, SSE, || false).unwrap();
+    let a = b.run_sse(&compiled(1), context(), SSE, || false).unwrap();
     assert_eq!(a.usage.unwrap().input, 35);
     assert_eq!(a.usage.unwrap().output, 12);
     assert_eq!(b.charged(), 47);
     assert_eq!(b.persistence_counts(), (2, 2));
     assert_eq!(
-        b.run_sse(&compiled(1), 4, NeverRead, || false),
+        b.run_sse(&compiled(1), context(), NeverRead, || false),
         Err(Error::Replay)
     );
     drop(b);
     let mut b = AtomicReplay::open(&f.0, config()).unwrap();
     assert_eq!(b.charged(), 47);
     assert_eq!(
-        b.run_sse(&compiled(1), 4, NeverRead, || false),
+        b.run_sse(&compiled(1), context(), NeverRead, || false),
         Err(Error::Replay)
     );
     let altered = CompiledRequest::compile(
@@ -266,7 +290,7 @@ fn successful_settlement_and_duplicate_identity_reject_after_restart() {
     )
     .unwrap();
     assert_eq!(
-        b.run_sse(&altered, 4, NeverRead, || false),
+        b.run_sse(&altered, context(), NeverRead, || false),
         Err(Error::Replay)
     );
 }
@@ -274,6 +298,41 @@ fn successful_settlement_and_duplicate_identity_reject_after_restart() {
 fn expiry_grant_window_and_clock_rollback() {
     let f = Fixture::new();
     let mut b = AtomicReplay::initialize(&f.0, config()).unwrap();
+    for now in [230, 900, 1000] {
+        assert_eq!(
+            b.run_sse(
+                &compiled(1),
+                Context { now, ..context() },
+                NeverRead,
+                || false
+            ),
+            Err(Error::Expired)
+        );
+    }
+    assert_eq!(
+        b.run_sse(
+            &compiled(1),
+            Context {
+                now: 199,
+                ..context()
+            },
+            NeverRead,
+            || false
+        ),
+        Err(Error::ClockRollback)
+    );
+    assert_eq!(
+        b.run_sse(
+            &compiled(1),
+            Context {
+                task: 6,
+                ..context()
+            },
+            NeverRead,
+            || false
+        ),
+        Err(Error::StaleTask)
+    );
     for e in [
         Envelope {
             expires_at: 200,
@@ -302,19 +361,25 @@ fn expiry_grant_window_and_clock_rollback() {
         assert_eq!(
             b.run_sse(
                 &CompiledRequest::compile(e, 7, 1, req()).unwrap(),
-                4,
+                Context {
+                    now: e.now,
+                    ..context()
+                },
                 NeverRead,
                 || false
             ),
             Err(Error::Expired)
         );
     }
-    b.run_sse(&compiled(1), 4, SSE, || false).unwrap();
+    b.run_sse(&compiled(1), context(), SSE, || false).unwrap();
     let e = Envelope { now: 199, ..env(2) };
     assert_eq!(
         b.run_sse(
             &CompiledRequest::compile(e, 7, 1, req()).unwrap(),
-            4,
+            Context {
+                now: e.now,
+                ..context()
+            },
             NeverRead,
             || false
         ),
@@ -369,7 +434,10 @@ fn per_request_total_background_and_interactive_reserve() {
         };
         let mut b = AtomicReplay::initialize(&f.0, c).unwrap();
         let r = CompiledRequest::compile(env(1), 7, 1, Request { priority, ..req() }).unwrap();
-        assert_eq!(b.run_sse(&r, 4, NeverRead, || false), Err(Error::Budget));
+        assert_eq!(
+            b.run_sse(&r, context(), NeverRead, || false),
+            Err(Error::Budget)
+        );
         assert_eq!(b.next_request_id(), 1);
         assert_eq!(b.persistence_counts(), (0, 0));
     }
@@ -388,9 +456,9 @@ fn per_request_total_background_and_interactive_reserve() {
         ..c
     };
     let mut b = AtomicReplay::initialize(&f.0, c).unwrap();
-    b.run_sse(&compiled(1), 4, SSE, || false).unwrap();
+    b.run_sse(&compiled(1), context(), SSE, || false).unwrap();
     assert_eq!(
-        b.run_sse(&compiled(2), 4, NeverRead, || false),
+        b.run_sse(&compiled(2), context(), NeverRead, || false),
         Err(Error::Budget)
     );
     assert_eq!(b.charged(), 47);
@@ -412,7 +480,7 @@ fn interactive_can_use_reserved_capacity() {
         ..c
     };
     let mut b = AtomicReplay::initialize(&f.0, c).unwrap();
-    assert!(b.run_sse(&compiled(1), 4, SSE, || false).is_ok());
+    assert!(b.run_sse(&compiled(1), context(), SSE, || false).is_ok());
 }
 #[test]
 fn exclusive_writer_and_existing_namespace_never_overwrite() {
@@ -447,7 +515,7 @@ fn truncated_duplicate_malformed_and_over_limit_records_fail_closed() {
     let original = {
         let f = Fixture::new();
         let mut b = AtomicReplay::initialize(&f.0, config()).unwrap();
-        let _ = b.run_sse(&compiled(1), 4, &b""[..], || false);
+        let _ = b.run_sse(&compiled(1), context(), &b""[..], || false);
         fs::read_to_string(f.journal()).unwrap()
     };
     let header = original.lines().next().unwrap();
@@ -472,14 +540,14 @@ fn truncated_duplicate_malformed_and_over_limit_records_fail_closed() {
 fn revocation_is_durable_even_with_outstanding_reservation() {
     let f = Fixture::new();
     let mut b = AtomicReplay::initialize(&f.0, config()).unwrap();
-    let _ = b.run_sse(&compiled(1), 4, &b""[..], || false);
+    let _ = b.run_sse(&compiled(1), context(), &b""[..], || false);
     b.revoke().unwrap();
     drop(b);
     let mut b = AtomicReplay::open(&f.0, config()).unwrap();
     assert!(b.suspended());
     assert_eq!(b.charged(), 200);
     assert_eq!(
-        b.run_sse(&compiled(2), 4, NeverRead, || false),
+        b.run_sse(&compiled(2), context(), NeverRead, || false),
         Err(Error::Suspended)
     );
 }
@@ -490,7 +558,11 @@ fn local_commands_remain_available_without_reservation() {
     b.revoke().unwrap();
     for text in ["help", "what is your name?"] {
         let r = CompiledRequest::compile(env(1), 999, 999, Request { text, ..req() }).unwrap();
-        assert!(!b.run_sse(&r, 4, NeverRead, || false).unwrap().simulated);
+        assert!(
+            !b.run_sse(&r, context(), NeverRead, || false)
+                .unwrap()
+                .simulated
+        );
     }
     assert_eq!(b.charged(), 0);
     assert_eq!(b.dispatches(), 0);
@@ -526,7 +598,7 @@ fn reference_candidate_successful_accounting_parity() {
             .run_sse(env(id), Request { priority, ..req() }, 4, SSE, || false)
             .unwrap();
         let r = CompiledRequest::compile(env(id), 7, 1, Request { priority, ..req() }).unwrap();
-        assert_eq!(candidate.run_sse(&r, 4, SSE, || false).unwrap(), a);
+        assert_eq!(candidate.run_sse(&r, context(), SSE, || false).unwrap(), a);
         assert_eq!(candidate.charged(), id * 47);
         assert_eq!(candidate.charged(), reference.charged());
     }
@@ -542,7 +614,7 @@ fn journal_capacity_failure_never_reads_or_dispatches() {
         .unwrap();
     file.set_len(1024 * 1024).unwrap();
     assert_eq!(
-        b.run_sse(&compiled(1), 4, NeverRead, || false),
+        b.run_sse(&compiled(1), context(), NeverRead, || false),
         Err(Error::Storage)
     );
     assert_eq!(b.dispatches(), 0);
@@ -563,7 +635,7 @@ fn no_response_read_until_durable_identity_and_reservation() {
     let f = Fixture::new();
     let mut b = AtomicReplay::initialize(&f.0, config()).unwrap();
     assert_eq!(
-        b.run_sse(&compiled(1), 4, Inspect(f.journal()), || false),
+        b.run_sse(&compiled(1), context(), Inspect(f.journal()), || false),
         Err(Error::UnknownUsage)
     );
 }
@@ -572,7 +644,7 @@ fn cancellation_retains_reservation() {
     let f = Fixture::new();
     let mut b = AtomicReplay::initialize(&f.0, config()).unwrap();
     assert_eq!(
-        b.run_sse(&compiled(1), 4, SSE, || true),
+        b.run_sse(&compiled(1), context(), SSE, || true),
         Err(Error::Cancelled)
     );
     assert_eq!(b.charged(), 200);
@@ -610,7 +682,7 @@ fn settlement_overrun_suspends_durably() {
     let f = Fixture::new();
     let mut b = AtomicReplay::initialize(&f.0, config()).unwrap();
     assert_eq!(
-        b.run_sse(&compiled(1), 4, over.as_bytes(), || false),
+        b.run_sse(&compiled(1), context(), over.as_bytes(), || false),
         Err(Error::Overrun)
     );
     assert_eq!(b.charged(), 252);
@@ -622,15 +694,12 @@ fn settlement_overrun_suspends_durably() {
 fn provider_rate_and_authorization_failures_suspend_durably() {
     for code in ["rate_limit_exceeded", "invalid_api_key"] {
         let fixture = std::str::from_utf8(SSE).unwrap().replace("\r\n", "\n");
-        let created = fixture
-            .split("\n\n")
-            .next()
-            .unwrap();
+        let created = fixture.split("\n\n").next().unwrap();
         let stream=format!("{created}\r\n\r\nevent: error\r\ndata: {{\"type\":\"error\",\"sequence_number\":1,\"code\":\"{code}\",\"message\":\"synthetic\"}}\r\n\r\n");
         let f = Fixture::new();
         let mut b = AtomicReplay::initialize(&f.0, config()).unwrap();
         assert!(matches!(
-            b.run_sse(&compiled(1), 4, stream.as_bytes(), || false),
+            b.run_sse(&compiled(1), context(), stream.as_bytes(), || false),
             Err(Error::Provider(_))
         ));
         drop(b);
@@ -638,7 +707,7 @@ fn provider_rate_and_authorization_failures_suspend_durably() {
         assert!(b.suspended());
         assert_eq!(b.charged(), 200);
         assert_eq!(
-            b.run_sse(&compiled(2), 4, NeverRead, || false),
+            b.run_sse(&compiled(2), context(), NeverRead, || false),
             Err(Error::Suspended)
         );
     }
