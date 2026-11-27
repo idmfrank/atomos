@@ -1,6 +1,8 @@
 //! Synthetic durable admission measurement. Read boundary excludes decoder/settlement latency.
 #[cfg(feature = "atomic-admission")]
-use atomos_core::atomic_admission::{AtomicReplay, CompiledRequest, Configuration, NAMESPACE};
+use atomos_core::atomic_admission::{
+    AtomicReplay, CompiledRequest, Configuration, Context, NAMESPACE,
+};
 use atomos_core::{
     authorization::{AuthorizedReplay, Envelope, Policy},
     broker::Request,
@@ -168,7 +170,15 @@ fn main() {
                 let r = CompiledRequest::compile(env(id), 7, 1, req(id)).unwrap();
                 compilation.push(t.elapsed());
                 let t = Instant::now();
-                b.validate(&r, 4).unwrap();
+                b.validate(
+                    &r,
+                    Context {
+                        now: 200,
+                        active_turn: 4,
+                        task: 5,
+                    },
+                )
+                .unwrap();
                 validation.push(t.elapsed());
                 let measured = Rc::new(Cell::new(None));
                 if trace {
@@ -181,7 +191,16 @@ fn main() {
                     time: measured.clone(),
                     trace,
                 };
-                let result = b.run_sse(&r, 4, source, || false);
+                let result = b.run_sse(
+                    &r,
+                    Context {
+                        now: 200,
+                        active_turn: 4,
+                        task: 5,
+                    },
+                    source,
+                    || false,
+                );
                 completion.push(start.elapsed());
                 assert!(result.is_ok(), "candidate request {id} failed: {result:?}");
                 admission.push(measured.get().unwrap());

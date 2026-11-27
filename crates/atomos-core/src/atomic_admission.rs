@@ -26,6 +26,15 @@ pub struct Configuration {
     pub model: u64,
     pub model_eligible: bool,
 }
+
+/// Current trusted caller state, injected anew at admission, never a permit.
+/// Fixture time only; a trusted wall-clock source is a future integration gate.
+#[derive(Clone, Copy)]
+pub struct Context {
+    pub now: u64,
+    pub active_turn: u64,
+    pub task: u64,
+}
 impl Configuration {
     fn valid(self) -> bool {
         self.policy.valid() && self.version != 0 && self.model != 0
@@ -49,6 +58,7 @@ pub enum Error {
     ClockRollback,
     Replay,
     StaleTurn,
+    StaleTask,
     Budget,
     Suspended,
     Storage,
@@ -221,7 +231,9 @@ impl State {
             ["S", id, actual, halt] => {
                 let (id, actual) = (num(id)?, num(actual)?);
                 let p = self.pending.as_ref().ok_or(Error::Corrupt)?;
-                if self.halted || actual > 1_000_000_000 || p.id != id
+                if self.halted
+                    || actual > 1_000_000_000
+                    || p.id != id
                     || !matches!(*halt, "0" | "1")
                     || (actual > p.amount && *halt != "1")
                     || line != format!("S {id} {actual} {halt}")
@@ -394,9 +406,12 @@ impl AtomicReplay {
         self.persist("H")
     }
     /// Pure validation only; returns no authorization object and permits no dispatch.
-    pub fn validate(&self, r: &CompiledRequest, active: u64) -> Result<(), Error> {
-        if r.turn != active {
+    pub fn validate(&self, r: &CompiledRequest, context: Context) -> Result<(), Error> {
+        if r.turn != context.active_turn {
             return Err(Error::StaleTurn);
+        }
+        if r.task != context.task {
+            return Err(Error::StaleTask);
         }
         if resolve_local(&r.text).is_some() {
             return Ok(());
@@ -415,13 +430,17 @@ impl AtomicReplay {
         if !p.included_fixture() || !c.model_eligible {
             return Err(Error::Evidence);
         }
-        if e.now < self.state.last {
+        if context.now < self.state.last || context.now < e.now {
             return Err(Error::ClockRollback);
         }
         if e.request_id != self.state.next || e.request_id == u64::MAX {
             return Err(Error::Replay);
         }
-        if !valid_time(p, e.now, e.expires_at) {
+        if !valid_time(p, e.now, e.expires_at)
+            || context.now >= e.expires_at
+            || context.now >= p.grant_expiry
+            || context.now >= p.window_end
+        {
             return Err(Error::Expired);
         }
         let amount = (r.text.len() as u64)
@@ -444,11 +463,11 @@ impl AtomicReplay {
     pub fn run_sse(
         &mut self,
         r: &CompiledRequest,
-        active: u64,
+        context: Context,
         input: impl Read,
         cancelled: impl FnMut() -> bool,
     ) -> Result<Answer, Error> {
-        self.validate(r, active)?;
+        self.validate(r, context)?;
         if let Some(text) = resolve_local(&r.text) {
             return Ok(Answer {
                 turn: r.turn,
@@ -470,7 +489,7 @@ impl AtomicReplay {
         self.persist(&format!(
             "A {} {} {} {} {} {} {} {} {} {}",
             e.request_id,
-            e.now,
+            context.now,
             e.expires_at,
             r.turn,
             r.task,
@@ -628,7 +647,19 @@ mod arithmetic_tests {
                 },
             )
             .unwrap();
-            assert_eq!(b.run_sse(&r, 4, Never, || false), Err(Error::Storage));
+            assert_eq!(
+                b.run_sse(
+                    &r,
+                    Context {
+                        now: 200,
+                        active_turn: 4,
+                        task: 5
+                    },
+                    Never,
+                    || false
+                ),
+                Err(Error::Storage)
+            );
             assert_eq!(b.dispatches(), 0);
             assert_eq!(b.charged(), 0);
             assert!(b.suspended());
