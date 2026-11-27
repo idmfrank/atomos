@@ -35,6 +35,17 @@ impl Default for Limits {
     }
 }
 
+/// Shared checked accounting decision for the reference and isolated candidate.
+pub(crate) fn reservation_allowed(limits: Limits, total: u64, background: u64,
+    priority: Priority, amount: u64) -> bool {
+    if amount == 0 || amount > limits.per_request { return false; }
+    let Some(projected) = total.checked_add(amount) else { return false; };
+    if projected > limits.total { return false; }
+    priority != Priority::Background || (
+        background.checked_add(amount).map_or(false, |v| v <= limits.background)
+        && limits.total.checked_sub(limits.interactive_reserve).map_or(false, |v| projected <= v))
+}
+
 #[derive(Debug)]
 pub enum Error {
     Io(io::Error),
@@ -216,17 +227,7 @@ impl Governor {
         if !self.healthy {
             return Err(Error::Unavailable);
         }
-        if self.halted || amount == 0 || amount > self.limits.per_request {
-            return Err(Error::Denied);
-        }
-        let projected = self.total.checked_add(amount).ok_or(Error::Denied)?;
-        if projected > self.limits.total {
-            return Err(Error::Denied);
-        }
-        if priority == Priority::Background
-            && (self.background.checked_add(amount).ok_or(Error::Denied)? > self.limits.background
-                || projected > self.limits.total - self.limits.interactive_reserve)
-        {
+        if self.halted || !reservation_allowed(self.limits, self.total, self.background, priority, amount) {
             return Err(Error::Denied);
         }
         if self.next_id == u64::MAX {

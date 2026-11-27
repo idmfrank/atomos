@@ -35,6 +35,17 @@ jobs:
           node --check scripts/auth/atomos-auth.mjs
           # Validate password prompt flags without prompting for a secret.
           /usr/bin/systemd-ask-password --timeout=60 --echo=no --help >/dev/null
+      - name: Atomic admission candidate tests and durable benchmark
+        run: |
+          command -v strace || (sudo apt-get update && sudo apt-get install -y strace)
+          timeout --kill-after=5s 120s bash scripts/test-atomic-admission.sh
+      - name: Candidate minimum compiler compatibility
+        run: |
+          rustup toolchain install 1.75.0 --profile minimal
+          # Explicit package-only provisioning: older Cargo cannot fetch the
+          # unrelated workspace's existing edition-2024 getrandom package.
+          cargo +1.75.0 check --locked -p atomos-core --features atomic-admission
+          cargo +1.75.0 test --locked --offline -p atomos-core --features atomic-admission --all-targets
       - name: Text-only benchmark
         run: bash scripts/benchmark.sh
 

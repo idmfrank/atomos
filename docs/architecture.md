@@ -67,6 +67,8 @@ Candidates: local wake word (openWakeWord), VAD (Silero or simpler baseline), st
 
 ## State and concurrency
 
+M2.5a's [isolated synthetic candidate](m2-atomic-admission.md) commits authorization and reservation in one private bounded ledger before reading its response source. This is not wired to the conversational runtime, AMG, OAuth, live qualification utility or network. Its immutable compiled request has no detachable dispatch permit; unknown outcomes retain reservation and block subsequent inference. Extended decoder integration remains M2.5b.
+
 One turn manager owns active conversation state. Use bounded asynchronous channels and cancellation tokens; do not hold database transactions across inference. A single durable journal records committed state transitions. AMG models memory as a temporal property graph with provenance, event journal, exact/graph/FTS retrieval and bounded context compilation. SQLite + FTS5 is the retained reference engine behind typed interfaces; alternatives are deferred, not equivalently benchmarked. Use schema versioning, bounded retention, explicit migration/recovery. See [AMG architecture](amg-architecture.md). Preserve provenance, distinguish untrusted retrieved content from instructions, and enforce deletion in derived indexes. No plaintext credentials in journal.
 
 The scheduler is event-driven. Background work competes for neither interactive audio nor reserved inference capacity. Prioritize audio callbacks, local interaction and active user requests over consolidation. Avoid real-time priority changes until tested against starvation.
