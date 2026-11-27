@@ -1,5 +1,8 @@
 # M1.3: Persistent conversational coordinator
 
+> **Milestone context (reviewed through PR #28, 2026-11-26):** This remains the documented local conversation coordinator and optional warm speech adapter. Automated fixture success is not physical-device qualification; wake word, native-model quality, AEC/barge-in, device latency and power measurements remain open. The separate M2 provider qualification does not enable remote speech. See [architecture](architecture.md) and [resource budget](resource-budget.md). [Current project state](../PROJECT_STATE.md) is authoritative; status and next-step statements below describe the original milestone unless explicitly updated.
+
+
 Status: merged, automated validation passed; real hardware and native model evaluation pending. No remote inference.
 
 ## What this slice implements

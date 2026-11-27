@@ -57,7 +57,7 @@ not log token or raw responses. No /v1/responses code path or model fallback.
 The catalog may identify model choices, but does not prove the model's event
 profile, included allowance, billing settings or a generation cap.
 Offline tests cover malformed catalogs, expiry, rollback, wrong scope.
-Actual HTTPS interoperability not yet exercised, no live network in CI.
+At PR #16 actual HTTPS interoperability was not yet exercised; subsequent owner sign-in/catalog/refresh verified. No live network in CI.
 
 ## Spending and inference gates
 
@@ -100,4 +100,6 @@ confirmation, decision on output ceiling and real account-bound transport.
 
 Owner reported all 16 offline tests passed on Ubuntu 24.04.4 LTS / Node 24.22.3. After PR #17 corrected the password prompt option, actual sign-in succeeded and a fresh status invocation reported active registration, granted plan scope, unexpired access, and inference disabled. The subsequent read-only catalog GET passed HTTP status validation but exceeded the original 256 KiB body limit. Catalog-only bounds increased to 8 MiB and 262,144 JSON values; auth and vault limits unchanged. Added two synthetic regression tests; actual catalog response size and successful parsing still unverified. No tokens, callback URLs, account identity or credentials recorded. No live inference. No new registration or vault reset required for this fix.
 
-Owner subsequently reported all 18 local tests passed at ab677ba and successful read-only model discovery with the existing vault. Owner screenshot showed AtomOS enabled with 50% app limit. No account-wide credit setting verified; personal app limit below 100% blocks purchased-credit use per official documentation. Live refresh/revocation and production review still outstanding. M2.4 [one-shot qualification](m2-first-live-qualification.md) explicitly handles absence of provider output ceiling; no general inference permission.
+Owner subsequently reported all 18 local tests passed at ab677ba and successful read-only model discovery with the existing vault. Owner screenshot showed AtomOS enabled with 50% app limit. No account-wide credit setting verified; personal app limit below 100% blocks purchased-credit use per official documentation. Subsequent explicit owner-run refresh succeeded; revocation and production review still outstanding. M2.4 [one-shot qualification](m2-first-live-qualification.md) explicitly handles absence of provider output ceiling; no general inference permission.
+
+Current operating note: use the existing owner vault and explicit interactive OS prompt (`--echo=no`, PR #17); no re-registration or vault reset. All three M2.4 attempts consumed; do not run historical probe commands. Owner observed app limit 50%, purchased-credit access/reload disabled and zero purchased-credit balance; not an authoritative API attestation. 43 owner-local Node tests passed at PR #25, 43 Node tests in PR #28 CI. No integrated live inference or private-memory egress.

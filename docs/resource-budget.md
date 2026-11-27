@@ -1,6 +1,6 @@
 # Resource budget and conversational benchmarks
 
-Status: engineering targets plus explicitly labeled measured text-only baselines. Physical voice, whole-device power and reference-device active-AMG measurements remain pending; CI scale benchmarks passed.
+Status: engineering targets and historical measured baselines; latest verified PR #28 evidence below and in [PROJECT_STATE](../PROJECT_STATE.md). Physical voice, whole-device power and reference-device active-AMG measurements remain pending; CI scale benchmarks passed.
 
 ## Reference configuration
 
@@ -99,3 +99,5 @@ PR #25 [CI](https://github.com/idmfrank/atomos/actions/runs/45916700932) / [scal
 PR #26 documentation-only [CI](https://github.com/idmfrank/atomos/actions/runs/45917707265) / [scale](https://github.com/idmfrank/atomos/actions/runs/45917825275): 140 tests, CLI 466,512 bytes; 100K active 4,204 KiB vs no-store 2,572 KiB (increment 1,632 KiB); exact p95 0.0864 ms, selective 0.3966 ms, common 3.0929 ms vs reference 45.0312 ms; forget 1.4521 ms, restore 17.400 s / 9,128 KiB; decoder p95 38.3/24.1/24.1 µs, RSS 2,172 KiB; zero parity/recovery errors. No live calls. New offline compatibility profile benchmark pending.
 
 PR #27 [CI](https://github.com/idmfrank/atomos/actions/runs/45918304938) / [scale](https://github.com/idmfrank/atomos/actions/runs/45918448554): 145 distinct tests; CLI 466,512 bytes; 100K 4,136 KiB vs 2,684 KiB (increment 1,452 KiB); selective p95 0.2163 ms, common 1.8022 vs 28.7214 reference; forget 1.1674 ms, restore 10.471 s / 9,012 KiB. 1K remember p95 13.5059 ms, median 0.9322 ms; hosted runner tail variation, cause unisolated. 9,000 replays zero errors, strict 38.1/25.5/25.1 µs, equal-wire compat 42.9/25.8/25.3 µs, auxiliary 49.1/37.6/30.1 µs, combined RSS 2,144 KiB. No live calls. Extended candidate tests/bench pending.
+
+PR #28 [CI](https://github.com/idmfrank/atomos/actions/runs/45919051196) / [scale](https://github.com/idmfrank/atomos/actions/runs/45919185353): 150 distinct tests (96 Rust, 11 Python, 43 Node). CLI 466,512 bytes; 100K active 4,144 KiB vs 2,576 KiB no-store, increment 1,568 KiB (1.531 MiB). Exact p95 0.0892 ms, selective 0.4145 ms, common 3.0721 ms vs 44.0512 reference; forget 1.4984 ms; restore 17.411 s / 9,124 KiB. Zero parity/recovery errors. Decoder p95 (1/64/4096-byte reads) strict 23.4/16.5/16.3 µs, same-wire compat 23.0/16.8/16.1, auxiliary 26.9/19.4/18.7, same-wire extended 22.6/16.6/19.8, reasoning 29.1/20.9/20.1, refusal 22.3/15.6/15.2; 18,000 samples zero errors, combined benchmark RSS 2,216 KiB. Prior 1K remember tail returned to 1.4814 ms p95; uncontrolled runner variation. No provider calls in CI; actual token usage, real TTFT, speech, power and integrated memory remain unmeasured.

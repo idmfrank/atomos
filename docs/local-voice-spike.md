@@ -1,5 +1,8 @@
 # M1 slice 2: local audio path
 
+> **Milestone context (reviewed through PR #28, 2026-11-26):** This documents the original batch audio smoke-test slice; [persistent conversation](persistent-conversation.md) implements the subsequent coordinator and optional warm adapter. Physical microphone/speaker, native model quality, wake word and AEC remain unqualified. Stub/CI success is not hardware evidence. [Current project state](../PROJECT_STATE.md) is authoritative; status and next-step statements below describe the original milestone unless explicitly updated.
+
+
 Status: merged, automated stub integration tests passed; physical validation pending. This is a deliberately bounded hardware smoke test, not the final conversational engine.
 
 ## Purpose

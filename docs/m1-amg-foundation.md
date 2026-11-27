@@ -1,5 +1,8 @@
 # M1.4a — AMG durable foundation
 
+> **Milestone context (reviewed through PR #28, 2026-11-26):** The original schema v1 and verification numbers below are historical. Later milestones implemented v2/v3 migration, scoped retrieval, revision-specific voice grants, indexed deletion, optimized retrieval and verified logical recovery. Active scale benchmarks now pass through 100K synthetic entities. See [AMG architecture](amg-architecture.md), [optimization](m1-amg-optimization.md) and [current resource budget](resource-budget.md). Private deployment remains gated. [Current project state](../PROJECT_STATE.md) is authoritative; status and next-step statements below describe the original milestone unless explicitly updated.
+
+
 Status: merged and locked offline CI passed. Active AMG resource benchmarks pending.
 See [AMG architecture](amg-architecture.md).
 

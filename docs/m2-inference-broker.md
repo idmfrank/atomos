@@ -1,5 +1,8 @@
 # M2.1 — Offline inference broker and governor integration
 
+> **Milestone context (reviewed through PR #28, 2026-11-26):** This is the original synthetic broker slice and its historical verification. M2.2–M2.4c added strict and isolated compatibility decoder profiles, synthetic authorization and separate owner-run authentication/qualification. The existing broker remains offline and uses its original strict replay contract; M2.5 integrated account-bound admission is next. See [inference architecture](inference-architecture.md) and [protocol compatibility](m2-protocol-compatibility.md). [Current project state](../PROJECT_STATE.md) is authoritative; status and next-step statements below describe the original milestone unless explicitly updated.
+
+
 Status: merged in PR #12; locked offline post-merge CI passed. No live inference, credentials, network transport,
 provider registration, or remote AMG disclosure.
 

@@ -1,5 +1,8 @@
 # M1.4f — Retrieval optimization, streaming recovery and verification
 
+> **Milestone context (reviewed through PR #28, 2026-11-26):** M1.4f's reference and optimized measurements below are historical verified results. Subsequent CI has repeatedly exercised the same synthetic 1K/10K/100K workload; consult the current [resource budget](resource-budget.md) and [README](../README.md) for latest measurements. Hardware efficiency, private-data deployment and aggregate hard quota remain unqualified. [Current project state](../PROJECT_STATE.md) is authoritative; status and next-step statements below describe the original milestone unless explicitly updated.
+
+
 Status: merged in PR #11; post-merge and combined scale validation passed.
 
 ## Reference baseline and decision

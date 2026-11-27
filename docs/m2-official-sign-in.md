@@ -1,5 +1,8 @@
 # M2.3b — Official sign-in, auth-only utility
 
+> **Milestone context (reviewed through PR #28, 2026-11-26):** This is the historical M2.3b auth-only design. Its original plaintext profile and command contract are superseded by [M2.3c encrypted vault](m2-auth-hardening.md), PR #17 password prompt fix and PR #18 read-only catalog support. Owner sign-in, catalog and explicit refresh subsequently succeeded; revocation and production credential integration remain open. Do not recreate the existing vault or repeat any consumed [live qualification](m2-first-live-qualification.md). Use current owner-run instructions, not historical setup commands. [Current project state](../PROJECT_STATE.md) is authoritative; status and next-step statements below describe the original milestone unless explicitly updated.
+
+
 Status: merged PR #15; offline CI and scale passed; actual account registration pending. No inference
 or model discovery requests. No OpenAI account accessed by CI or development.
 

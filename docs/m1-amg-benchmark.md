@@ -1,5 +1,8 @@
 # M1.4e — Active AMG benchmark and engine evaluation
 
+> **Milestone context (reviewed through PR #28, 2026-11-26):** The SQLite engine decision and original scale measurements are historical. M1.4f added optimized retrieval and streaming recovery; SQLite + FTS5 remains the selected engine, alternative adapters have not been equivalently benchmarked. See [optimization](m1-amg-optimization.md) and the current [resource budget](resource-budget.md) for subsequent scale evidence. [Current project state](../PROJECT_STATE.md) is authoritative; status and next-step statements below describe the original milestone unless explicitly updated.
+
+
 Status: SQLite reference harness and schema v3 deletion fix merged; individual and combined scale runs passed. Retain SQLite for M2 development pending owner review of deferral; no equivalent-engine ranking or measured token savings.
 
 ## Reproduce
