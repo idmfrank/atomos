@@ -41,7 +41,7 @@ export function withStore(dir,pass,action){ // synchronous acquisition, async li
     try{
       const hp=path.join(dir,'host.json'),pp=path.join(dir,'profile.json');
       if(!exists(hp)){
-        require(!exists(pp)&&!exists(path.join(dir,'registration-pending.json'))&&!exists(path.join(dir,'m2-4-probe.json'))&&!exists(path.join(dir,'m2-4-followup.json')),'host_missing');
+        require(!exists(pp)&&!exists(path.join(dir,'registration-pending.json'))&&!exists(path.join(dir,'m2-4-probe.json'))&&!exists(path.join(dir,'m2-4-followup.json'))&&!exists(path.join(dir,'m2-4-compat.json')),'host_missing');
         atomic(dir,'host.json',{host:hostId()});
       }
       const host=openRead(hp).host;require(validHost(host),'invalid_host');
@@ -51,15 +51,23 @@ export function withStore(dir,pass,action){ // synchronous acquisition, async li
       const pending=path.join(dir,'registration-pending.json');
       const probe=path.join(dir,'m2-4-probe.json');
       const followup=path.join(dir,'m2-4-followup.json');
+      const compat=path.join(dir,'m2-4-compat.json');
       const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
       const digest=a=>createHash('sha256').update(JSON.stringify(a)).digest('hex');
       function checkPrevious(p,first){
         require(same(openRead(probe),first)&&p.previous_record_sha256===digest(first)&&p.binding===first.binding&&p.request_sha256===first.request_sha256&&p.attempt===2&&p.prior_retained_planning_units===1024,'probe_original_changed');
       }
-      const store={host,get probeExists(){return exists(probe);},get followupExists(){return exists(followup);},originalProbe(){return openRead(probe);},
-      reserveFollowup(p,first){require(!exists(followup)&&p.state==='pending','probe_followup_already_attempted');checkPrevious(p,first);atomic(dir,'m2-4-followup.json',p);},
+      function checkHistory(p,first,second){
+        checkPrevious(second,first);
+        require(same(openRead(followup),second)&&p.original_record_sha256===digest(first)&&p.previous_record_sha256===digest(second)&&p.binding===first.binding&&p.request_sha256===first.request_sha256&&p.attempt===3&&p.prior_retained_planning_units===2048,'probe_compat_history_changed');
+      }
+      const store={host,get compatExists(){return exists(compat);},followupProbe(){return openRead(followup);},
+      reserveCompat(p,first,second){require(!exists(compat)&&p.state==='pending','probe_compat_already_attempted');checkHistory(p,first,second);atomic(dir,'m2-4-compat.json',p);},
+      finishCompat(p,r,first,second){checkHistory(p,first,second);checkHistory(r,first,second);require(p.state==='pending'&&same(openRead(compat),p)&&['settled','unknown'].includes(r.state)&&r.cumulative_planning_units===2048+r.charged_planning_units&&r.prior_usage_unknown===true,'probe_ledger_mismatch');atomic(dir,'m2-4-compat.json',r);},
+      get probeExists(){return exists(probe);},get followupExists(){return exists(followup);},originalProbe(){return openRead(probe);},
+      reserveFollowup(p,first){require(!exists(followup)&&!exists(compat)&&p.state==='pending','probe_followup_already_attempted');checkPrevious(p,first);atomic(dir,'m2-4-followup.json',p);},
       finishFollowup(p,r,first){checkPrevious(p,first);checkPrevious(r,first);require(p.state==='pending'&&same(openRead(followup),p)&&['settled','unknown'].includes(r.state)&&r.cumulative_planning_units===1024+r.charged_planning_units&&r.prior_usage_unknown===true,'probe_ledger_mismatch');atomic(dir,'m2-4-followup.json',r);},
-      reserveProbe(p){require(!exists(probe)&&!exists(followup)&&p.state==='pending','probe_already_attempted');atomic(dir,'m2-4-probe.json',p);},finishProbe(p,r){const prior=openRead(probe);require(prior.state==='pending'&&JSON.stringify(prior)===JSON.stringify(p)&&r.binding===p.binding&&r.request_sha256===p.request_sha256&&['settled','unknown'].includes(r.state),'probe_ledger_mismatch');atomic(dir,'m2-4-probe.json',r);},get profile(){return profile;},get pendingRegistration(){return exists(pending);},markRegistration(id){require(clientId(id)&&!exists(pending),'registration_pending');atomic(dir,'registration-pending.json',{client_id:id});},finishRegistration(){if(exists(pending)){fs.unlinkSync(pending);syncDir(dir);}},save(p){require(p.host===host&&clientId(p.client_id)&&opaque(p.subject,1024)&&(!profile||(p.client_id===profile.client_id&&p.subject===profile.subject)),'profile_binding');atomic(dir,'profile.json',seal(p,pass,host));profile=p;}};
+      reserveProbe(p){require(!exists(probe)&&!exists(followup)&&!exists(compat)&&p.state==='pending','probe_already_attempted');atomic(dir,'m2-4-probe.json',p);},finishProbe(p,r){const prior=openRead(probe);require(prior.state==='pending'&&JSON.stringify(prior)===JSON.stringify(p)&&r.binding===p.binding&&r.request_sha256===p.request_sha256&&['settled','unknown'].includes(r.state),'probe_ledger_mismatch');atomic(dir,'m2-4-probe.json',r);},get profile(){return profile;},get pendingRegistration(){return exists(pending);},markRegistration(id){require(clientId(id)&&!exists(pending),'registration_pending');atomic(dir,'registration-pending.json',{client_id:id});},finishRegistration(){if(exists(pending)){fs.unlinkSync(pending);syncDir(dir);}},save(p){require(p.host===host&&clientId(p.client_id)&&opaque(p.subject,1024)&&(!profile||(p.client_id===profile.client_id&&p.subject===profile.subject)),'profile_binding');atomic(dir,'profile.json',seal(p,pass,host));profile=p;}};
       return await action(store);
     }finally{fs.rmdirSync(lock);syncDir(dir);}
   })();

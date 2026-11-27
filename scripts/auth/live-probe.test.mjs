@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {withStore} from './store.mjs';
 import {SCOPES,hostId} from './protocol.mjs';
-import {MODEL,body,qualify,intent,resultRecord,decodeWire,decoderPath,sendOnce,qualifyFollowup,followupEligible,replayLoopbackCandidate} from './live-probe.mjs';
+import {MODEL,body,qualify,intent,resultRecord,decodeWire,decoderPath,sendOnce,qualifyFollowup,followupEligible,replayLoopbackCandidate,qualifyCompat,compatEligible} from './live-probe.mjs';
 const now=1700000000000;
 function profile(host=hostId()){return {version:1,host,client_id:'oaiapp_fixture',subject:'fixture',status:'active',scopes:SCOPES,access_token:'fixture-access',refresh_token:'fixture-refresh',id_token:'fixture-id',nonce:'fixture-nonce',saved_at:now/1000,expires_at:now/1000+3600};}
 const available=[{slug:MODEL}];
@@ -327,4 +327,94 @@ test('real loopback: no redirect or alternate endpoint, no invalid port',async t
   const f=await localResponse(t,{location:'http://127.0.0.1:1/'},Buffer.alloc(0),{status:302});
   await assert.rejects(replayLoopbackCandidate(f.port),/probe_http_302/);assert.equal(f.calls(),1);
   for(const port of [0,-1,65536,'1234',null])await assert.rejects(replayLoopbackCandidate(port),/invalid_fixture_port/);
+});
+
+
+async function twoHistorical(s,overrides={}){
+  const {createHash}=await import('node:crypto');
+  const first=historical(s);
+  const second={...intent(s.profile,now+1000),attempt:2,prior_retained_planning_units:1024,previous_record_sha256:createHash('sha256').update(JSON.stringify(first)).digest('hex')};
+  s.reserveFollowup(second,first);
+  const r={...resultRecord(second,null,{}),category:'probe_content_type',http_status:200,content_type_class:'missing',content_encoding_class:'missing',first_body_ms:null,wire_bytes:0,prior_usage_unknown:true,cumulative_planning_units:2048,...overrides};
+  s.finishFollowup(second,r,first);
+  return {first,second:r};
+}
+test('compat qualification preserves both records and accounts separately before dispatch',async t=>{
+  const dir=fixture(t),names=['m2-4-probe.json','m2-4-followup.json'];let originals,calls=0;
+  await withStore(dir,pass,async s=>{
+    s.save(profile(s.host));await twoHistorical(s);originals=names.map(n=>fs.readFileSync(path.join(dir,n)));
+    const r=await qualifyCompat(s,available,{now:()=>now+2000,send:async access=>{
+      assert.equal(access,'fixture-access');calls++;
+      const p=JSON.parse(fs.readFileSync(path.join(dir,'m2-4-compat.json')));
+      assert.equal(p.state,'pending');assert.equal(p.attempt,3);assert.equal(p.prior_retained_planning_units,2048);
+      assert.match(p.original_record_sha256,/^[0-9a-f]{64}$/);assert.match(p.previous_record_sha256,/^[0-9a-f]{64}$/);
+      assert.deepEqual(names.map(n=>fs.readFileSync(path.join(dir,n))),originals);
+      return {wire:Buffer.from('fixture')};
+    },decode:()=>({...decoded,diagnostics:{stage:'terminal',event_class:'response.completed',item_class:'none',validated_events:10,secret:'fixture secret'}})});
+    assert.equal(r.outcome,'qualified');assert.equal(r.cumulative_planning_units,2095);assert.equal(r.prior_usage_unknown,true);assert.equal(r.original_record_sha256,undefined);assert.equal(r.previous_record_sha256,undefined);
+    assert.deepEqual(r.decoder_diagnostics,{stage:'terminal',event_class:'response.completed',item_class:'none',validated_events:10});
+  });
+  await withStore(dir,pass,async s=>{
+    const o={now:()=>now+3000,send:async()=>assert.fail('no dispatch'),decode:()=>decoded};
+    await assert.rejects(qualifyCompat(s,available,o),/probe_compat_already_attempted/);
+    await assert.rejects(qualifyFollowup(s,available,o),/probe_followup_already_attempted/);
+    await assert.rejects(qualify(s,available,o),/probe_already_attempted/);
+  });
+  assert.equal(calls,1);assert.deepEqual(names.map(n=>fs.readFileSync(path.join(dir,n))),originals);
+});
+test('compat qualification refuses missing or incompatible history and expired grants',async t=>{
+  const o={now:()=>now+2000,send:async()=>assert.fail('no dispatch'),decode:()=>decoded};
+  const cases=[null,{category:'probe_http_429'},{content_type_class:'sse'},{wire_bytes:1},{http_status:500},{first_body_ms:1},{created_ms:now+3000}];
+  for(const variant of cases){
+    const dir=fixture(t);
+    await withStore(dir,pass,async s=>{
+      s.save(profile(s.host));
+      if(variant)await twoHistorical(s,variant);else historical(s);
+      await assert.rejects(qualifyCompat(s,available,o),variant?/probe_compat_history_ineligible/:/probe_compat_history_missing/);
+      assert.equal(s.compatExists,false);
+    });
+  }
+  const dir=fixture(t);
+  await withStore(dir,pass,async s=>{
+    s.save(profile(s.host));await twoHistorical(s);
+    await assert.rejects(qualifyCompat(s,available,{...o,now:()=>now+3600000}),/catalog_requires_current_grant/);
+    assert.equal(s.compatExists,false);
+  });
+});
+test('compat unknown result retains all three reservations; rejects arbitrary decoder diagnostic labels',async t=>{
+  const dir=fixture(t);
+  await withStore(dir,pass,async s=>{
+    s.save(profile(s.host));await twoHistorical(s);
+    const r=await qualifyCompat(s,available,{now:()=>now+2000,send:async()=>({wire:Buffer.from('fixture')}),decode:()=>({terminal:'unvalidated',category:'Unsupported',diagnostics:{stage:'created',event_class:'private-fixture',item_class:'other',validated_events:1}})});
+    assert.equal(r.state,'unknown');assert.equal(r.cumulative_planning_units,3072);assert.equal(r.decoder_diagnostics,undefined);
+  });
+  assert.ok(!fs.readFileSync(path.join(dir,'m2-4-compat.json'),'utf8').includes('private-fixture'));
+  await withStore(dir,pass,async s=>assert.rejects(qualifyCompat(s,available,{now:()=>now+3000,send:async()=>assert.fail('no replay'),decode:()=>decoded}),/probe_compat_already_attempted/));
+});
+test('compat pending crash marker blocks all prior paths even after historical marker removal',async t=>{
+  const dir=fixture(t),{createHash}=await import('node:crypto');
+  await withStore(dir,pass,async s=>{
+    s.save(profile(s.host));await twoHistorical(s);
+    const {first,second}=compatEligible(s,now+2000);
+    const digest=x=>createHash('sha256').update(JSON.stringify(x)).digest('hex');
+    s.reserveCompat({...intent(s.profile,now+2000),attempt:3,prior_retained_planning_units:2048,original_record_sha256:digest(first),previous_record_sha256:digest(second)},first,second);
+  });
+  fs.unlinkSync(path.join(dir,'m2-4-probe.json'));fs.unlinkSync(path.join(dir,'m2-4-followup.json')); // synthetic tamper
+  await withStore(dir,pass,async s=>{
+    const o={now:()=>now+3000,send:async()=>assert.fail('no dispatch'),decode:()=>decoded};
+    await assert.rejects(qualifyCompat(s,available,o),/probe_compat_already_attempted/);
+    await assert.rejects(qualifyFollowup(s,available,o),/probe_followup_already_attempted/);
+    await assert.rejects(qualify(s,available,o),/probe_already_attempted/);
+  });
+});
+test('Rust diagnostic snapshot identifies unsupported reasoning item without exposing its contents',()=>{
+  const wire=syntheticWire().toString().replace('"id":"msg_synthetic","type":"message","status":"in_progress"','"id":"msg_synthetic","type":"reasoning","status":"in_progress"');
+  const r=decodeWire(decoderPath(),Buffer.from(wire));
+  assert.equal(r.terminal,'unvalidated');assert.equal(r.category,'Unsupported');
+  assert.deepEqual(r.diagnostics,{stage:'in_progress',event_class:'response.output_item.added',item_class:'reasoning',validated_events:2});
+  assert.ok(!JSON.stringify(r).includes('msg_synthetic'));
+  const valid=decodeWire(decoderPath(),syntheticWire());
+  assert.deepEqual(valid.diagnostics,{stage:'terminal',event_class:'response.completed',item_class:'none',validated_events:10});
+  const malformed=decodeWire(decoderPath(),Buffer.from('event: response.created\ndata: {bad}\n\n'));
+  assert.equal(malformed.category,'Json');assert.equal(malformed.diagnostics.event_class,'unparsed');assert.equal(malformed.diagnostics.validated_events,0);
 });

@@ -15,6 +15,7 @@ export const MODEL='gpt-6.2-sol';
 export const PROMPT='Say exactly: Hello, world!';
 export const ACK='--confirm-personal-app-below-100-and-uncapped-single-request';
 export const FOLLOWUP_ACK='--confirm-personal-app-below-100-second-uncapped-request-retain-unknown-usage';
+export const COMPAT_ACK='--confirm-personal-app-below-100-final-uncapped-request-retain-two-unknown-attempts';
 const ENDPOINT=RESOURCE+'/responses';
 const DEADLINE=30000,MAX=256*1024,RESERVED=1024;
 export function body(){return JSON.stringify({model:MODEL,input:[{role:'user',content:PROMPT}],store:false,stream:true});}
@@ -61,6 +62,8 @@ class ProbeTransportError extends AuthError{
 export function sendOnce(access,request=https.request){
   return transport(access,request,false);
 }
+// Only selected by the separately gated compatibility qualification.
+function sendCompatibleOnce(access){return transport(access,https.request,true);}
 // Offline experiment only. Fixed synthetic token and numeric loopback address;
 // cannot target a provider, accept real credentials or be selected by the CLI.
 export async function replayLoopbackCandidate(port){
@@ -134,7 +137,7 @@ export function decodeWire(exe,wire){
 // Caller holds the existing exclusive vault lock throughout. The store
 // creates a durable, non-reusable reservation before the first POST.
 export function followupEligible(store,now=Date.now()){
-  require(!store.followupExists,'probe_followup_already_attempted');
+  require(!store.followupExists&&!store.compatExists,'probe_followup_already_attempted');
   require(store.probeExists,'probe_original_missing');
   const first=store.originalProbe();
   const p=store.profile;
@@ -144,14 +147,33 @@ export function followupEligible(store,now=Date.now()){
   return first;
 }
 export async function qualify(store,available,options={}){
-  require(!store.probeExists&&!store.followupExists,'probe_already_attempted');
+  require(!store.probeExists&&!store.followupExists&&!store.compatExists,'probe_already_attempted');
   return runQualification(store,available,options,null);
 }
 export async function qualifyFollowup(store,available,options={}){
   const first=followupEligible(store,(options.now??Date.now)());
   return runQualification(store,available,options,first);
 }
-async function runQualification(store,available,{send=sendOnce,decode,now=()=>Date.now()}={},first){
+// Match only the two documented historical unknown header failures. Reuse
+// the original identity, request and immutable records; no generic retry.
+export function compatEligible(store,now=Date.now()){
+  require(!store.compatExists,'probe_compat_already_attempted');
+  require(store.probeExists&&store.followupExists,'probe_compat_history_missing');
+  const first=store.originalProbe(),second=store.followupProbe(),p=store.profile;
+  const unknown=r=>r?.version===1&&r.state==='unknown'&&r.outcome==='unvalidated'&&r.category==='probe_content_type'&&r.binding===binding(p)&&r.request_sha256===hash(body())&&r.model===MODEL&&Number.isSafeInteger(r.created_ms)&&r.created_ms>0&&r.created_ms<=now&&r.reserved_planning_tokens===RESERVED&&r.charged_planning_units===RESERVED&&r.reported_tokens===null&&r.unknown_usage===true&&r.expected_text===null;
+  require(p&&unknown(first)&&!Object.hasOwn(first,'http_status')&&unknown(second)&&second.created_ms>=first.created_ms&&second.attempt===2&&second.previous_record_sha256===hash(JSON.stringify(first))&&second.prior_retained_planning_units===RESERVED&&second.cumulative_planning_units===2*RESERVED&&second.prior_usage_unknown===true&&second.http_status===200&&second.content_type_class==='missing'&&second.content_encoding_class==='missing'&&second.first_body_ms===null&&second.wire_bytes===0,'probe_compat_history_ineligible');
+  return {first,second};
+}
+export async function qualifyCompat(store,available,options={}){
+  const {first,second}=compatEligible(store,(options.now??Date.now)());
+  return runQualification(store,available,{send:sendCompatibleOnce,...options},first,second);
+}
+function safeDiagnostics(d){
+  if(!d||!['initial','created','in_progress','item','part','text_done','part_done','item_done','terminal'].includes(d.stage)||!['none','unparsed','response.created','response.in_progress','response.output_item.added','response.output_item.done','response.content_part.added','response.content_part.done','response.output_text.delta','response.output_text.done','response.completed','response.failed','response.incomplete','error','reasoning_event','refusal_event','other'].includes(d.event_class)||!['none','missing','message','reasoning','output_text','refusal','function_call','other'].includes(d.item_class)||!integer(d.validated_events,128))return null;
+  return {stage:d.stage,event_class:d.event_class,item_class:d.item_class,validated_events:d.validated_events};
+}
+async function runQualification(store,available,{send=sendOnce,decode,now=()=>Date.now()}={},first,second=null){
+
 
   const p=store.profile;
   catalogAllowed(p,Math.floor(now()/1000));
@@ -159,7 +181,10 @@ async function runQualification(store,available,{send=sendOnce,decode,now=()=>Da
   require(Array.isArray(available)&&available.some(m=>m.slug===MODEL),'probe_model_unavailable');
   require(typeof decode==='function','build_decoder_first');
   const pending=intent(p,now());
-  if(first){
+  if(second){
+    Object.assign(pending,{attempt:3,original_record_sha256:hash(JSON.stringify(first)),previous_record_sha256:hash(JSON.stringify(second)),prior_retained_planning_units:2*RESERVED});
+    store.reserveCompat(pending,first,second);
+  }else if(first){
     Object.assign(pending,{attempt:2,previous_record_sha256:hash(JSON.stringify(first)),prior_retained_planning_units:RESERVED});
     store.reserveFollowup(pending,first);
   }else store.reserveProbe(pending);
@@ -170,17 +195,24 @@ async function runQualification(store,available,{send=sendOnce,decode,now=()=>Da
     let decoded;
     try{decoded=decode(r.wire);}catch{decoded=null;}
     result=resultRecord(pending,decoded,metrics);
+    const diagnostic=safeDiagnostics(decoded?.diagnostics);
+    if(diagnostic)result.decoder_diagnostics=diagnostic;
+    if(decoded===null)result.category='probe_decoder_failed';
     if(decoded?.terminal==='unvalidated'&&['Io','Limit','Framing','Json','Protocol','Unsupported','MissingTerminal','Usage','Cancelled'].includes(decoded.category))result.category=decoded.category;
   }catch(e){
     result=resultRecord(pending,null,e instanceof ProbeTransportError?e.metrics:{});
     result.category=e instanceof AuthError&&/^probe_(?:http_[1-5][0-9]{2}|content_type|content_encoding|wire_limit|decoded_limit|invalid_compression|stream_interrupted|transport_error|deadline)$/.test(e.message)?e.message:'probe_interrupted';
   }
-  if(first){
+  if(second){
+    result.cumulative_planning_units=2*RESERVED+result.charged_planning_units;
+    result.prior_usage_unknown=true;
+    store.finishCompat(pending,result,first,second);
+  }else if(first){
     result.cumulative_planning_units=RESERVED+result.charged_planning_units;
     result.prior_usage_unknown=true;
     store.finishFollowup(pending,result,first);
   }else store.finishProbe(pending,result);
   // Do not print the account binding, prompt hash, raw text or provider IDs.
-  const {binding:_,request_sha256:__,created_ms:___,version:____,previous_record_sha256:_____,...safe}=result;
+  const {binding:_,request_sha256:__,created_ms:___,version:____,previous_record_sha256:_____,original_record_sha256:______,...safe}=result;
   return safe;
 }
