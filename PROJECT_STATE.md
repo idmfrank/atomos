@@ -1,6 +1,6 @@
 # AtomOS — current engineering state
 
-Updated 2026-11-27 (M2.5a verification). Main baseline: `2bd3adef18abeaaf2a659696ab2944cd506d927c` ([PR #30](https://github.com/idmfrank/atomos/pull/30), merged externally by the owner, not by this agent). Latest verified executable follow-up: `3895b2bd1dd3c113397b9d685be03350156aa88d`, [PR #31](https://github.com/idmfrank/atomos/pull/31), adds fresh admission time/active task checks and remains for human review. Both CI and full scale passed for that exact revision. The current documentation-only reconciliation does not change its executable code. Read AGENTS.md first, then this handoff; verify the checkout and CI before assuming any snapshot is current.
+Updated 2026-11-27 (M2.5a final verification). Verified executable main: `a91ccd9e9190334f1d7259c9413e40494121a01c` (PR #31), including fresh admission-time/active-task checks. PRs #30 and #31 were merged externally by the owner, not by this agent. Post-merge CI and full scale passed. Current changes are documentation-only reconciliation, preserving that executable baseline. Read AGENTS.md first, then this handoff; verify checkout and CI before assuming any snapshot is current.
 
 ## Mission and architecture
 
@@ -31,6 +31,30 @@ Design details: [README](README.md), [resource budget](docs/resource-budget.md),
 
 ## Latest verified test and benchmark baseline
 
+Current main a91ccd9: [post-merge CI 46024100103](https://github.com/idmfrank/atomos/actions/runs/46024100103), [full scale 46024473201](https://github.com/idmfrank/atomos/actions/runs/46024473201), both successful. PR #31 was marked ready and merged externally at 2026-11-27 15:20:52 UTC; no agent merge/ready action was issued. Same 173 distinct tests, Rust 1.75 core targets and 18,000 decoder samples passed. Default CLI 466,512 bytes; decoder process RSS 2,204 KiB; strict p95 33.0/22.6/22.6 microseconds.
+
+| Post-merge main full scale | 1K | 10K | 100K |
+| --- | ---: | ---: | ---: |
+| Exact recall p95 (ms) | 0.0317 | 0.0443 | 0.0660 |
+| Graph traversal p95 (ms) | 0.0941 | 0.1045 | 0.1125 |
+| Selective context p95 (ms) | 0.1862 | 0.2542 | 0.2966 |
+| Common-term context p95 (ms) | 0.2094 | 0.4695 | 1.9801 |
+| Reference common-term p95 (ms) | 0.3819 | 2.9966 | 30.1055 |
+| Remember p95 (ms) | 0.6050 | 0.6367 | 0.6793 |
+| Correct p95 (ms) | 0.6620 | 0.6708 | 0.8118 |
+| Forget p95 (ms) | 0.5800 | 0.5917 | 0.8568 |
+| Active CLI peak RSS (KiB) | 3,936 | 4,312 | 4,268 |
+| Restore (seconds) | 0.0812 | 0.8588 | 9.1048 |
+| Recovery peak RSS (KiB) | 7,176 | 9,212 | 8,988 |
+
+No-store RSS 2,612 KiB; 100K incremental 1,656 KiB. All sizes retained 300/300 expected facts, 100 complete packets, precision/recall 1, 0/30 parity mismatches, zero recovery errors/calls. Prior head's elevated 10K remember p95 8.8151 ms returned to 0.6367 ms; cause unisolated, no controlled runner comparison.
+
+Post-merge admission (300 samples), reference/candidate p50 0.563104/0.276983 ms, p95 0.641059/0.324064 ms, p99 0.777855/0.413111 ms. Restart p50/p95/p99 0.455377/0.511565/16.109382 ms vs 0.273531/0.322318/0.527869 ms. Trace writes 4/2, fsyncs 2/1; RSS 2,260/2,264 KiB; release harness bytes 416,520/440,144; journal bytes/request 52.560/104.280. Exact charge 14,100 each, background 7,050 candidate, zero errors/parity. Reference restart p99 tail retained. Candidate memory validation p95 0.170 microseconds, compilation p95 7.449 microseconds (median 0.476); no cross-run speed or power claim.
+
+The following PR-head and older main measurements are historical verified evidence. Current documentation-only follow-up reconciles both external merges and latest post-merge results; no more runtime changes, no inference, no owner-record access. Its own CI is pending until actually run; no recursive commit is needed to cite a documentation-only commit's hash.
+
+### Historical PR #31 head measurements
+
 Follow-up `3895b2bd1dd3c113397b9d685be03350156aa88d`: [CI 46023799399](https://github.com/idmfrank/atomos/actions/runs/46023799399) and [full scale 46023520346](https://github.com/idmfrank/atomos/actions/runs/46023520346) successful. 119 Rust + 11 Python + 43 Node = 173 distinct tests; includes all 150 previous tests and 23 new tests. Rust 1.75 all-target candidate core suite passed in CI, as did 18,000 decoder samples and all three AMG scales. No inference. Default CLI 466,512 bytes. Strict decoder p95 (1/64/4096 bytes) 28.7/19.6/19.6 microseconds, decoder process peak RSS 2,200 KiB. Full profiles are in README. No regression in synthetic retrieval parity or expected accounting.
 
 Hosted admission benchmark, 300 requests, reference/candidate: p50 0.332693/0.161890 ms, p95 0.428936/0.206696 ms, p99 0.631346/0.363438 ms. Measured write syscalls 4/2 and fsyncs 2/1 per admission. Process RSS 2,240/2,200 KiB; harness size 416,520/440,144 bytes. Journal 52.560/104.280 bytes per completed request; exact charge 14,100 each and candidate background 7,050, zero errors/parity mismatches. Restart p50/p95/p99 0.344601/0.384500/0.417929 ms vs 0.237361/0.266946/0.296169 ms. This is hosted process/synthetic measurement, not a provider, hardware, energy or general-quality claim. [Method and complete results](docs/m2-atomic-admission.md).
@@ -51,7 +75,7 @@ Hosted admission benchmark, 300 requests, reference/candidate: p50 0.332693/0.16
 
 Same-run no-store RSS 2,580 KiB; 100K incremental 1,708 KiB. All sizes: 300/300 matched facts, 100/100 complete packets, precision/recall 1, 0/30 parity mismatches, zero recovery errors/calls. 10K durable write tails increased (remember p95 8.8151 ms versus median 1.0952 ms); cause unisolated on hosted runner, do not hide the tail or attribute it to candidate code not wired to AMG. Counts, context/export bytes and DB sizes unchanged from historical baselines.
 
-PR #30 merged externally at 2026-11-27 15:10:18 UTC while the admission-context follow-up was being prepared. Its main SHA above passed [post-merge CI 46022488760](https://github.com/idmfrank/atomos/actions/runs/46022488760) and [scale 46022801149](https://github.com/idmfrank/atomos/actions/runs/46022801149). Same 173 tests; 100K selective p95 0.2804 ms, common 1.9533 ms, active CLI 4,204 KiB vs no-store 2,584, restore 9.0432 s / 9,044 KiB. The agent issued no merge action. PR #31 preserves the remaining fix for review; do not merge it unattended. No owner vault/markers read or changed.
+PR #30 merged externally at 2026-11-27 15:10:18 UTC while the admission-context follow-up was being prepared. Its main SHA above passed [post-merge CI 46022488760](https://github.com/idmfrank/atomos/actions/runs/46022488760) and [scale 46022801149](https://github.com/idmfrank/atomos/actions/runs/46022801149). Same 173 tests; 100K selective p95 0.2804 ms, common 1.9533 ms, active CLI 4,204 KiB vs no-store 2,584, restore 9.0432 s / 9,044 KiB. The agent issued no merge action. PR #31 subsequently merged externally; current evidence-only reconciliation must not be merged by the agent. No owner vault/markers read or changed.
 
 ### Historical PR #29 baseline
 
@@ -140,6 +164,6 @@ Final 300-request admission benchmark: reference/candidate p50 5.8979/3.5324 ms,
 
 Local AMG p95 (1K/10K/100K): exact 0.0906/0.1200/0.1850 ms; graph 0.4241/0.4303/0.4291; selective 0.5548/0.6326/0.9881; common 0.7129/1.4725/10.9405 vs reference 1.1686/6.9933/233.5749. Remember 15.2711/11.8953/10.6589; correct 16.8648/10.6373/11.7654; forget 14.0621/12.0705/10.6595. Restore 0.2318/2.4856/25.5890 s, recovery RSS 7,420/9,292/9,232 KiB; active CLI RSS 4,264/4,280/4,300 vs no-store 2,904 KiB. All sizes: 300/300 matched facts, 100 complete packets, precision/recall 1, 0/30 parity mismatches and zero recovery errors/calls. WSL scheduling/storage tails are uncontrolled; not a regression/performance claim against hosted CI. Local default CLI 466,504 bytes versus historical hosted 466,512; shared Governor refactoring can affect linked code size, but this is not a controlled binary-size comparison. Decoder process peak RSS 2,260 KiB, 18,000 samples zero errors; strict p95 at 1/64/4096-byte reads 90.1/50.1/48.6 microseconds.
 
-These local checks were followed by verified hosted CI and full scale above. Human review of PR #31 remains pending. Do not merge; no live inference authorized.
+These local checks were followed by verified hosted CI and full scale above. PR #31 was subsequently merged externally; current documentation-only changes remain for review. Do not merge; no live inference authorized.
 
-PR #31 follow-up review: added a fresh injected admission context for current time, active turn and active task. Compilation-time validity alone cannot authorize delayed admission. Existing expiry/identity tests additionally reject a previously valid request at/after expiry, time before compilation, and active task mismatch; A records current admission time. Journal version remains v1; the reference-to-candidate transition has no existing owner namespace to migrate. Candidate and Rust 1.75 tests/benchmark were rerun after this change. Initial `57c173994a27b8b79042ea16da7f603935e1a424` passed [PR CI 46022140907](https://github.com/idmfrank/atomos/actions/runs/46022140907) and [full scale 46022161437](https://github.com/idmfrank/atomos/actions/runs/46022161437); final-context revision evidence supersedes it above. Current documentation-only commit reconciles the externally merged baseline, final CI/scale, README tables, architecture/security status and benchmark claims without runtime changes. Its own PR CI remains pending until run; it records the last tested executable SHA and need not recursively record its own hash.
+PR #31 follow-up review: added a fresh injected admission context for current time, active turn and active task. Compilation-time validity alone cannot authorize delayed admission. Existing expiry/identity tests additionally reject a previously valid request at/after expiry, time before compilation, and active task mismatch; A records current admission time. Journal version remains v1; the reference-to-candidate transition has no existing owner namespace to migrate. Candidate and Rust 1.75 tests/benchmark were rerun after this change. Initial `57c173994a27b8b79042ea16da7f603935e1a424` passed [PR CI 46022140907](https://github.com/idmfrank/atomos/actions/runs/46022140907) and [full scale 46022161437](https://github.com/idmfrank/atomos/actions/runs/46022161437); final-context revision and post-merge evidence supersede it above. Current documentation-only commit reconciles the externally merged baseline, final CI/scale, README tables, architecture/security status and benchmark claims without runtime changes. Its own PR CI remains pending until run; it records the last tested executable SHA and need not recursively record its own hash.

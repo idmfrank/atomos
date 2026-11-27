@@ -1,6 +1,6 @@
 # M2.5a: Atomic account-bound synthetic inference admission
 
-Status: isolated offline implementation; initial [PR #30](https://github.com/idmfrank/atomos/pull/30) merged externally, current admission-context follow-up [PR #31](https://github.com/idmfrank/atomos/pull/31) for human review. Verified executable follow-up `3895b2bd1dd3c113397b9d685be03350156aa88d` passed CI/full scale; current documentation-only reconciliation does not change that code. Original base `5f564ad5641ea716d86efc894b2b132aaae9fa77` (PR #29). Not wired to production. No transport, credentials, OAuth, private AMG, provider calls, new live command or paid fallback. All three previous owner qualification attempts remain consumed and all 3,072 retained planning units and markers remain unchanged. This namespace never reads or migrates owner records.
+Status: isolated offline implementation; initial [PR #30](https://github.com/idmfrank/atomos/pull/30) merged externally, admission-context follow-up [PR #31](https://github.com/idmfrank/atomos/pull/31) also merged externally. Verified executable follow-up `3895b2bd1dd3c113397b9d685be03350156aa88d` passed CI/full scale; current documentation-only reconciliation does not change that code. Original base `5f564ad5641ea716d86efc894b2b132aaae9fa77` (PR #29). Not wired to production. No transport, credentials, OAuth, private AMG, provider calls, new live command or paid fallback. All three previous owner qualification attempts remain consumed and all 3,072 retained planning units and markers remain unchanged. This namespace never reads or migrates owner records.
 
 ## Implementation and boundary
 
@@ -114,7 +114,24 @@ Executable `3895b2bd1dd3c113397b9d685be03350156aa88d`: [CI 46023799399](https://
 | Release harness bytes | 416,520 | 440,144 |
 | Final charge / errors / parity mismatches | 14,100 / 0 / 0 | 14,100 / 0 / 0 |
 
-Candidate validation p50/p95/p99 0.080/0.171/0.290 microseconds; compilation 0.391/0.651/1.122 microseconds. Candidate background charge 7,050; 600 logical writes/syncs include settlement. Toolchain/runner differences prevent controlled comparisons with local WSL or historical runs. Full-scale measurements and elevated 10K write tail are retained in PROJECT_STATE and README. Human review remains pending. Initial main `2bd3adef18abeaaf2a659696ab2944cd506d927c` also passed post-merge CI/scale; no merge was performed by this agent.
+Candidate validation p50/p95/p99 0.080/0.171/0.290 microseconds; compilation 0.391/0.651/1.122 microseconds. Candidate background charge 7,050; 600 logical writes/syncs include settlement. Toolchain/runner differences prevent controlled comparisons with local WSL or historical runs. Full-scale measurements and elevated 10K write tail are retained in PROJECT_STATE and README. PR #31 was subsequently merged externally; current reconciliation is documentation-only. Initial main `2bd3adef18abeaaf2a659696ab2944cd506d927c` also passed post-merge CI/scale; no merge was performed by this agent.
+
+### Post-merge main verification
+
+PR #31 was merged externally at `a91ccd9e9190334f1d7259c9413e40494121a01c`. [Post-merge CI 46024100103](https://github.com/idmfrank/atomos/actions/runs/46024100103) and [full scale 46024473201](https://github.com/idmfrank/atomos/actions/runs/46024473201) passed: same 173 distinct tests, Rust 1.75 candidate core targets, 18,000 decoder samples and all three AMG scales, zero provider calls. No executable changes follow this verified baseline in the documentation reconciliation.
+
+| Post-merge metric | Reference | Candidate |
+| --- | ---: | ---: |
+| Admission p50 / p95 / p99 (ms), 300 samples | 0.563104 / 0.641059 / 0.777855 | 0.276983 / 0.324064 / 0.413111 |
+| Completion p50 / p95 / p99 (ms) | 1.158697 / 1.300969 / 1.457503 | 0.578463 / 0.660782 / 0.794430 |
+| Restart p50 / p95 / p99 (ms), 30 samples | 0.455377 / 0.511565 / 16.109382 | 0.273531 / 0.322318 / 0.527869 |
+| Journal write syscalls / fsyncs per admission | 4 / 2 | 2 / 1 |
+| Journal bytes per completed request | 52.560 | 104.280 |
+| Process peak RSS (KiB) | 2,260 | 2,264 |
+| Release harness bytes | 416,520 | 440,144 |
+| Charge / errors / parity mismatches | 14,100 / 0 / 0 | 14,100 / 0 / 0 |
+
+Candidate validation p50/p95/p99 0.077/0.170/1.021 microseconds; compilation 0.476/7.449/14.439 microseconds. Elevated compilation and reference-restart tails are retained; cause unisolated. No change in durability, accounting or input policy; hosted timing variability prevents cross-run performance claims. Candidate background charge 7,050. Full-scale post-merge tables in README/PROJECT_STATE supersede their PR-head tables while earlier evidence above is preserved.
 
 ## Residual risks and next milestone
 

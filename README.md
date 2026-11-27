@@ -4,11 +4,11 @@
 
 AtomOS is an experimental project to build a persistent, conversational AI agent that can operate continuously on inexpensive, low-power hardware. The agent owns its identity, memory, permissions and scheduled activities independently of the language model it uses. Reasoning is delegated to OpenAI only when necessary, with the goal of operating within an owner's existing ChatGPT Plus subscription without additional AI spending. The runtime remains useful offline and retains a narrow inference interface for optional self-hosted models.
 
-**Status:** M1.1–M1.4f local runtime and AMG foundations merged and offline/scale-tested. M2.1–M2.3d synthetic broker/authorization, bounded replay, official owner-run OAuth, encrypted vault, model discovery and token refresh verified at their respective gates. M2.4's three live qualification attempts are consumed with unknown usage; the final attempt received 8,465 bytes and validated eight SSE events before an unsupported event. M2.4b–c isolated offline auxiliary-event, opaque reasoning and refusal profiles merged and tested. General live inference, integrated account-bound admission, physical speech/power, private memory deployment and bootable OS remain unqualified. M2.5a offline admission is implemented; next is review of its time/task follow-up, then M2.5b extended decoder integration.
+**Status:** M1.1–M1.4f local runtime and AMG foundations merged and offline/scale-tested. M2.1–M2.3d synthetic broker/authorization, bounded replay, official owner-run OAuth, encrypted vault, model discovery and token refresh verified at their respective gates. M2.4's three live qualification attempts are consumed with unknown usage; the final attempt received 8,465 bytes and validated eight SSE events before an unsupported event. M2.4b–c isolated offline auxiliary-event, opaque reasoning and refusal profiles merged and tested. General live inference, integrated account-bound admission, physical speech/power, private memory deployment and bootable OS remain unqualified. M2.5a offline admission is implemented; its time/task follow-up is merged, and M2.5b extended decoder integration is next.
 
 **Session handoff:** [PROJECT_STATE.md](PROJECT_STATE.md) records the current verified baseline, next steps and gates for ChatGPT and Codex.
 
-**M2.5a:** opt-in [atomic account-bound synthetic admission](docs/m2-atomic-admission.md), immutable request identity and one durable admission/reservation record. Initial PR #30 was merged externally; [PR #31](https://github.com/idmfrank/atomos/pull/31) adds fresh admission time/active task checks and awaits human review. The M2.3 two-journal reference remains available; extended decoder integration is M2.5b. No live inference is authorized.
+**M2.5a:** opt-in [atomic account-bound synthetic admission](docs/m2-atomic-admission.md), immutable request identity and one durable admission/reservation record. Initial PR #30 was merged externally; [PR #31](https://github.com/idmfrank/atomos/pull/31) adds fresh admission time/active task checks and was also merged externally; this documentation-only reconciliation remains for review. The M2.3 two-journal reference remains available; extended decoder integration is M2.5b. No live inference is authorized.
 
 ## Current implementation
 
@@ -32,7 +32,7 @@ AtomOS is an experimental project to build a persistent, conversational AI agent
 | M2.4 | [Historical owner-run qualification](docs/m2-first-live-qualification.md), three consumed attempts; final bounded body received, no completed inference or actual usage validated. No fourth attempt. |
 | M2.4b–c | [Offline protocol compatibility](docs/m2-protocol-compatibility.md): auxiliary events, optional opaque reasoning and typed refusal; PR #27–28 passed. Existing broker and live harness unchanged. |
 
-Main baseline: [2bd3ade](https://github.com/idmfrank/atomos/commit/2bd3adef18abeaaf2a659696ab2944cd506d927c), externally merged PR #30; [post-merge CI](https://github.com/idmfrank/atomos/actions/runs/46022488760) and [full scale](https://github.com/idmfrank/atomos/actions/runs/46022801149) passed. Latest verified executable follow-up: [3895b2b](https://github.com/idmfrank/atomos/commit/3895b2bd1dd3c113397b9d685be03350156aa88d), PR #31, [CI 46023799399](https://github.com/idmfrank/atomos/actions/runs/46023799399), [full scale 46023520346](https://github.com/idmfrank/atomos/actions/runs/46023520346). 119 Rust + 11 Python + 43 Node = 173 distinct tests passed, preserving the prior 150; candidate core all-target tests also passed on Rust 1.75. No real inference in CI. Rust/Cargo 1.100.0 for benchmarks; dependencies provisioned before locked offline tests/builds. Current documentation-only reconciliation preserves that tested executable revision. [Detailed admission measurements](docs/m2-atomic-admission.md).
+Latest verified executable main: [a91ccd9](https://github.com/idmfrank/atomos/commit/a91ccd9e9190334f1d7259c9413e40494121a01c), externally merged PR #31. [Post-merge CI 46024100103](https://github.com/idmfrank/atomos/actions/runs/46024100103) and [full scale 46024473201](https://github.com/idmfrank/atomos/actions/runs/46024473201) passed: 119 Rust + 11 Python + 43 Node = 173 distinct tests, preserving all previous 150; candidate core all-target tests also passed on Rust 1.75. No real inference in CI. Current reconciliation is documentation-only, with no executable changes. Prior PR-head/main evidence remains in PROJECT_STATE and [the atomic admission document](docs/m2-atomic-admission.md).
 
 ### Benchmark results
 
@@ -57,44 +57,45 @@ Main baseline: [2bd3ade](https://github.com/idmfrank/atomos/commit/2bd3adef18abe
 | M2.4 (PR #19, historical) | 466,512 | 2,588 (full-scale no-store baseline) | 86 | 11 |
 | M2.4c (PR #28) | 466,512 | 2,576 (full-scale no-store baseline) | 96 | 11 |
 | PR #29 (documentation reconciliation) | 466,512 | 2,588 (full-scale no-store baseline) | 96 | 11 |
-| M2.5a follow-up 3895b2b (PR #31) | 466,512 | 2,580 (full-scale no-store baseline) | 119 | 11 |
+| M2.5a follow-up 3895b2b (PR #31 head) | 466,512 | 2,580 (full-scale no-store baseline) | 119 | 11 |
+| M2.5a main a91ccd9 | 466,512 | 2,612 (full-scale no-store baseline) | 119 | 11 |
 
 Each release CLI benchmark executes 1,000 local text interactions. Rust/Python test counts refer to the workspace suite, not benchmark samples. PR #28 passed 43 Node tests (150 distinct total); owner last reported 43/43 local Node tests at PR #25. Peak RSS is measured process memory; runner variation can affect comparisons. M2.1's broker is a separate synthetic replay example, not linked into the measured conversational CLI. Excludes OS, speech engines, Python adapter, active AMG, ledger and administration executable. See [resource budget and run links](docs/resource-budget.md).
 
-**Active AMG scale — verified M2.5a follow-up 3895b2b [combined benchmark](https://github.com/idmfrank/atomos/actions/runs/46023520346)**
+**Active AMG scale — verified M2.5a main a91ccd9 [combined benchmark](https://github.com/idmfrank/atomos/actions/runs/46024473201)**
 
 | Metric | 1K entities | 10K entities | 100K entities |
 | --- | ---: | ---: | ---: |
 | Active assertions | 2,500 | 25,000 | 250,000 |
 | Main DB / restore bytes | 1,216,512 | 11,186,176 | 116,084,736 |
-| Active CLI peak RSS (KiB) | 4,212 | 4,196 | 4,288 |
-| Exact recall p95 (ms) | 0.0504 | 0.0537 | 0.0849 |
-| Graph traversal p95 (ms) | 0.1292 | 0.1354 | 0.1490 |
-| Selective context p95 (ms) | 0.2122 | 0.2669 | 0.3302 |
-| Common-term context p95 (ms) | 0.2350 | 0.5718 | 2.6488 |
-| Reference common-term p95 (ms) | 0.4305 | 3.6171 | 37.0744 |
-| Remember p95 (ms) | 1.6600 | 8.8151 | 1.6634 |
-| Correct p95 (ms) | 2.1899 | 4.8509 | 1.9084 |
-| Forget p95 (ms) | 1.7142 | 3.2809 | 1.8521 |
+| Active CLI peak RSS (KiB) | 3,936 | 4,312 | 4,268 |
+| Exact recall p95 (ms) | 0.0317 | 0.0443 | 0.0660 |
+| Graph traversal p95 (ms) | 0.0941 | 0.1045 | 0.1125 |
+| Selective context p95 (ms) | 0.1862 | 0.2542 | 0.2966 |
+| Common-term context p95 (ms) | 0.2094 | 0.4695 | 1.9801 |
+| Reference common-term p95 (ms) | 0.3819 | 2.9966 | 30.1055 |
+| Remember p95 (ms) | 0.6050 | 0.6367 | 0.6793 |
+| Correct p95 (ms) | 0.6620 | 0.6708 | 0.8118 |
+| Forget p95 (ms) | 0.5800 | 0.5917 | 0.8568 |
 | Fixture precision / recall | 100% / 100% | 100% / 100% | 100% / 100% |
 | Retrieval parity mismatches | 0 / 30 | 0 / 30 | 0 / 30 |
-| Restore (seconds) | 0.1352 | 1.3446 | 14.0874 |
-| Recovery peak RSS (KiB) | 7,296 | 9,224 | 9,240 |
+| Restore (seconds) | 0.0812 | 0.8588 | 9.1048 |
+| Recovery peak RSS (KiB) | 7,176 | 9,212 | 8,988 |
 
-Same-run no-store RSS 2,580 KiB; 100K incremental 1,708 KiB. All recovery checks passed. 10K remember median 1.0952 ms versus p95 8.8151 ms; cause of elevated hosted write tails unisolated. Hosted-runner variation is not a controlled hardware comparison; synthetic graph only, no physical voice, energy, hard aggregate quota or measured token savings. Historical PR #28–30/export evidence remains in [resource budget](docs/resource-budget.md), [handoff](PROJECT_STATE.md) and [M1.4f](docs/m1-amg-optimization.md).
+Same-run no-store RSS 2,612 KiB; 100K incremental 1,656 KiB. All parity/recovery checks passed. Prior PR-head 10K remember p95 8.8151 ms returned to 0.6367 ms post-merge; cause unisolated, hosted timings are not a controlled comparison. Synthetic graph only; no physical voice, energy, hard aggregate quota or measured token savings. Historical results remain in PROJECT_STATE and resource-budget.md.
 
-**Responses decoder — verified follow-up 3895b2b [CI](https://github.com/idmfrank/atomos/actions/runs/46023799399)**
+**Responses decoder — verified main a91ccd9 [CI](https://github.com/idmfrank/atomos/actions/runs/46024100103)**
 
 | Profile | Fixture bytes | p95 1-byte (µs) | p95 64-byte (µs) | p95 4 KiB (µs) |
 | --- | ---: | ---: | ---: | ---: |
-| Strict reference | 2,497 | 28.7 | 19.6 | 19.6 |
-| Compatibility, same wire | 2,497 | 27.9 | 31.6 | 19.7 |
-| Auxiliary events | 2,930 | 34.8 | 23.1 | 23.0 |
-| Extended, same wire | 2,497 | 33.4 | 19.3 | 19.2 |
-| Opaque reasoning | 3,080 | 37.1 | 24.0 | 24.0 |
-| Refusal | 2,394 | 27.0 | 18.2 | 26.4 |
+| Strict reference | 2,497 | 33.0 | 22.6 | 22.6 |
+| Compatibility, same wire | 2,497 | 31.9 | 22.3 | 23.3 |
+| Auxiliary events | 2,930 | 38.4 | 25.8 | 26.0 |
+| Extended, same wire | 2,497 | 36.1 | 22.3 | 22.4 |
+| Opaque reasoning | 3,080 | 38.3 | 26.8 | 28.5 |
+| Refusal | 2,394 | 28.6 | 20.2 | 20.0 |
 
-1,000 samples per profile/read size; 18,000 synthetic replays, zero errors and provider calls. Combined decoder benchmark peak RSS 2,200 KiB; excludes network, broker fsync and speech. Default conversational CLI does not link the decoder/broker. Expanded fixtures are not equivalent inputs; compare same-wire rows for overhead, not a controlled latency claim.
+1,000 samples per profile/read size; 18,000 synthetic replays, zero errors and provider calls. Combined decoder benchmark peak RSS 2,204 KiB; excludes network, broker fsync and speech. Default conversational CLI does not link the decoder/broker. Expanded fixtures are not equivalent inputs; compare same-wire rows for overhead, not a controlled latency claim.
 
 ### Development quick start
 
@@ -327,7 +328,7 @@ Targets must be validated end to end; network latency is variable. A text-mediat
 | M8 — Distributed agent | Optional authorized node discovery, encrypted synchronization, conflict resolution and inference routing. Evaluate Nostr as an optional transport. |
 | M9 — OS specialization | Compare optimized Linux, RTOS and custom kernel approaches using equivalent workloads. Proceed only with demonstrated benefits. |
 
-M1 slices: M1.1 offline core, M1.2 audio smoke harness, M1.3 persistent voice coordinator, M1.4a durable AMG, M1.4b read-only recall, M1.4c scoped retrieval and M1.4d disclosure/recovery are merged and CI-tested. M1.4e: active SQLite scale benchmark passed; M1.4f: optimization and streaming recovery passed. Retain SQLite + FTS5 for M2; alternate adapters deferred, not measured. M2.1 offline broker merged and tested; M2.2 bounded Responses stream parsing and replay merged and tested; M2.3 synthetic account authorization and owner-run official OAuth/model discovery/refresh verified; M2.4b–c offline compatibility profiles verified. M2.4's live harness is closed without completed inference; M2.5a offline atomic admission is implemented, with the admission-context follow-up in PR #31 for review and extended decoder integration deferred to M2.5b. M1 exit still requires real model/device validation, measured acoustic interruption, activation evaluation and the remaining AMG acceptance gates. M2 requires official provider eligibility and spending controls. M3 expands memory management, scheduling and approved workflows rather than duplicating M1.4.
+M1 slices: M1.1 offline core, M1.2 audio smoke harness, M1.3 persistent voice coordinator, M1.4a durable AMG, M1.4b read-only recall, M1.4c scoped retrieval and M1.4d disclosure/recovery are merged and CI-tested. M1.4e: active SQLite scale benchmark passed; M1.4f: optimization and streaming recovery passed. Retain SQLite + FTS5 for M2; alternate adapters deferred, not measured. M2.1 offline broker merged and tested; M2.2 bounded Responses stream parsing and replay merged and tested; M2.3 synthetic account authorization and owner-run official OAuth/model discovery/refresh verified; M2.4b–c offline compatibility profiles verified. M2.4's live harness is closed without completed inference; M2.5a offline atomic admission is implemented, with the admission-context follow-up in PR #31 merged and extended decoder integration deferred to M2.5b. M1 exit still requires real model/device validation, measured acoustic interruption, activation evaluation and the remaining AMG acceptance gates. M2 requires official provider eligibility and spending controls. M3 expands memory management, scheduling and approved workflows rather than duplicating M1.4.
 
 Security requirements apply from M1; M6 expands and verifies the tool execution surface rather than deferring basic security until then.
 
