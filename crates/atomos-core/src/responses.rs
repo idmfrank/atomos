@@ -34,6 +34,16 @@ pub struct Decoded {
     pub terminal:Terminal,
 }
 
+/// Separate offline profile result; never passed to the existing broker.
+#[derive(Debug,PartialEq,Eq)]
+pub enum ExtendedTerminal { Completed(Usage), Refused(Usage), Failed(Failure,Option<Usage>) }
+#[derive(Debug,PartialEq,Eq)]
+pub struct ExtendedDecoded {
+    // Only completed ordinary assistant text is released.
+    pub text:String,
+    pub terminal:ExtendedTerminal,
+}
+
 /// serde_json handles JSON grammar, UTF-8, escapes and recursion limits.
 /// Reject duplicate keys at every nesting level instead of accepting a
 /// last-wins representation, including in ignored metadata.
@@ -129,10 +139,14 @@ fn failure(code:Option<&str>)->Failure{
     }
 }
 #[derive(Clone,Copy,PartialEq,Eq)]
-enum Stage{Initial,Created,Queued,InProgress,Item,Part,TextDone,PartDone,ItemDone,Terminal}
+enum Stage{Initial,Created,Queued,InProgress,Reasoning,ReasoningDone,Item,Part,TextDone,PartDone,ItemDone,Terminal}
 struct State{
     stage:Stage,
     compat:bool,
+    extended:bool,
+    reasoning_id:Option<String>,
+    reasoning_encrypted:Option<String>,
+    refusal:bool,
     created_queued:bool,
     null_annotations:u64,
     seq:u64,
@@ -145,9 +159,9 @@ struct State{
     validated_events:u64,
 }
 impl State{
-    fn new(compat:bool)->Self{Self{stage:Stage::Initial,compat,created_queued:false,null_annotations:0,seq:0,response:String::new(),item:String::new(),text:String::new(),terminal:None,event_class:"none",item_class:"none",validated_events:0}}
+    fn new(compat:bool,extended:bool)->Self{Self{stage:Stage::Initial,compat,extended,reasoning_id:None,reasoning_encrypted:None,refusal:false,created_queued:false,null_annotations:0,seq:0,response:String::new(),item:String::new(),text:String::new(),terminal:None,event_class:"none",item_class:"none",validated_events:0}}
     fn diagnostics(&self)->DecodeDiagnostics{
-        let stage=match self.stage{Stage::Initial=>"initial",Stage::Created=>"created",Stage::Queued=>"queued",Stage::InProgress=>"in_progress",Stage::Item=>"item",Stage::Part=>"part",Stage::TextDone=>"text_done",Stage::PartDone=>"part_done",Stage::ItemDone=>"item_done",Stage::Terminal=>"terminal"};
+        let stage=match self.stage{Stage::Initial=>"initial",Stage::Created=>"created",Stage::Queued=>"queued",Stage::InProgress=>"in_progress",Stage::Reasoning=>"reasoning",Stage::ReasoningDone=>"reasoning_done",Stage::Item=>"item",Stage::Part=>"part",Stage::TextDone=>"text_done",Stage::PartDone=>"part_done",Stage::ItemDone=>"item_done",Stage::Terminal=>"terminal"};
         DecodeDiagnostics{stage,event_class:self.event_class,item_class:self.item_class,validated_events:self.validated_events}
     }
     fn response<'a>(&self,v:&'a Value,status:&str)->Result<&'a Value>{
@@ -157,18 +171,48 @@ impl State{
         require(self.response.is_empty()||self.response==name)?;
         Ok(r)
     }
+    // Narrow opaque reasoning profile: one item, empty summary, no raw
+    // reasoning content. Encrypted bytes are only compared in memory, never
+    // returned, persisted or replayed into a request.
+    fn reasoning<'a>(&self,v:&'a Value,done:bool)->Result<(&'a str,Option<&'a str>)>{
+        require(string(v,"type")?=="reasoning")?;
+        let name=id(string(v,"id")?)?;
+        if !array(v,"summary")?.is_empty(){return Err(DecodeError::Unsupported);}
+        if let Some(c)=v.get("content"){
+            if !c.is_null()&&!c.as_array().is_some_and(Vec::is_empty){return Err(DecodeError::Unsupported);}
+        }
+        if !no_value(v,"status"){require(string(v,"status")?==if done{"completed"}else{"in_progress"})?;}
+        let encrypted=match v.get("encrypted_content"){
+            None|Some(Value::Null)=>None,
+            Some(Value::String(s))=>{
+                if s.len()>16*1024{return Err(DecodeError::Limit);}
+                require(!s.is_empty()&&s.bytes().all(|b|b.is_ascii_graphic()))?;
+                Some(s.as_str())
+            },
+            _=>return Err(DecodeError::Protocol),
+        };
+        Ok((name,encrypted))
+    }
+    fn output_index(&self)->u64{u64::from(self.reasoning_id.is_some())}
+    fn message_part(&self,v:&Value,expected:&str)->Result<()>{
+        if self.refusal{
+            require(string(v,"type")?=="refusal"&&string(v,"refusal")?==expected)?;
+            require(no_value(v,"text")&&no_value(v,"annotations"))?;
+            Ok(())
+        }else{part(v,expected)}
+    }
     fn item(&self,v:&Value,done:bool)->Result<()>{
         if string(v,"type")?!="message"{return Err(DecodeError::Unsupported);}
         require(string(v,"role")?=="assistant"&&string(v,"status")?==if done{"completed"}else{"in_progress"})?;
         let name=id(string(v,"id")?)?;
         require(self.item.is_empty()||self.item==name)?;
         let c=array(v,"content")?;
-        if done {require(c.len()==1)?;part(&c[0],&self.text)?;}
+        if done {require(c.len()==1)?;self.message_part(&c[0],&self.text)?;}
         else {require(c.is_empty())?;}
         Ok(())
     }
     fn indices(&self,v:&Value)->Result<()>{
-        require(number(v,"output_index")?==0&&number(v,"content_index")?==0&&string(v,"item_id")?==self.item)
+        require(number(v,"output_index")?==self.output_index()&&number(v,"content_index")?==0&&string(v,"item_id")?==self.item)
     }
     fn event(&mut self,data:&[u8],name:Option<&str>)->Result<()>{
         self.event_class="unparsed";self.item_class="none";
@@ -222,19 +266,30 @@ impl State{
                 self.stage=Stage::InProgress;
             }
             "response.output_item.added"=>{
-                require(matches!(self.stage,Stage::Created|Stage::InProgress)&&(!self.created_queued||self.stage==Stage::InProgress)&&number(&v,"output_index")?==0)?;
+                require(matches!(self.stage,Stage::Created|Stage::InProgress|Stage::ReasoningDone)&&(!self.created_queued||matches!(self.stage,Stage::InProgress|Stage::ReasoningDone))&&number(&v,"output_index")?==self.output_index())?;
                 let item=object(&v,"item")?;
-                self.item(item,false)?;
-                self.item=id(string(item,"id")?)?.to_owned();
-                self.stage=Stage::Item;
+                if self.extended&&string(item,"type")?=="reasoning"{
+                    require(self.reasoning_id.is_none()&&self.stage!=Stage::ReasoningDone)?;
+                    let (name,_)=self.reasoning(item,false)?;
+                    self.reasoning_id=Some(name.to_owned());
+                    self.stage=Stage::Reasoning;
+                }else{
+                    self.item(item,false)?;
+                    let name=id(string(item,"id")?)?;
+                    require(self.reasoning_id.as_deref()!=Some(name))?;
+                    self.item=name.to_owned();
+                    self.stage=Stage::Item;
+                }
             }
             "response.content_part.added"=>{
                 require(self.stage==Stage::Item)?;self.indices(&v)?;
-                part(object(&v,"part")?,"")?;
+                let p=object(&v,"part")?;
+                if self.extended&&string(p,"type")?=="refusal"{self.refusal=true;}
+                self.message_part(p,"")?;
                 self.stage=Stage::Part;
             }
-            "response.output_text.delta"=>{
-                require(self.stage==Stage::Part)?;self.indices(&v)?;
+            "response.output_text.delta"|"response.refusal.delta" if kind=="response.output_text.delta"||self.extended=>{
+                require(self.stage==Stage::Part&&(kind=="response.refusal.delta")==self.refusal)?;self.indices(&v)?;
                 let delta=string(&v,"delta")?;
                 if delta.len()>MAX_TEXT.saturating_sub(self.text.len()){return Err(DecodeError::Limit);}
                 require(!delta.is_empty()&&text_ok(delta))?;
@@ -243,23 +298,31 @@ impl State{
             "response.output_text.annotation.added" if self.compat=>{
                 // Only documented null annotation payloads are no-ops. The
                 // terminal text profile still requires no actual annotations.
-                require(self.stage==Stage::Part)?;self.indices(&v)?;
+                require(self.stage==Stage::Part&&!self.refusal)?;self.indices(&v)?;
                 if !v.get("annotation").is_some_and(Value::is_null){return Err(DecodeError::Unsupported);}
                 require(number(&v,"annotation_index")?==self.null_annotations)?;
                 self.null_annotations+=1;
             }
-            "response.output_text.done"=>{
-                require(self.stage==Stage::Part)?;self.indices(&v)?;
-                require(string(&v,"text")?==self.text&&!self.text.trim().is_empty())?;
+            "response.output_text.done"|"response.refusal.done" if kind=="response.output_text.done"||self.extended=>{
+                require(self.stage==Stage::Part&&(kind=="response.refusal.done")==self.refusal)?;self.indices(&v)?;
+                let key=if self.refusal{"refusal"}else{"text"};
+                require(string(&v,key)?==self.text&&!self.text.trim().is_empty())?;
                 self.stage=Stage::TextDone;
             }
             "response.content_part.done"=>{
                 require(self.stage==Stage::TextDone)?;self.indices(&v)?;
-                part(object(&v,"part")?,&self.text)?;
+                self.message_part(object(&v,"part")?,&self.text)?;
                 self.stage=Stage::PartDone;
             }
+            "response.output_item.done" if self.extended&&self.stage==Stage::Reasoning=>{
+                require(number(&v,"output_index")?==0)?;
+                let (name,encrypted)=self.reasoning(object(&v,"item")?,true)?;
+                require(self.reasoning_id.as_deref()==Some(name))?;
+                self.reasoning_encrypted=encrypted.map(str::to_owned);
+                self.stage=Stage::ReasoningDone;
+            }
             "response.output_item.done"=>{
-                require(self.stage==Stage::PartDone&&number(&v,"output_index")?==0)?;
+                require(self.stage==Stage::PartDone&&number(&v,"output_index")?==self.output_index())?;
                 self.item(object(&v,"item")?,true)?;
                 self.stage=Stage::ItemDone;
             }
@@ -268,7 +331,12 @@ impl State{
                 let r=self.response(&v,"completed")?;
                 require(no_value(r,"error")&&no_value(r,"incomplete_details"))?;
                 let out=array(r,"output")?;
-                require(out.len()==1)?;self.item(&out[0],true)?;
+                if let Some(name)=self.reasoning_id.as_deref(){
+                    require(out.len()==2)?;
+                    let (final_id,encrypted)=self.reasoning(&out[0],true)?;
+                    require(name==final_id&&self.reasoning_encrypted.as_deref()==encrypted)?;
+                    self.item(&out[1],true)?;
+                }else{require(out.len()==1)?;self.item(&out[0],true)?;}
                 let u=usage(r.get("usage").ok_or(DecodeError::Usage)?)?;
                 require(u.output>0)?;
                 self.terminal=Some(Terminal::Completed(u));self.stage=Stage::Terminal;
@@ -346,15 +414,30 @@ pub fn decode(input:impl Read,cancelled:impl FnMut()->bool)->Result<Decoded>{
 }
 /// Same parser, with fixed-label diagnostic snapshot on success or failure.
 pub fn decode_diagnostic(input:impl Read,cancelled:impl FnMut()->bool)->(Result<Decoded>,DecodeDiagnostics){
-    decode_profile(input,cancelled,false)
+    let (result,diag,_)=decode_profile(input,cancelled,false,false);
+    (result,diag)
 }
 /// Offline candidate only. No existing broker, live CLI or qualification
 /// command selects this profile. Preserve strict decoding as the reference.
 pub fn decode_compat(input:impl Read,cancelled:impl FnMut()->bool)->(Result<Decoded>,DecodeDiagnostics){
-    decode_profile(input,cancelled,true)
+    let (result,diag,_)=decode_profile(input,cancelled,true,false);
+    (result,diag)
 }
-fn decode_profile(mut input:impl Read,mut cancelled:impl FnMut()->bool,compat:bool)->(Result<Decoded>,DecodeDiagnostics){
-    let mut frame=Frame::default();let mut state=State::new(compat);
+/// Separate offline no-tools profile, not selected by any live command.
+pub fn decode_extended(input:impl Read,cancelled:impl FnMut()->bool)->(Result<ExtendedDecoded>,DecodeDiagnostics){
+    let (result,diag,refusal)=decode_profile(input,cancelled,true,true);
+    let result=result.map(|d|{
+        let terminal=match d.terminal{
+            Terminal::Completed(u) if refusal=>ExtendedTerminal::Refused(u),
+            Terminal::Completed(u)=>ExtendedTerminal::Completed(u),
+            Terminal::Failed(f,u)=>ExtendedTerminal::Failed(f,u),
+        };
+        ExtendedDecoded{text:d.text,terminal}
+    });
+    (result,diag)
+}
+fn decode_profile(mut input:impl Read,mut cancelled:impl FnMut()->bool,compat:bool,extended:bool)->(Result<Decoded>,DecodeDiagnostics,bool){
+    let mut frame=Frame::default();let mut state=State::new(compat,extended);
     let result=(||->Result<Decoded>{
         let mut total=0usize;let mut buf=[0u8;4096];
         loop{
@@ -372,8 +455,8 @@ fn decode_profile(mut input:impl Read,mut cancelled:impl FnMut()->bool,compat:bo
         if cancelled(){return Err(DecodeError::Cancelled);}
         if !frame.line.is_empty()||frame.has_data||frame.name.is_some(){return Err(DecodeError::Framing);}
         let terminal=state.terminal.ok_or(DecodeError::MissingTerminal)?;
-        if !matches!(terminal,Terminal::Completed(_)){state.text.clear();}
+        if state.refusal||!matches!(terminal,Terminal::Completed(_)){state.text.clear();}
         Ok(Decoded{text:std::mem::take(&mut state.text),terminal})
     })();
-    (result,state.diagnostics())
+    (result,state.diagnostics(),state.refusal)
 }

@@ -1,6 +1,6 @@
 # M2.4b — Offline Responses protocol compatibility
 
-Status: proposed; no provider calls, no new live command. All three historical attempts remain consumed. Original raw response was deliberately not retained; unknown event after eight validated events at part stage is not identified.
+Status: M2.4b merged and verified; M2.4c proposed; no provider calls, no new live command. All three historical attempts remain consumed. Original raw response was deliberately not retained; unknown event after eight validated events at part stage is not identified.
 
 ## Public contract audit (2026-11-26)
 
@@ -22,3 +22,11 @@ New decode_compat API is offline only; decode/decode_diagnostic, broker and owne
 Five added Rust tests cover original-wire parity, fragmentation, queue identity/order, null annotations and explicit capability denial, sequence/terminal/usage/limits, failure handling. Benchmark repeats strict reference, candidate on identical reference fixture and candidate auxiliary fixture (1000 samples each at 1/64/4096 chunk sizes). Compare equal fixture for overhead; auxiliary fixture has different event count/bytes. No claims of full provider compatibility or actual SDK parity.
 
 Next: evaluate documented reasoning/refusal lifecycle and model-specific no-tools profiles with separate fixtures; account-bound Governor integration offline. Do not add a fourth live attempt or reset reservations. Production admission, provider generation ceiling and actual token settlement remain gated.
+
+## M2.4b verified result
+
+PR #27 merged 61a7efc; [CI](https://github.com/idmfrank/atomos/actions/runs/45918304938) and [scale](https://github.com/idmfrank/atomos/actions/runs/45918448554) passed. 145 distinct tests (91 Rust, 11 Python, 43 Node). 9,000 decoder replays zero errors; strict p95 38.1/25.5/25.1 µs, same-wire compat 42.9/25.8/25.3 µs, auxiliary 49.1/37.6/30.1 µs; combined process RSS 2,144 KiB. No SDK differential execution.
+
+## M2.4c — isolated opaque reasoning and refusal candidate
+
+[Streaming event reference](https://developers.openai.com/api/reference/resources/responses/streaming-events) and [response object](https://developers.openai.com/api/reference/resources/responses/methods/create) reviewed. Public API supports reasoning item snapshots, optional encrypted content, summary and reasoning content; refusal parts and corresponding delta/done events. This candidate is deliberately narrower than the complete contract. One optional opaque reasoning item before one assistant message; empty summary only, no raw reasoning content, no reasoning stream events. Bind index and ID, check done snapshot against terminal ID and opaque encrypted content (optional printable ASCII, max 16 KiB); encrypted value ephemeral in memory only, never returned, logged, persisted or replayed. Added snapshot may contain partial encrypted content, so comparison starts at done. No tools or other output items. Refusal has its own typed terminal outcome with validated usage, no normal answer or automatic retry/fallback. Refusal text is checked against deltas and final snapshots, discarded on return; future user-facing delivery requires design review. Failure or incomplete after refusal stays failure with known usage only. Existing strict and M2.4b compatibility entry points remain separate; broker, qualification CLI and live harness unchanged. All three live reservations consumed. Five new Rust tests and nine additional benchmark groups (18,000 total samples expected); no new dependencies or live traffic. Offline synthetic fixtures, not actual provider traces. Unsupported reasoning summaries and arbitrary unknown events remain denied. SDK oracle and actual model-specific compatibility remain open.

@@ -1,6 +1,6 @@
 # AtomOS — current engineering state
 
-Updated 2026-11-26 (owner WSL qualification findings). Verified executable baseline: `49c6cf2619583fe65bb8e6b9b337700ef3ff6047` ([PR #25](https://github.com/idmfrank/atomos/pull/25)); subsequent documentation-only PR #26 merged at b3fe1b1, CI and scale passed.. This is the shared handoff between the ChatGPT AtomOS Project, Codex coding sessions and human maintainers. Read [AGENTS.md](AGENTS.md) first, then this file and the specific milestone documentation. Verify the actual checkout and latest CI before assuming this snapshot is current.
+Updated 2026-11-26 (owner WSL qualification findings). Verified executable baseline: `61a7efc5810c67c20abdc4431f1806f41b40807c` ([PR #27](https://github.com/idmfrank/atomos/pull/27)). This is the shared handoff between the ChatGPT AtomOS Project, Codex coding sessions and human maintainers. Read [AGENTS.md](AGENTS.md) first, then this file and the specific milestone documentation. Verify the actual checkout and latest CI before assuming this snapshot is current.
 
 ## Mission and architecture
 
@@ -29,25 +29,25 @@ Design details: [README](README.md), [resource budget](docs/resource-budget.md),
 
 ## Latest verified test and benchmark baseline
 
-2026-11-26 local date, PR #25 [PR CI 45916521007](https://github.com/idmfrank/atomos/actions/runs/45916521007), [post-merge CI 45916700932](https://github.com/idmfrank/atomos/actions/runs/45916700932) and [scale 45916868587](https://github.com/idmfrank/atomos/actions/runs/45916868587) passed. 86 distinct Rust + 11 Python + 43 Node = 140 tests. Owner WSL 43/43 at 49c6cf2; rebuilt release decoder in 6.67 s. Default CLI 466,512 bytes; decoder p95 26.6/17.6/17.8 microseconds at 1/64/4096-byte reads; RSS 2,132 KiB.
+2026-11-26 local date, PR #27 [CI 45918304938](https://github.com/idmfrank/atomos/actions/runs/45918304938), [scale 45918448554](https://github.com/idmfrank/atomos/actions/runs/45918448554) passed. 91 Rust + 11 Python + 43 Node = 145 distinct tests; owner WSL last verified 43/43 at 49c6cf2. Default CLI 466,512 bytes; strict p95 38.1/25.5/25.1 µs, same-wire compat 42.9/25.8/25.3 µs, auxiliary 49.1/37.6/30.1 µs (1/64/4096-byte reads); combined RSS 2,144 KiB. 9,000 replays, zero errors.
 
 | Full-scale metric (p95 unless noted) | 1K | 10K | 100K |
 | --- | ---: | ---: | ---: |
 | Active assertions | 2,500 | 25,000 | 250,000 |
-| Exact recall (ms) | 0.0606 | 0.0667 | 0.0903 |
-| Graph traversal (ms) | 0.1826 | 0.1950 | 0.2162 |
-| Selective context (ms) | 0.3186 | 0.3696 | 0.4165 |
-| Common-term context (ms) | 0.3555 | 0.7379 | 2.9926 |
-| Reference common term (ms) | 0.6000 | 4.3302 | 44.7725 |
-| Remember (ms) | 1.3983 | 1.6535 | 1.5620 |
-| Correct (ms) | 1.5960 | 1.5164 | 1.7371 |
-| Forget (ms) | 1.4620 | 1.3673 | 1.5467 |
-| Active CLI RSS (KiB) | 4,232 | 4,084 | 4,152 |
+| Exact recall (ms) | 0.0244 | 0.0317 | 0.0504 |
+| Graph traversal (ms) | 0.0845 | 0.0876 | 0.1001 |
+| Selective context (ms) | 0.1270 | 0.1655 | 0.2163 |
+| Common-term context (ms) | 0.1569 | 0.3736 | 1.8022 |
+| Reference common term (ms) | 0.2824 | 2.4933 | 28.7214 |
+| Remember (ms) | 13.5059 | 2.4336 | 1.6047 |
+| Correct (ms) | 5.6239 | 2.1907 | 1.2718 |
+| Forget (ms) | 3.9707 | 3.3273 | 1.1674 |
+| Active CLI RSS (KiB) | 4,268 | 4,304 | 4,136 |
 | Ranked context / same-scope bytes (100 requests) | 38,842 / 90,072 | 39,400 / 91,000 | 40,012 / 92,020 |
-| Restore (s) | 0.148 | 1.650 | 17.542 |
-| Recovery RSS (KiB) | 7,428 | 9,116 | 9,152 |
+| Restore (s) | 0.079 | 0.967 | 10.471 |
+| Recovery RSS (KiB) | 7,380 | 9,184 | 9,012 |
 
-Same-run no-store CLI RSS 2,684 KiB; 100K incremental 1,468 KiB (1.434 MiB) versus 8 MiB target. All three datasets: 300/300 fixture facts matched, 100/100 complete packets, precision/recall 1, 0/30 parity mismatches, zero recovery verification errors and remote calls. Hosted-runner variability is not a controlled hardware performance comparison. Bytes are not tokens; RSS is not whole-system RAM; synthetic recall is not general answer quality. Actual power, token savings, physical speech and subscription usage not measured.
+Same-run no-store CLI RSS 2,684 KiB; 100K incremental 1,452 KiB (1.418 MiB) versus 8 MiB target. All three datasets: 300/300 fixture facts matched, 100/100 complete packets, precision/recall 1, 0/30 parity mismatches, zero recovery verification errors and remote calls. Hosted-runner variability is not a controlled hardware performance comparison. Bytes are not tokens; RSS is not whole-system RAM; synthetic recall is not general answer quality. Actual power, token savings, physical speech and subscription usage not measured.
 
 ## Current working environments
 
@@ -65,7 +65,7 @@ Owner spending settings observed enabled 50% app limit, purchased credits access
 
 Official [SIWC inference guide](https://developers.openai.com/siwc/token-sharing-open-source/models-and-inference) and [Responses streaming reference](https://developers.openai.com/api/reference/resources/responses/streaming-events) reviewed 2026-11-26. Official examples handle text delta, failure, completion and do not require every other event to be a text lifecycle event; success requires completed terminal. API reference has additional documented events including annotations. Exact historical event remains unknown.
 
-Current work: [offline protocol compatibility audit](docs/m2-protocol-compatibility.md), proposed opt-in Rust profile for queued state, 0/1 sequence base and explicit null annotations; strict reference and live harness unchanged. Five new Rust tests and candidate benchmark pending CI (145 expected distinct tests). Next work: offline reference-based protocol compatibility audit. Retain strict framing, sequence/accounting/terminal/resource constraints. Compare official SDK event consumption with current narrow state machine on identical synthetic fixtures; classify documented auxiliary events explicitly, reject unsupported capability-bearing events, do not simply ignore arbitrary event types or infer usage from partial streams. Test complete/incomplete/failed terminal and trailing/duplicate/invalid usage. Consider SDK as reference oracle, not an automatic production dependency; measure overhead before choice. No new live reservation command or live execution in this harness. M2.5 account-bound Token Governor integration and hardware qualification can proceed offline while provider compatibility remains outstanding.
+Current work: [offline protocol compatibility audit](docs/m2-protocol-compatibility.md). M2.4b validated queued state, 0/1 sequence base and explicit null annotations. M2.4c proposes separate bounded opaque reasoning and typed refusal profile, five added Rust tests (150 distinct expected), pending CI. Strict reference, compatibility entry point and live harness unchanged. No raw reasoning, summary streaming, tool calls or fallback. Next work: offline reference-based protocol compatibility audit. Retain strict framing, sequence/accounting/terminal/resource constraints. Compare official SDK event consumption with current narrow state machine on identical synthetic fixtures; classify documented auxiliary events explicitly, reject unsupported capability-bearing events, do not simply ignore arbitrary event types or infer usage from partial streams. Test complete/incomplete/failed terminal and trailing/duplicate/invalid usage. Consider SDK as reference oracle, not an automatic production dependency; measure overhead before choice. No new live reservation command or live execution in this harness. M2.5 account-bound Token Governor integration and hardware qualification can proceed offline while provider compatibility remains outstanding.
 
 ## Outstanding gates and next direction
 

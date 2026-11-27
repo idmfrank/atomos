@@ -29,7 +29,7 @@ AtomOS is an experimental project to build a persistent, conversational AI agent
 | M2.3d | Owner WSL OAuth registration, encrypted session reopen and account-specific catalog succeeded; [PR #17](https://github.com/idmfrank/atomos/pull/17), [PR #18](https://github.com/idmfrank/atomos/pull/18). 50% app cap observed; live refresh verified, revocation untested. |
 | M2.4 | [Owner-run one-shot qualification](docs/m2-first-live-qualification.md), fixed prompt, separate durable reservation, existing Rust decoder, no automated/live CI calls. Merged [PR #19](https://github.com/idmfrank/atomos/pull/19); CI and scale passed; owner attempt unvalidated, unknown usage retained. |
 
-Latest verified executable baseline: [49c6cf2](https://github.com/idmfrank/atomos/commit/49c6cf2619583fe65bb8e6b9b337700ef3ff6047), [Actions run 45916700932](https://github.com/idmfrank/atomos/actions/runs/45916700932). 86 distinct Rust, 11 Python and 43 Node tests passed (140 total); owner-local 43 passed. No real inference in CI. Rust/Cargo 1.100.0; locked dependencies provisioned before offline build/test.
+Latest verified executable baseline: [61a7efc](https://github.com/idmfrank/atomos/commit/61a7efc5810c67c20abdc4431f1806f41b40807c), [Actions run 45918304938](https://github.com/idmfrank/atomos/actions/runs/45918304938). 91 distinct Rust, 11 Python and 43 Node tests passed (145 total). No real inference in CI. Rust/Cargo 1.100.0; locked dependencies provisioned before offline build/test.
 
 ### Benchmark results
 
@@ -428,3 +428,5 @@ PR #21 validated bounded gzip SSE and sanitized diagnostics. The historical firs
 PR #24 real loopback missing-MIME investigation passed. Proposed final compatibility qualification preserves both unknown historical reservations, adds a separate owner-authorized marker and bounded Rust decoder diagnostics; no general live inference. See [PROJECT_STATE.md](PROJECT_STATE.md) and [qualification procedure](docs/m2-first-live-qualification.md).
 
 M2.4 final qualification consumed: transport received 8,465 bytes and decoder validated eight SSE events before unsupported event. No successful terminal response or actual token usage validated. All three reservations retained (3,072 local planning units); no fourth attempt. Offline protocol compatibility work next. See [PROJECT_STATE.md](PROJECT_STATE.md).
+
+M2.4b offline auxiliary-event profile verified in PR #27. M2.4c isolated opaque reasoning/refusal candidate proposed, see [protocol compatibility](docs/m2-protocol-compatibility.md). No new live authorization.
