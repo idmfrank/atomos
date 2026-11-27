@@ -1,6 +1,16 @@
 # AtomOS threat model
 
-Status: active engineering threat model, target controls plus implemented boundaries below; not production security certification. Main evidence through PR #31; isolated M2.5a admission-context follow-up merged externally and verified by post-merge CI/scale. [Architecture](architecture.md) | [Current state](../PROJECT_STATE.md).
+Status: active engineering threat model, target controls plus implemented boundaries below; not production security certification. Main evidence through PR #32 post-merge CI/full scale; runtime remains the PR #31 M2.5a admission-context follow-up. CLI MVP scope replaces the former voice-first release gate. [Architecture](architecture.md) | [Current state](../PROJECT_STATE.md).
+
+## CLI MVP security boundary
+
+The [CLI MVP](cli-mvp-roadmap.md) uses one unprivileged owner process through existing SSH/local login. No new network listener, browser session, multi-user service or arbitrary shell/tool execution is introduced. Reuse host authentication; do not change SSH configuration or add a new service under this roadmap. A later web interface needs a separate authentication/session/CSRF and hosting review.
+
+Treat terminal input, retrieved text and model output as untrusted at their respective boundaries. SSH does not authorize model-directed actions, private AMG disclosure or credential access. Do not print tokens, raw provider diagnostics or private memory in logs. Terminal echo/scrollback, `tmux` buffers, shell history, redirected output and crash dumps can retain content; full transcript logging is outside the MVP. Explicit memory operations remain owner-controlled and fact values enter on stdin.
+
+Define cancellation, EOF, disconnect and process termination behavior. Preserve unknown usage and stale-crash-lock investigation; disconnect is not proof of cancellation/refund. Keep scope, journal caps, budget checks and fail-closed storage behavior. No unattended inference or automatic retries.
+
+Voice risks and controls below are retained for optional later use. Physical mute, AEC and bystander-capture qualification are deferred; they no longer block the text MVP. Existing offline tests remain mandatory.
 
 ## Assets and trust boundaries
 
@@ -10,8 +20,8 @@ Assume malicious speech or audio playback, untrusted webpages/documents, prompt 
 
 | Threat | Required mitigation |
 | --- | --- |
-| Background listening / bystander capture | Local wake gating, bounded volatile pre-roll, visible listening state, physical mute where supported, no raw audio retention by default. |
-| Replay, TV, or impersonated voice | Voice alone cannot approve sensitive operations. Require authenticated owner interaction out of band; prevent TTS feedback from becoming a command. |
+| Deferred voice: background listening / bystander capture | Local wake gating, bounded volatile pre-roll, visible listening state, physical mute where supported, no raw audio retention by default. |
+| Deferred voice: replay, TV, or impersonated voice | Voice alone cannot approve sensitive operations. Require authenticated owner interaction out of band; prevent TTS feedback from becoming a command. |
 | Prompt injection | Separate instructions from retrieved data; validate typed tool requests; no model-directed privilege elevation. |
 | Tool misuse / duplicate actions | Default deny, scoped capabilities, explicit approval for sensitive or externally visible actions, idempotency keys and durable outcome journal. |
 | Token or money exhaustion | Single inference broker, durable reservations, rolling budgets and task ceilings; fail closed on unverifiable spending controls or exhausted provider allowance. |
@@ -24,7 +34,7 @@ Assume malicious speech or audio playback, untrusted webpages/documents, prompt 
 
 ## Minimum implementation controls
 
-Run the host under an unprivileged service account, bind control interfaces to local access by default, keep audio out of logs and disable arbitrary shell execution. Do not expose network listeners or tools in M1 unless necessary and explicitly authorized. Restrict credential access to the broker; never store secrets in repository, build artifacts or fixtures. Model adapters return data, not executable instructions.
+Run the CLI as the unprivileged owner, restrict control to the existing terminal session and disable arbitrary shell execution. If a service is later approved, use a dedicated restricted account. Keep audio out of logs in the retained optional voice path. Do not expose network listeners or tools in M1 unless necessary and explicitly authorized. Restrict credential access to the broker; never store secrets in repository, build artifacts or fixtures. Model adapters return data, not executable instructions.
 
 Mute stops capture and discards pending volatile audio; software mute is not equivalent to a physical disconnect. An interruption must stop stale audio and prevent uncommitted actions, but an already committed external operation may not be reversible. Report outcome honestly.
 
@@ -35,7 +45,7 @@ Mute stops capture and discards pending volatile audio; software mute is not equ
 - Verify no remote calls in idle/offline/muted tests; inspect outbound payloads for unnecessary sensitive data.
 - Confirm official sign-in eligibility and subscription-only settings before live tests. No API-key fallback, automatic credits or limit circumvention.
 - Test memory export, correction and deletion, log redaction and recovery.
-- Verify physical mute and listening indicators on reference hardware before normal household use.
+- If voice is resumed, verify physical mute and listening indicators before normal household use; deferred from CLI acceptance.
 
 Residual risks: provider-side retention and account-wide usage are outside local control; audio transcription can misinterpret speech; physical compromise and upstream vulnerabilities remain possible. Document provider policies and hardware properties before deployment. AtomOS is not a safety-critical or emergency response device.
 

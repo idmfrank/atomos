@@ -1,10 +1,61 @@
 # AtomOS architecture
 
-Status: target architecture with M1.1–M1.4f and M2.1–M2.4c offline implementation verified. Owner-run OAuth/catalog/refresh succeeded; three historical live qualification attempts consumed without a validated terminal response. M2.5a isolated atomic admission merged; PR #31 time/task follow-up merged externally and verified in post-merge CI/scale. M2.5b extended decoder integration remains next. See [current state](../PROJECT_STATE.md), [README](../README.md), [threat model](threat-model.md), [resource budget](resource-budget.md), [inference architecture](inference-architecture.md), [AMG architecture](amg-architecture.md).
+Status: CLI MVP target adopted 2026-11-27. The existing text runtime is local/mock; M2.5a admission and decoder profiles remain isolated synthetic components. PR #32 main `5bca8a15e8245e9631d8a978a988c01cdc812f7a` passed CI/full scale with unchanged PR #31 runtime behavior. Voice development and physical qualification are paused. [Roadmap](cli-mvp-roadmap.md) | [Current state](../PROJECT_STATE.md) | [README](../README.md) | [Threat model](threat-model.md) | [Resources](resource-budget.md) | [Inference](inference-architecture.md) | [AMG](amg-architecture.md)
 
 ## System boundary
 
-A headless Linux x86-64 host runs an owner-controlled Rust agent and local speech engines. The agent is authoritative for identity, state, permissions and task execution. OpenAI supplies bounded reasoning on demand; it is not the owner of the agent or its memories. No general-purpose local LLM is required. Low-cost satellites are a later profile, not a dependency of the first prototype.
+One owner runs a foreground Rust CLI on an existing Linux host through a local terminal or existing SSH login. AtomOS adds no web server, SSH server or application authentication service. The owner controls identity, committed facts and permissions; the model supplies optional reasoning after separate provider gates. No general-purpose local LLM, microphone, speech models, new hardware or bootable image is required.
+
+```mermaid
+flowchart LR
+  Owner[Owner terminal via SSH or local login] <--> CLI[Thin CLI adapter]
+  CLI <--> R[Shared Rust conversation core]
+  R <--> L[Local resolver]
+  R <--> M[AMG identity and explicit facts]
+  R --> C[Bounded context compiler]
+  C --> A[Atomic account-bound admission]
+  A --> B[Text inference broker]
+  B --> R
+  B -. separately gated .-> Provider[Authorized Responses provider]
+```
+
+This is target integration, not current executable wiring. The conversational CLI uses mock reasoning for open questions, reads AMG through a typed read-only interface and leaves mutations to `atomos-memory`. Atomic admission and extended decoder outcomes still need offline integration before any production adapter. Model output is data, never authority for memory mutation, shell execution or tools.
+
+## Runtime boundaries and proposed interfaces
+
+| Component | CLI MVP responsibility | Boundary |
+| --- | --- | --- |
+| CLI adapter | Terminal input/output, command parsing, exit/status and cancellation signals | Thin adapter; one owner and active session; proposed command contract still to define |
+| Conversation core | Turn/task ownership and bounded working context | Reject stale delivery; no full transcript persistence by default |
+| Memory | Identity, explicit facts, correction/forget/export and local retrieval | Typed APIs; short transactions; separate current administration CLI |
+| Local resolver | Deterministic supported commands and fact queries | No inference charge; expose unsupported/ambiguous states honestly |
+| Context compiler | Bounded relevant context and trust/provenance labels | Private AMG provider disclosure stays separately gated |
+| Admission and broker | Account/request identity, reservation, outcomes and settlement | One durable admission before response read; no detachable public permit |
+| Provider adapter | Future authorized text transport with bounded lifetime | Separate security/spending/time/credential gate; no new live authorization |
+
+Keep existing Rust crate/interface boundaries where useful; do not create new processes or rewrite the runtime for a CLI. Existing SSH authenticates host access, not provider disclosure or multi-user isolation. Optional existing `tmux` keeps a process running across disconnects but adds no AtomOS durable session recovery or automatic credential unlock.
+
+## CLI conversation lifecycle
+
+1. Wait for a submitted terminal line without idle remote calls.
+2. Validate turn/task/input and resolve supported local commands or facts.
+3. For unresolved conversation, build bounded in-session context; use mock/synthetic responses until an approved provider adapter exists.
+4. Validate a fresh admission context, persist reservation and decode the selected text outcome. Preserve accounting and privacy policy regardless of delivery style.
+5. Display only output permitted by the reviewed outcome contract. Current synthetic parsing buffers until terminal validation/settlement; incremental terminal streaming is not implemented by this roadmap.
+6. On cancellation, EOF, disconnect or errors, stop stale delivery and expose local status. Define signal/exit behavior in the CLI contract. A disconnect/socket close does not prove upstream generation or usage stopped.
+7. Persist explicit memory commits and accounting outcomes. Restart restores identity and committed facts, not necessarily volatile working turns. No automatic retry, transcript archive, reminders or background consolidation.
+
+## State, persistence and concurrency
+
+M2.5a [atomic admission](m2-atomic-admission.md) owns a private bounded ledger and one outstanding reservation. Unknown outcomes remain charged and block further synthetic admission; revocation/overrun suspension are durable. The implementation is not connected to conversational AMG, OAuth or a network. Real crash locks require manual investigation; clean reopen tests do not qualify automatic crash recovery.
+
+One conversation owner manages current turn/task and bounded working context. Serialize memory writes through typed interfaces; never hold an AMG transaction across inference. SQLite + FTS5 and existing recovery formats remain the reference. Keep secrets out of memory and accounting journals. Terminal/session buffers and redirected output can retain text; do not add transcript/secret logging.
+
+Scheduling, concurrent conversations, automatic startup and autonomous tools are deferred. A later browser or voice interface should reuse core APIs after its own scope/security review.
+
+## Deferred voice architecture and historical assets
+
+Preserve the existing coordinator, PCM buffers, adapters, fixtures and offline tests. The following earlier voice design is retained for a possible later interface. It is not a CLI MVP requirement or permission to resume hardware/model work; do not delete regression coverage because audio is paused.
 
 ```mermaid
 flowchart LR
@@ -30,26 +81,7 @@ flowchart LR
 
 The diagram is the target runtime, not the current executable wiring. The diagram is logical: the governor makes the final admission decision after context compilation and before any provider dispatch. Speech engines must not access OpenAI credentials. Only the broker may open inference connections.
 
-## Runtime boundaries and proposed interfaces
-
-| Component | Responsibility | Interface sketch |
-| --- | --- | --- |
-| Audio | Capture, playback, AEC reference, mute | Frame stream, playback cancel, device status |
-| ASR | Partial and final transcripts | Audio frame in, transcript events out |
-| Turn manager | Wake, endpointing, interruption, session expiry | Turn ID, epoch, timestamp, event |
-| Agent | Conversation orchestration and task lifecycle | Turn request, response stream, cancellation |
-| Memory | Durable typed facts, conversation journal, search | Read bounded context, append events, export/delete |
-| Local resolver | Safe high-confidence deterministic intents | Resolved / ambiguous / escalate |
-| Context compiler | Smallest sufficient context, trust labels | Task plus retrieved data to request |
-| Governor | Reserve, admit, reconcile, pause | Budget decision and single-use permit |
-| Provider | Authorized streaming OpenAI text inference | Permit + request to deltas/usage/error |
-| Policy | Default-deny tool authorization | Typed intent to deny/approve/allow |
-| TTS | Natural speech from text chunks | Text stream to PCM, cancel by epoch |
-| Scheduler | Durable timers and event-driven work | Due events, acknowledgement, cancellation |
-
-Initial crates: atomos-core (domain types and turn state), atomos-audio (engine interfaces), atomos-memory, atomos-inference, atomos-policy, atomos-runtime. A thin host binary wires components. Names and boundaries may evolve after the spike; no unnecessary cross-process protocol before profiling. Isolate native speech engines in supervised workers if crash containment or measured constraints warrant it.
-
-## Conversation lifecycle
+### Deferred voice lifecycle
 
 1. Idle: local wake detector only, bounded volatile pre-roll if enabled. No inference and no stored raw audio.
 2. Listening: ASR consumes frames as the user speaks. Partial transcripts are provisional and do not trigger remote calls or irreversible actions.
@@ -61,26 +93,19 @@ Initial crates: atomos-core (domain types and turn state), atomos-audio (engine 
 
 Use monotonic clocks for latency and timeouts and wall clock for durable reminders. No remote requests for speculative ASR partials. Each queue has a size limit and explicit overload policy; audio capture may drop old frames with a recorded discontinuity rather than accumulating unbounded latency. AEC needs the actual playback reference, synchronized with capture; validate USB routing before selecting a microphone/speaker.
 
-## Speech engine selection
+### Deferred speech engine selection
 
 Candidates: local wake word (openWakeWord), VAD (Silero or simpler baseline), streaming ASR (sherpa-onnx/Zipformer), accuracy baseline (whisper.cpp), TTS (Kokoro and Piper). These are candidates, not approved dependencies. Verify upstream licenses, model redistribution rights, target-language quality and runtime footprint. Wrap engines behind narrow Rust interfaces. Keep models warm only if latency/power tests justify it. Compare in-room audio and expressive quality, not only offline word error rate.
 
-## State and concurrency
+## Historical first vertical slice (M1)
 
-M2.5a's [isolated synthetic candidate](m2-atomic-admission.md) commits authorization and reservation in one private bounded ledger before reading its response source. This is not wired to the conversational runtime, AMG, OAuth, live qualification utility or network. Its immutable compiled request has no detachable dispatch permit; unknown outcomes retain reservation and block subsequent inference. Extended decoder integration remains M2.5b.
+The original voice-first vertical slice included mock responses, interruptible playback, event timestamps and physical microphone/speaker evaluation. These acoustic exit criteria are now deferred. CLI MVP acceptance is defined in [the roadmap](cli-mvp-roadmap.md); historical audio qualification remains incomplete.
 
-One turn manager owns active conversation state. Use bounded asynchronous channels and cancellation tokens; do not hold database transactions across inference. A single durable journal records committed state transitions. AMG models memory as a temporal property graph with provenance, event journal, exact/graph/FTS retrieval and bounded context compilation. SQLite + FTS5 is the retained reference engine behind typed interfaces; alternatives are deferred, not equivalently benchmarked. Use schema versioning, bounded retention, explicit migration/recovery. See [AMG architecture](amg-architecture.md). Preserve provenance, distinguish untrusted retrieved content from instructions, and enforce deletion in derived indexes. No plaintext credentials in journal.
-
-The scheduler is event-driven. Background work competes for neither interactive audio nor reserved inference capacity. Prioritize audio callbacks, local interaction and active user requests over consolidation. Avoid real-time priority changes until tested against starvation.
-
-## First vertical slice (M1)
-
-Run on a normal headless Linux development host before building a minimal distribution. Deliver a local conversation loop with mock responses, an interruptible playback path and event timestamps. In parallel implement governor and local intent tests; no live OpenAI calls until authorization and cost controls are verified. Start with recorded/synthetic fixtures and then test physical microphone and speaker. M2 integrates streaming remote text only after both paths pass.
-
-## Verified implementation boundary
+## Preserved implementation evidence
 
 [M1.4b post-merge CI](https://github.com/idmfrank/atomos/actions/runs/45755478646): 35 Rust + 9 Python tests, smoke checks and no-store text benchmark passed. The Rust core provides mock/local inference, turn epochs, bounded PCM, RMS endpointing and IPC. Optional warm Sherpa-ONNX/Kokoro adapter defaults to half-duplex; real speech engines and AEC remain unvalidated.
 
 AMG v1 implements persistent local identity, scoped entities and typed assertions/edges, recorded-time revision history, transactional correction/deletion and FTS5. The explicit administration CLI owns mutation. M1.4b adds MemoryReader and a SQLite read-only connection to the text and voice host. Exact lookup only in conversation; follow-up retains a subject key, never a cached value. Final-turn validation precedes lookup; no database operation on microphone callback. Voice demo allowlist is not authentication. No implicit store creation/migration or remote inference. See [AMG foundation](m1-amg-foundation.md) and [conversational integration](m1-amg-conversation.md).
 
-M1.4c–f subsequently implemented scoped graph/FTS context, revision-specific demo voice grants, schema v3 deletion and bounded streaming logical recovery; see [AMG optimization](m1-amg-optimization.md). Private authenticated memory, encrypted recovery and aggregate quota remain gates. M2.1–M2.4c add separate offline broker, authorization, decoder profiles and owner-run auth/qualification utilities; no integrated live broker or private AMG egress. Wake word, neural VAD, physical AEC/audio and scheduler remain pending. The fixed-budget governor journal remains separate from AMG. See [AMG architecture](amg-architecture.md) for target requirements.
+M1.4c–f subsequently implemented scoped graph/FTS context, revision-specific demo voice grants, schema v3 deletion and bounded streaming logical recovery; see [AMG optimization](m1-amg-optimization.md). Private authenticated memory, encrypted recovery and aggregate quota remain gates. M2.1–M2.4c add separate offline broker, authorization, decoder profiles and owner-run auth/qualification utilities; no integrated live broker or private AMG egress. Wake word, neural VAD, physical AEC/audio and scheduler remain deferred beyond the CLI MVP. The fixed-budget governor journal remains separate from AMG. See [AMG architecture](amg-architecture.md) for target requirements.
+

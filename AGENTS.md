@@ -4,6 +4,10 @@
 
 Read [PROJECT_STATE.md](PROJECT_STATE.md) before starting work. It records the verified baseline, current objective, environment boundaries and pending gates. Check the actual checkout and latest CI; never assume a snapshot is current. Apply the per-commit documentation rule below, including documentation-only changes. Verify post-merge results before updating verified evidence. Codex may build and run offline tests; interactive vault operations and live inference require explicit owner action per the documented M2.4 procedure.
 
+## Current product scope
+
+The owner-approved first MVP is a single-owner CLI on an existing Linux host, accessed locally or over SSH. Follow [the CLI MVP roadmap](docs/cli-mvp-roadmap.md). Keep the CLI thin over shared Rust interfaces. Voice development/physical qualification, browser UI, scheduler, autonomous tools and custom OS work are deferred; preserve existing code and offline regression tests. This scope change does not authorize live inference, vault access, private AMG disclosure, installs or host/SSH configuration changes. Read-only local/mock operation and historical evidence must remain distinguishable from the planned integrated MVP.
+
 ## Documentation is part of every commit
 
 - **Every commit requires a documentation review and update, not only milestone releases.** Include an accurate change/status entry in PROJECT_STATE.md in the same authored commit as the change, including documentation-only commits. Update README.md and every affected architecture, security, protocol, operation, test, resource-budget and milestone document; review other documents for stale claims. If no other document needs a change, record that review and why in the handoff or PR. Do not modify unrelated historical evidence merely to change a date.

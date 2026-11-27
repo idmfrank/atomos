@@ -1,6 +1,12 @@
 # OpenAI-native inference architecture
 
-Status: target architecture; M2.1–M2.4c isolated offline broker, account policy and decoder profiles verified. Actual owner OAuth/catalog/refresh succeeded. Three fixed live attempts consumed without validated completion or usage. M2.5a isolated atomic admission merged with PR #31 time/task follow-up merged externally and verified offline; extended decoder integration is M2.5b; no general live inference. [Current state](../PROJECT_STATE.md) | [Architecture](architecture.md) | [Resource budget](resource-budget.md).
+Status: target architecture; M2.1–M2.4c isolated offline broker, account policy and decoder profiles verified. Actual owner OAuth/catalog/refresh succeeded. Three fixed live attempts consumed without validated completion or usage. M2.5a isolated atomic admission merged with PR #31 time/task follow-up merged externally and verified offline; next define M2.5b offline decoder integration for the CLI MVP; no general live inference. [Current state](../PROJECT_STATE.md) | [Architecture](architecture.md) | [Resource budget](resource-budget.md).
+
+## CLI MVP scope
+
+The [CLI roadmap](cli-mvp-roadmap.md) is the active product boundary. Text input/output replaces voice as the first interface; one owner and one active conversation are sufficient. Current text interaction remains local/mock. M2.5b's detailed offline outcome/admission/cancellation/settlement contract is the next scope to define, followed by CLI integration. Transport, secure credentials, real account controls and private AMG disclosure remain separately gated.
+
+The CLI is a thin adapter: no terminal command can bypass admission, change billing route or silently authorize memory egress. Define bounded working-turn retention, cancellation, EOF and disconnect behavior. No full transcript persistence or automatic memory extraction. Synthetic current decoders buffer until validated terminal/settlement; choosing future incremental display requires explicit outcome/accounting semantics.
 
 ## Integration contract
 
@@ -22,7 +28,9 @@ Ledger fields: request ID, task ID, turn/epoch, account alias, model, priority, 
 
 Preserve owner instructions, applicable safety policy, recent turn state, task-relevant typed facts and only needed tool schemas. Use AMG exact entity/property lookup, bounded graph traversal, scoped FTS5 and local ranking initially; optional local embeddings only after benchmark. See [AMG architecture](amg-architecture.md). Preserve provenance, validity, conflicts and scope; return ambiguity/truncation metadata. No remote retrieval/routing requirement. Use stable prompt prefixes where appropriate; prompt caching is not assumed to reduce subscription usage. Keep essential context even if a task requires larger budget; ask the owner or defer rather than silently degrade accuracy. Untrusted content remains clearly delimited. Store facts with source, timestamp and confirmation status. No remote model call to select a model for every request.
 
-## Voice integration
+## Deferred voice integration
+
+Voice work and physical qualification are paused. This retained target applies only if a later voice interface is separately selected; it does not block text provider integration or CLI acceptance.
 
 Local wake, VAD, streaming ASR, endpointing and local TTS consume no remote model tokens. Do not infer on speculative ASR partials. Stream text deltas to a bounded clause segmenter, then local TTS. On barge-in, stop playback locally and cancel upstream work where supported; reconcile outstanding usage. Record what was delivered, not merely generated. More advanced voice integrations require verified subscription eligibility and measured quality improvement.
 
@@ -62,4 +70,4 @@ M2.3b merged and offline-tested. M2.3c [hardening](m2-auth-hardening.md) adds pa
 
 M2.4 [qualification harness](m2-first-live-qualification.md): explicitly owner-run fixed nonpersonal one-shot, same account catalog and encrypted session, separate non-reusable fsynced intent/settlement, bounded HTTPS stream replay through existing Rust decoder. This is not integrated governor admission or conversational transport; no arbitrary prompts, no automatic retry, no paid fallback. A provider generation cap is unavailable; require informed acceptance for this one experiment only. No runtime integration or validated inference result. The three authorized historical attempts are consumed; final HTTP body received and eight SSE events validated, then unsupported event. Preserve all 3,072 local planning units (actual usage unknown), no fourth attempt.
 
-M2.4b–c [protocol compatibility](m2-protocol-compatibility.md) validated separate offline queued/null-annotation, bounded opaque reasoning and typed refusal profiles. No SDK parity, full model compatibility, raw reasoning, tool execution or automatic fallback. M2.5 must bind admission to a compiled request/account/model/turn, integrate durable reservation and settlement, cancellation and provider suspension, secure credentials and handle refusal without normal answer or retry. No production inference until separately reviewed security, consent and spending policy. Existing live harness stays closed.
+M2.4b–c [protocol compatibility](m2-protocol-compatibility.md) validated separate offline queued/null-annotation, bounded opaque reasoning and typed refusal profiles. No SDK parity, full model compatibility, raw reasoning, tool execution or automatic fallback. M2.5a binds synthetic compiled request/account/model/turn with atomic reservation. The next M2.5b scope should integrate typed outcomes, cancellation, settlement and durable provider suspension offline, preserving refusal without a normal answer or retry. CLI integration follows; secure credentials and transport require a separate gate. No production inference until separately reviewed security, consent and spending policy. Existing live harness stays closed.
