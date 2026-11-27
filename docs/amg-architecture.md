@@ -3,6 +3,12 @@
 Status: accepted target architecture. M1.4a–f, schema v3 deletion, scoped context, grants, optimization and logical recovery merged and tested through 100K entities. Private deployment security and physical hardware validation pending. See [current state](../PROJECT_STATE.md).
 See [system architecture](architecture.md), [inference architecture](inference-architecture.md), [resource budget](resource-budget.md), and [threat model](threat-model.md).
 
+## CLI MVP boundary
+
+The [CLI MVP roadmap](cli-mvp-roadmap.md) prioritizes persistent identity and explicitly committed owner facts, local recall, correction/forget and export on the existing Linux host. The conversational CLI currently has a read-only MemoryReader; explicit writes use `atomos-memory`. A coherent owner command surface is planned, not implemented by this roadmap. Keep values on stdin rather than shell arguments/history and avoid transcript logging.
+
+A single authenticated SSH login establishes host access only. It does not qualify encrypted private storage, multi-user isolation or provider disclosure. Use synthetic facts until private deployment controls are reviewed. Full transcript persistence, automatic extraction/consolidation and reminders remain deferred. Working turns may be bounded volatile state. Preserve voice grants and existing tests as optional historical assets; they are not prerequisites for text interaction.
+
 ## Implemented baseline versus remaining design
 
 - M1.4a: SQLite v1, local agent ID, entity keys, typed single-valued assertions/edges, source IDs, recorded-time correction history, FTS5, bounded graph traversal and data-only exact context formatting. Explicit local administration, no automatic learning. [Implementation](m1-amg-foundation.md).

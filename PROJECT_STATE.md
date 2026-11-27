@@ -1,16 +1,18 @@
 # AtomOS — current engineering state
 
-Updated 2026-11-27 (M2.5a final verification). Verified executable main: `a91ccd9e9190334f1d7259c9413e40494121a01c` (PR #31), including fresh admission-time/active-task checks. PRs #30 and #31 were merged externally by the owner, not by this agent. Post-merge CI and full scale passed. Current changes are documentation-only reconciliation, preserving that executable baseline. Read AGENTS.md first, then this handoff; verify checkout and CI before assuming any snapshot is current.
+Updated 2026-11-27 (owner-approved CLI MVP roadmap). Verified main baseline: `5bca8a15e8245e9631d8a978a988c01cdc812f7a` (PR #32), with unchanged executable behavior from PR #31. Its post-merge CI and full scale passed. This documentation-only revision changes the product scope to a single-owner text CLI over existing SSH; it does not implement the MVP or authorize live inference. Read AGENTS.md first, then this file and [the roadmap](docs/cli-mvp-roadmap.md); verify the checkout and latest CI.
 
 ## Mission and architecture
 
-Always-on, voice-first personal AI operating environment on low-power commodity hardware. Natural conversation quality first; zero incremental AI spend using eligible official ChatGPT plan sharing; persistent identity and autonomy; token, power and hardware efficiency. Privacy/security are mandatory. Local first, zero idle remote inference, no unofficial access or paid fallback. Long-term bootable native OS; Linux-hosted runtime is the current development stage.
+Personal AI runtime starting with a single-owner text CLI on an existing Linux host, accessed locally or over SSH. Priorities: useful text conversation, zero incremental inference spend using eligible official ChatGPT plan sharing, persistent identity and explicit facts, bounded resource use, privacy and security. Local first, zero idle remote inference, no unofficial access or paid fallback. Voice, browser UI, scheduling/autonomy and a bootable native OS are deferred beyond the CLI MVP; historical implementations and evidence are retained.
 
 - Rust core and CLI: deterministic local operations, turn epochs, bounded playback, voice coordinator, durable reservation ledger. Keep production hot paths in Rust.
 - AtomOS Memory Graph (AMG): SQLite temporal typed graph, owner scope, provenance and revisions, scoped graph/FTS retrieval, ranked minimal context, correction/forget, revision-specific expiring voice grants, logical recovery. No raw audio/full transcripts as memory. No remote retrieval; context is data, never instructions. Short serial writes; never hold database transaction across inference.
-- Voice: persistent PCM coordinator, endpointing, follow-up, cancellation gated by AEC, optional native Sherpa-ONNX/Kokoro and batch Whisper.cpp/Piper adapters. Physical acoustics and wake word not qualified.
+- Voice (paused, retained optional implementation): persistent PCM coordinator, endpointing, follow-up, cancellation gated by AEC, optional native Sherpa-ONNX/Kokoro and batch Whisper.cpp/Piper adapters. Physical acoustics and wake word are unqualified and no longer CLI MVP exit gates.
 - Inference: local reflex/procedure before remote conversation; synthetic Rust broker, Token Governor, strict SSE text-only decoder and account-bound synthetic authorization. No production remote integration yet.
 - Authentication cold path: explicit owner-run Node utility, official OAuth PKCE, signed identity, encrypted private vault, scoped token and read-only catalog. M2.4 has a separate one-shot transport with Rust replay, not a general-purpose inference client.
+
+Product scope: [CLI MVP roadmap](docs/cli-mvp-roadmap.md), including current capabilities versus planned work, acceptance criteria, deferred assets and provider gates.
 
 Design details: [README](README.md), [resource budget](docs/resource-budget.md), [inference architecture](docs/inference-architecture.md), [AMG foundation](docs/m1-amg-foundation.md), [AMG optimization](docs/m1-amg-optimization.md), [account authorization](docs/m2-account-authorization.md), [auth hardening](docs/m2-auth-hardening.md), [M2.4 procedure](docs/m2-first-live-qualification.md).
 
@@ -28,10 +30,47 @@ Design details: [README](README.md), [resource budget](docs/resource-budget.md),
 | M2.4 | PR #19 merged, PR CI/post-merge CI/full scale all green. One-shot qualification harness ready for owner-run WSL build/preflight. Owner WSL build at 30df9b6 and 26/26 Node tests passed. First two live attempts rejected at headers; third delivered 8,465 bytes and eight validated SSE events, then unsupported event. All three reservations consumed with unknown usage. Owner refresh verified; no successful terminal response validated. |
 
 | M2.4b–c | PR #27 and #28 merged and verified: separate offline auxiliary and opaque reasoning/refusal profiles; strict decoder/broker and live harness unchanged. 18,000 synthetic replays passed. Actual model event compatibility still unqualified. |
+| M2.5a | PR #30 atomic synthetic admission and PR #31 fresh time/task fix merged; PR #32 documentation reconciliation merged. 173 distinct tests and current-main CI/full scale passed. No production provider wiring. |
+| CLI scope revision | Owner approved a CLI over SSH as the first MVP on 2026-11-27. Documentation only; implementation acceptance and future interface choices remain pending. |
 
 ## Latest verified test and benchmark baseline
 
-Current main a91ccd9: [post-merge CI 46024100103](https://github.com/idmfrank/atomos/actions/runs/46024100103), [full scale 46024473201](https://github.com/idmfrank/atomos/actions/runs/46024473201), both successful. PR #31 was marked ready and merged externally at 2026-11-27 15:20:52 UTC; no agent merge/ready action was issued. Same 173 distinct tests, Rust 1.75 core targets and 18,000 decoder samples passed. Default CLI 466,512 bytes; decoder process RSS 2,204 KiB; strict p95 33.0/22.6/22.6 microseconds.
+Verified repository baseline: `5bca8a15e8245e9631d8a978a988c01cdc812f7a` (PR #32), whose runtime is unchanged from PR #31. [Post-merge CI 46025742630](https://github.com/idmfrank/atomos/actions/runs/46025742630) and [full scale 46026109238](https://github.com/idmfrank/atomos/actions/runs/46026109238) are successful; jobs/logs rechecked 2026-11-27. Same 173 distinct tests (119 Rust, 11 Python, 43 Node), Rust 1.75 candidate core all-target tests and 18,000 decoder samples passed. Default CLI 466,512 bytes; decoder process peak RSS 2,180 KiB. Whole-workspace Rust 1.75 remains unverified because of the existing edition-2024 dependency. This roadmap changes documentation only; its own PR CI is pending until actually run.
+
+| Latest full scale, p95 unless stated | 1K | 10K | 100K |
+| --- | ---: | ---: | ---: |
+| Exact recall (ms) | 0.0451 | 0.0537 | 0.0718 |
+| Graph traversal (ms) | 0.1278 | 0.1349 | 0.1571 |
+| Selective context (ms) | 0.2046 | 0.2646 | 0.3143 |
+| Common-term context (ms) | 0.2485 | 0.5868 | 2.5666 |
+| Reference common term (ms) | 0.4300 | 3.6474 | 38.7607 |
+| Remember (ms) | 1.0803 | 1.1938 | 1.1384 |
+| Correct (ms) | 1.2045 | 1.1371 | 1.2407 |
+| Forget (ms) | 1.0261 | 1.0151 | 1.2006 |
+| Active CLI peak RSS (KiB) | 4,232 | 4,100 | 4,232 |
+| Restore (seconds) | 0.1180 | 1.3282 | 14.1180 |
+| Recovery peak RSS (KiB) | 7,444 | 9,124 | 9,192 |
+
+Same-run no-store RSS 2,592 KiB; 100K incremental 1,640 KiB. All sizes: 300/300 expected facts, 100 complete packets, precision/recall 1, 0/30 parity mismatches, zero recovery verification errors and remote calls. Main/restore DB bytes 1,216,512 / 11,186,176 / 116,084,736. Ranked context bytes per 100 requests 38,842 / 39,400 / 40,012 versus same-scope 90,072 / 91,000 / 92,020; bytes are not tokens.
+
+| Latest admission benchmark | Reference | Candidate |
+| --- | ---: | ---: |
+| Admission p50 / p95 / p99 (ms), 300 samples | 0.338799 / 0.402973 / 0.492505 | 0.170752 / 0.216750 / 0.350707 |
+| Completion p50 / p95 / p99 (ms) | 0.701052 / 0.820529 / 3.705018 | 0.367051 / 0.454600 / 0.859276 |
+| Restart p50 / p95 / p99 (ms), 30 samples | 0.360311 / 0.395412 / 0.488649 | 0.240815 / 0.259973 / 0.447549 |
+| Admission write syscalls / fsyncs | 4 / 2 | 2 / 1 |
+| Process peak RSS (KiB) | 2,236 | 2,200 |
+| Release harness (bytes) | 416,520 | 440,144 |
+| Journal bytes per completed request | 52.560 | 104.280 |
+| Final charge / errors | 14,100 / 0 | 14,100 / 0 |
+
+Candidate background charge 7,050; validation p50/p95/p99 0.101/0.150/0.301 microseconds; compilation 0.391/0.691/1.072 microseconds. Candidate 600 append records/syncs include admission and settlement. Each process asserts independent expected charges; direct answer/usage parity is additionally covered by integration tests. Larger candidate journal and harness are explicit tradeoffs.
+
+Hosted measurements are synthetic; no hardware, energy, token-saving or provider-compatibility claim. Historical measurements below retain their tested commits and run links.
+
+### Historical PR #31 post-merge measurements
+
+Historical executable main a91ccd9: [post-merge CI 46024100103](https://github.com/idmfrank/atomos/actions/runs/46024100103), [full scale 46024473201](https://github.com/idmfrank/atomos/actions/runs/46024473201), both successful. PR #31 was marked ready and merged externally at 2026-11-27 15:20:52 UTC; no agent merge/ready action was issued. Same 173 distinct tests, Rust 1.75 core targets and 18,000 decoder samples passed. Default CLI 466,512 bytes; decoder process RSS 2,204 KiB; strict p95 33.0/22.6/22.6 microseconds.
 
 | Post-merge main full scale | 1K | 10K | 100K |
 | --- | ---: | ---: | ---: |
@@ -51,7 +90,7 @@ No-store RSS 2,612 KiB; 100K incremental 1,656 KiB. All sizes retained 300/300 e
 
 Post-merge admission (300 samples), reference/candidate p50 0.563104/0.276983 ms, p95 0.641059/0.324064 ms, p99 0.777855/0.413111 ms. Restart p50/p95/p99 0.455377/0.511565/16.109382 ms vs 0.273531/0.322318/0.527869 ms. Trace writes 4/2, fsyncs 2/1; RSS 2,260/2,264 KiB; release harness bytes 416,520/440,144; journal bytes/request 52.560/104.280. Exact charge 14,100 each, background 7,050 candidate, zero errors/parity. Reference restart p99 tail retained. Candidate memory validation p95 0.170 microseconds, compilation p95 7.449 microseconds (median 0.476); no cross-run speed or power claim.
 
-The following PR-head and older main measurements are historical verified evidence. Current documentation-only follow-up reconciles both external merges and latest post-merge results; no more runtime changes, no inference, no owner-record access. Its own CI is pending until actually run; no recursive commit is needed to cite a documentation-only commit's hash.
+The following PR-head and older main measurements are historical verified evidence. PR #32 reconciled the externally merged runtime changes; its CI and post-merge evidence are now superseded by the current verified baseline above. No runtime or owner records are changed by the CLI roadmap.
 
 ### Historical PR #31 head measurements
 
@@ -75,7 +114,7 @@ Hosted admission benchmark, 300 requests, reference/candidate: p50 0.332693/0.16
 
 Same-run no-store RSS 2,580 KiB; 100K incremental 1,708 KiB. All sizes: 300/300 matched facts, 100/100 complete packets, precision/recall 1, 0/30 parity mismatches, zero recovery errors/calls. 10K durable write tails increased (remember p95 8.8151 ms versus median 1.0952 ms); cause unisolated on hosted runner, do not hide the tail or attribute it to candidate code not wired to AMG. Counts, context/export bytes and DB sizes unchanged from historical baselines.
 
-PR #30 merged externally at 2026-11-27 15:10:18 UTC while the admission-context follow-up was being prepared. Its main SHA above passed [post-merge CI 46022488760](https://github.com/idmfrank/atomos/actions/runs/46022488760) and [scale 46022801149](https://github.com/idmfrank/atomos/actions/runs/46022801149). Same 173 tests; 100K selective p95 0.2804 ms, common 1.9533 ms, active CLI 4,204 KiB vs no-store 2,584, restore 9.0432 s / 9,044 KiB. The agent issued no merge action. PR #31 subsequently merged externally; current evidence-only reconciliation must not be merged by the agent. No owner vault/markers read or changed.
+PR #30 merged externally at 2026-11-27 15:10:18 UTC while the admission-context follow-up was being prepared. Its main SHA above passed [post-merge CI 46022488760](https://github.com/idmfrank/atomos/actions/runs/46022488760) and [scale 46022801149](https://github.com/idmfrank/atomos/actions/runs/46022801149). Same 173 tests; 100K selective p95 0.2804 ms, common 1.9533 ms, active CLI 4,204 KiB vs no-store 2,584, restore 9.0432 s / 9,044 KiB. The agent issued no merge action. PR #31 subsequently merged externally; that historical evidence-only reconciliation was subsequently merged as PR #32; the agent did not merge it. No owner vault/markers read or changed.
 
 ### Historical PR #29 baseline
 
@@ -127,7 +166,13 @@ Same-run no-store CLI RSS 2,576 KiB; 100K incremental 1,568 KiB (1.531 MiB) vers
 - GitHub Actions: CI and scale. No credentials or provider inference in CI. Human reviews and merges runtime changes.
 - Existing owner vault: `$HOME/.config/atomos-auth` on WSL. Do not read/decrypt outside the existing owner-run utility, copy it, inspect secret-bearing files, print tokens/passphrase, or move it to another environment. Never commit local state. No new registration needed.
 
-## Immediate objective: M2.5a offline atomic admission; live harness closed
+## Immediate objective: define M2.5b for the CLI MVP
+
+Follow the [CLI roadmap](docs/cli-mvp-roadmap.md). Next, define a bounded offline decoder/admission/cancellation/settlement implementation contract for text conversation; then specify the CLI command/session integration slice. The existing conversational CLI is local/mock and read-only against AMG; explicit mutations remain in `atomos-memory`. One owner, one active conversation, manually launched on existing Linux/SSH. No browser/server, audio requirement, daemon startup, scheduler or full transcript persistence. Optional existing `tmux` is an operator convenience, not crash recovery or credential unlocking.
+
+Preserve voice code and regression tests, but pause voice development and physical qualification. The SSH login boundary does not authorize private AMG egress. Secure provider integration and any new live validation require separate review/owner authorization.
+
+## Historical live qualification closure (still binding)
 
 **All three authorized attempts consumed.** Preserve the three durable records; cumulative 3,072 local planning units retained, actual provider usage unknown. No fourth attempt, reset, alternate vault, re-registration or unattended inference. First two attempts rejected at headers. Final owner-run result at 49c6cf2 (2026-11-26): HTTP 200, missing content-type and encoding, headers 874 ms, first body byte 875 ms, HTTP body end 1591 ms, 8,465 wire/decoded bytes. Rust category Unsupported; stage part, event_class other, item_class none, 8 validated events. Missing-MIME transport successfully received bounded body and invoked decoder. No terminal response/expected text/actual usage validated. First byte is not TTFT. Unknown event name was not recorded; cannot infer annotation, reasoning, completion, output text or provider defect. No raw stream retained.
 
@@ -135,14 +180,14 @@ Owner spending settings observed enabled 50% app limit, purchased credits access
 
 Official [SIWC inference guide](https://developers.openai.com/siwc/token-sharing-open-source/models-and-inference) and [Responses streaming reference](https://developers.openai.com/api/reference/resources/responses/streaming-events) reviewed 2026-11-26. Official examples handle text delta, failure, completion and do not require every other event to be a text lifecycle event; success requires completed terminal. API reference has additional documented events including annotations. Exact historical event remains unknown.
 
-M2.4b–c offline [protocol compatibility](docs/m2-protocol-compatibility.md) validated queued/null-annotation events, bounded opaque reasoning item and typed refusal, with strict reference and broker unchanged. Exact live event, SDK differential execution and model qualification remain open. M2.5a implements isolated atomic account-bound admission with the existing strict decoder only; extended decoder integration is M2.5b. Secure credential handoff/transport remain future separately scoped work. No raw reasoning, tools, fallback or fourth attempt. Physical hardware qualification may proceed independently.
+M2.4b–c offline [protocol compatibility](docs/m2-protocol-compatibility.md) validated queued/null-annotation events, bounded opaque reasoning item and typed refusal, with strict reference and broker unchanged. Exact live event, SDK differential execution and model qualification remain open. M2.5a implements isolated atomic account-bound admission with the existing strict decoder only; extended decoder integration is M2.5b. Secure credential handoff/transport remain future separately scoped work. No raw reasoning, tools, fallback or fourth attempt. Physical voice qualification is paused; CLI resource measurements use the existing test host.
 
 ## Outstanding gates and next direction
 
 - Live stream may contain reasoning items or event shapes unsupported by narrow Rust decoder. Investigate via safe sanitized categories and offline fixtures before separately approved future live calls.
 - Live token revocation, integrated account-bound admission, trusted time/rolling budgets, real usage reconciliation, hard provider generation ceiling or explicit acceptable replacement policy, secure credential boundary and production security review remain open. Same-UID/root tampering and vault rollback are not solved.
-- M2.5 provisional: integrate safe transport with broker/Token Governor and natural conversation, then authorized minimal AMG context only after privacy/spending gates. M2.6: benchmark actual quality, token use, latency and energy; model routing based on evidence rather than slug names.
-- M3 prospective memory/scheduler, bounded autonomous tasks; M4 native bootable OS. Hardware voice wake/endpointing/AEC/barge-in, power/RSS and full speech tests pending. No assumption that WSL measures physical hardware efficiency.
+- Active sequence: define M2.5b offline outcome/settlement integration; specify a coherent single-owner CLI; separately review provider credentials/transport/spending/time/usage gates; then validate the CLI MVP over existing SSH. Private AMG disclosure remains separate. Use synthetic facts until private deployment controls are qualified.
+- After the CLI MVP: choose browser or voice from actual usage; separately scope reminders, scheduling and approved tools. M3/M4 autonomy/OS and later embedded/distributed ambitions remain long-term, not MVP dependencies. Voice wake/endpointing/AEC/barge-in and full speech/power qualification are paused. WSL is not physical hardware evidence.
 
 ## Maintenance protocol
 
@@ -150,7 +195,11 @@ Every new Codex session: read AGENTS.md and this file, inspect current commit an
 
 ## Documentation reconciliation
 
-This documentation-only change audits the 24 Markdown files at the PR #28 baseline, updates current architecture/status/benchmark summaries and marks older milestone procedures as historical with links to current guidance. New per-commit documentation rule in AGENTS.md. No runtime or test behavior changes; this documentation PR's CI is pending until actually run. Latest executable evidence remains PR #28. No new inference authorization. Review scope: status, operational guidance and cross-document consistency; not a fresh external dependency, provider contract, full source or security audit. Historical measurements remain labeled and unchanged.
+This revision updates README, AGENTS, the CLI roadmap, current architecture, inference, memory, security/resource guidance and affected milestone/voice scope notes. It removes the old voice-first MVP dependency, records the PR #32 tested baseline and preserves historical measurements. No code, dependencies, CI workflows, credentials, owner records or host configuration change. Markdown link/heading, fence and scope checks passed before commit; this revision's CI is pending until run. No merge authorization is implied.
+
+### Historical PR #29 reconciliation
+
+Historical PR #29 scope: that documentation-only change audited the 24 Markdown files at the PR #28 baseline, updates current architecture/status/benchmark summaries and marks older milestone procedures as historical with links to current guidance. New per-commit documentation rule in AGENTS.md. No runtime or test behavior changes; its own CI was pending at that historical snapshot and later passed. PR #28 was its then-current executable evidence. No new inference authorization. Review scope: status, operational guidance and cross-document consistency; not a fresh external dependency, provider contract, full source or security audit. Historical measurements remain labeled and unchanged.
 
 The preceding paragraph is the historical PR #29 scope; its post-merge evidence is now reconciled above. M2.5a adds an opt-in Rust candidate with one durable account/request/reservation transition, shared Governor budget admission rules, immutable SHA-256 compiled identity, strict existing decoder, bounded private journal and permanent suspension. [Implementation, format and semantics](docs/m2-atomic-admission.md). Reference broker/decoders and owner qualification paths remain preserved. All three qualification attempts and 3,072 retained units remain consumed; no owner records accessed.
 
@@ -164,6 +213,6 @@ Final 300-request admission benchmark: reference/candidate p50 5.8979/3.5324 ms,
 
 Local AMG p95 (1K/10K/100K): exact 0.0906/0.1200/0.1850 ms; graph 0.4241/0.4303/0.4291; selective 0.5548/0.6326/0.9881; common 0.7129/1.4725/10.9405 vs reference 1.1686/6.9933/233.5749. Remember 15.2711/11.8953/10.6589; correct 16.8648/10.6373/11.7654; forget 14.0621/12.0705/10.6595. Restore 0.2318/2.4856/25.5890 s, recovery RSS 7,420/9,292/9,232 KiB; active CLI RSS 4,264/4,280/4,300 vs no-store 2,904 KiB. All sizes: 300/300 matched facts, 100 complete packets, precision/recall 1, 0/30 parity mismatches and zero recovery errors/calls. WSL scheduling/storage tails are uncontrolled; not a regression/performance claim against hosted CI. Local default CLI 466,504 bytes versus historical hosted 466,512; shared Governor refactoring can affect linked code size, but this is not a controlled binary-size comparison. Decoder process peak RSS 2,260 KiB, 18,000 samples zero errors; strict p95 at 1/64/4096-byte reads 90.1/50.1/48.6 microseconds.
 
-These local checks were followed by verified hosted CI and full scale above. PR #31 was subsequently merged externally; current documentation-only changes remain for review. Do not merge; no live inference authorized.
+These historical local checks were followed by hosted CI/full scale. PR #31 and its PR #32 evidence reconciliation were subsequently merged externally. The current CLI roadmap changes documentation only; no live inference is authorized.
 
-PR #31 follow-up review: added a fresh injected admission context for current time, active turn and active task. Compilation-time validity alone cannot authorize delayed admission. Existing expiry/identity tests additionally reject a previously valid request at/after expiry, time before compilation, and active task mismatch; A records current admission time. Journal version remains v1; the reference-to-candidate transition has no existing owner namespace to migrate. Candidate and Rust 1.75 tests/benchmark were rerun after this change. Initial `57c173994a27b8b79042ea16da7f603935e1a424` passed [PR CI 46022140907](https://github.com/idmfrank/atomos/actions/runs/46022140907) and [full scale 46022161437](https://github.com/idmfrank/atomos/actions/runs/46022161437); final-context revision and post-merge evidence supersede it above. Current documentation-only commit reconciles the externally merged baseline, final CI/scale, README tables, architecture/security status and benchmark claims without runtime changes. Its own PR CI remains pending until run; it records the last tested executable SHA and need not recursively record its own hash.
+PR #31 follow-up review: added a fresh injected admission context for current time, active turn and active task. Compilation-time validity alone cannot authorize delayed admission. Existing expiry/identity tests additionally reject a previously valid request at/after expiry, time before compilation, and active task mismatch; A records current admission time. Journal version remains v1; the reference-to-candidate transition has no existing owner namespace to migrate. Candidate and Rust 1.75 tests/benchmark were rerun after this change. Initial `57c173994a27b8b79042ea16da7f603935e1a424` passed [PR CI 46022140907](https://github.com/idmfrank/atomos/actions/runs/46022140907) and [full scale 46022161437](https://github.com/idmfrank/atomos/actions/runs/46022161437); final-context revision and post-merge evidence supersede it above. PR #32 reconciled the externally merged baseline, final CI/scale, README tables, architecture/security status and benchmark claims without runtime changes. Its CI and post-merge evidence passed; see the latest baseline above. This new CLI roadmap revision records that tested SHA without fabricating a self-referential commit.

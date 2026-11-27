@@ -1,14 +1,16 @@
 # AtomOS
 
-**An OpenAI-native, always-on operating environment for personal AI agents, designed for natural voice conversation, zero incremental AI spending and efficient use of compute, power and tokens.**
+**An OpenAI-native personal AI runtime, starting with a CLI over SSH, persistent identity and memory, zero incremental AI spending and efficient use of compute, power and tokens.**
 
-AtomOS is an experimental project to build a persistent, conversational AI agent that can operate continuously on inexpensive, low-power hardware. The agent owns its identity, memory, permissions and scheduled activities independently of the language model it uses. Reasoning is delegated to OpenAI only when necessary, with the goal of operating within an owner's existing ChatGPT Plus subscription without additional AI spending. The runtime remains useful offline and retains a narrow inference interface for optional self-hosted models.
+AtomOS is an experimental project to build a persistent, conversational AI agent that can operate continuously on inexpensive, low-power hardware. The agent owns its identity, memory, permissions and scheduled activities independently of the language model it uses. Reasoning is delegated to OpenAI only when necessary, with the goal of operating within an owner's existing ChatGPT Plus subscription without additional AI spending. The first MVP is a single-owner text CLI on an existing Linux host, accessed locally or over SSH. The runtime remains useful offline. Voice, browser access, background scheduling and a bootable OS are later options.
+
+**MVP direction (2026-11-27):** CLI first, one owner and one active conversation. Voice development and hardware qualification are paused; existing voice code/tests are retained. The CLI currently uses local/mock reasoning; real provider conversation and private AMG disclosure remain gated. [Roadmap and acceptance criteria](docs/cli-mvp-roadmap.md).
 
 **Status:** M1.1–M1.4f local runtime and AMG foundations merged and offline/scale-tested. M2.1–M2.3d synthetic broker/authorization, bounded replay, official owner-run OAuth, encrypted vault, model discovery and token refresh verified at their respective gates. M2.4's three live qualification attempts are consumed with unknown usage; the final attempt received 8,465 bytes and validated eight SSE events before an unsupported event. M2.4b–c isolated offline auxiliary-event, opaque reasoning and refusal profiles merged and tested. General live inference, integrated account-bound admission, physical speech/power, private memory deployment and bootable OS remain unqualified. M2.5a offline admission is implemented; its time/task follow-up is merged, and M2.5b extended decoder integration is next.
 
 **Session handoff:** [PROJECT_STATE.md](PROJECT_STATE.md) records the current verified baseline, next steps and gates for ChatGPT and Codex.
 
-**M2.5a:** opt-in [atomic account-bound synthetic admission](docs/m2-atomic-admission.md), immutable request identity and one durable admission/reservation record. Initial PR #30 was merged externally; [PR #31](https://github.com/idmfrank/atomos/pull/31) adds fresh admission time/active task checks and was also merged externally; this documentation-only reconciliation remains for review. The M2.3 two-journal reference remains available; extended decoder integration is M2.5b. No live inference is authorized.
+**M2.5a:** opt-in [atomic account-bound synthetic admission](docs/m2-atomic-admission.md), immutable request identity and one durable admission/reservation record. Initial PR #30 was merged externally; [PR #31](https://github.com/idmfrank/atomos/pull/31) adds fresh admission time/active task checks and was also merged externally; PR #32 reconciled its evidence and is merged. The M2.3 two-journal reference remains available; the next scope to define is M2.5b offline decoder outcome integration for the CLI MVP. No live inference is authorized.
 
 ## Current implementation
 
@@ -32,7 +34,7 @@ AtomOS is an experimental project to build a persistent, conversational AI agent
 | M2.4 | [Historical owner-run qualification](docs/m2-first-live-qualification.md), three consumed attempts; final bounded body received, no completed inference or actual usage validated. No fourth attempt. |
 | M2.4b–c | [Offline protocol compatibility](docs/m2-protocol-compatibility.md): auxiliary events, optional opaque reasoning and typed refusal; PR #27–28 passed. Existing broker and live harness unchanged. |
 
-Latest verified executable main: [a91ccd9](https://github.com/idmfrank/atomos/commit/a91ccd9e9190334f1d7259c9413e40494121a01c), externally merged PR #31. [Post-merge CI 46024100103](https://github.com/idmfrank/atomos/actions/runs/46024100103) and [full scale 46024473201](https://github.com/idmfrank/atomos/actions/runs/46024473201) passed: 119 Rust + 11 Python + 43 Node = 173 distinct tests, preserving all previous 150; candidate core all-target tests also passed on Rust 1.75. No real inference in CI. Current reconciliation is documentation-only, with no executable changes. Prior PR-head/main evidence remains in PROJECT_STATE and [the atomic admission document](docs/m2-atomic-admission.md).
+Verified repository baseline: `5bca8a15e8245e9631d8a978a988c01cdc812f7a` (PR #32), whose runtime is unchanged from PR #31. [Post-merge CI 46025742630](https://github.com/idmfrank/atomos/actions/runs/46025742630) and [full scale 46026109238](https://github.com/idmfrank/atomos/actions/runs/46026109238) are successful; jobs/logs rechecked 2026-11-27. Same 173 distinct tests (119 Rust, 11 Python, 43 Node), Rust 1.75 candidate core all-target tests and 18,000 decoder samples passed. Default CLI 466,512 bytes; decoder process peak RSS 2,180 KiB. Whole-workspace Rust 1.75 remains unverified because of the existing edition-2024 dependency. This roadmap changes documentation only; its own PR CI is pending until actually run.
 
 ### Benchmark results
 
@@ -59,43 +61,51 @@ Latest verified executable main: [a91ccd9](https://github.com/idmfrank/atomos/co
 | PR #29 (documentation reconciliation) | 466,512 | 2,588 (full-scale no-store baseline) | 96 | 11 |
 | M2.5a follow-up 3895b2b (PR #31 head) | 466,512 | 2,580 (full-scale no-store baseline) | 119 | 11 |
 | M2.5a main a91ccd9 | 466,512 | 2,612 (full-scale no-store baseline) | 119 | 11 |
+| PR #32 main 5bca8a1 | 466,512 | 2,592 (full-scale no-store baseline) | 119 | 11 |
 
 Each release CLI benchmark executes 1,000 local text interactions. Rust/Python test counts refer to the workspace suite, not benchmark samples. PR #28 passed 43 Node tests (150 distinct total); owner last reported 43/43 local Node tests at PR #25. Peak RSS is measured process memory; runner variation can affect comparisons. M2.1's broker is a separate synthetic replay example, not linked into the measured conversational CLI. Excludes OS, speech engines, Python adapter, active AMG, ledger and administration executable. See [resource budget and run links](docs/resource-budget.md).
 
-**Active AMG scale — verified M2.5a main a91ccd9 [combined benchmark](https://github.com/idmfrank/atomos/actions/runs/46024473201)**
-
-| Metric | 1K entities | 10K entities | 100K entities |
+| Latest full scale, p95 unless stated | 1K | 10K | 100K |
 | --- | ---: | ---: | ---: |
-| Active assertions | 2,500 | 25,000 | 250,000 |
-| Main DB / restore bytes | 1,216,512 | 11,186,176 | 116,084,736 |
-| Active CLI peak RSS (KiB) | 3,936 | 4,312 | 4,268 |
-| Exact recall p95 (ms) | 0.0317 | 0.0443 | 0.0660 |
-| Graph traversal p95 (ms) | 0.0941 | 0.1045 | 0.1125 |
-| Selective context p95 (ms) | 0.1862 | 0.2542 | 0.2966 |
-| Common-term context p95 (ms) | 0.2094 | 0.4695 | 1.9801 |
-| Reference common-term p95 (ms) | 0.3819 | 2.9966 | 30.1055 |
-| Remember p95 (ms) | 0.6050 | 0.6367 | 0.6793 |
-| Correct p95 (ms) | 0.6620 | 0.6708 | 0.8118 |
-| Forget p95 (ms) | 0.5800 | 0.5917 | 0.8568 |
-| Fixture precision / recall | 100% / 100% | 100% / 100% | 100% / 100% |
-| Retrieval parity mismatches | 0 / 30 | 0 / 30 | 0 / 30 |
-| Restore (seconds) | 0.0812 | 0.8588 | 9.1048 |
-| Recovery peak RSS (KiB) | 7,176 | 9,212 | 8,988 |
+| Exact recall (ms) | 0.0451 | 0.0537 | 0.0718 |
+| Graph traversal (ms) | 0.1278 | 0.1349 | 0.1571 |
+| Selective context (ms) | 0.2046 | 0.2646 | 0.3143 |
+| Common-term context (ms) | 0.2485 | 0.5868 | 2.5666 |
+| Reference common term (ms) | 0.4300 | 3.6474 | 38.7607 |
+| Remember (ms) | 1.0803 | 1.1938 | 1.1384 |
+| Correct (ms) | 1.2045 | 1.1371 | 1.2407 |
+| Forget (ms) | 1.0261 | 1.0151 | 1.2006 |
+| Active CLI peak RSS (KiB) | 4,232 | 4,100 | 4,232 |
+| Restore (seconds) | 0.1180 | 1.3282 | 14.1180 |
+| Recovery peak RSS (KiB) | 7,444 | 9,124 | 9,192 |
 
-Same-run no-store RSS 2,612 KiB; 100K incremental 1,656 KiB. All parity/recovery checks passed. Prior PR-head 10K remember p95 8.8151 ms returned to 0.6367 ms post-merge; cause unisolated, hosted timings are not a controlled comparison. Synthetic graph only; no physical voice, energy, hard aggregate quota or measured token savings. Historical results remain in PROJECT_STATE and resource-budget.md.
+Same-run no-store RSS 2,592 KiB; 100K incremental 1,640 KiB. All sizes: 300/300 expected facts, 100 complete packets, precision/recall 1, 0/30 parity mismatches, zero recovery verification errors and remote calls. Main/restore DB bytes 1,216,512 / 11,186,176 / 116,084,736. Ranked context bytes per 100 requests 38,842 / 39,400 / 40,012 versus same-scope 90,072 / 91,000 / 92,020; bytes are not tokens.
 
-**Responses decoder — verified main a91ccd9 [CI](https://github.com/idmfrank/atomos/actions/runs/46024100103)**
+| Latest admission benchmark | Reference | Candidate |
+| --- | ---: | ---: |
+| Admission p50 / p95 / p99 (ms), 300 samples | 0.338799 / 0.402973 / 0.492505 | 0.170752 / 0.216750 / 0.350707 |
+| Completion p50 / p95 / p99 (ms) | 0.701052 / 0.820529 / 3.705018 | 0.367051 / 0.454600 / 0.859276 |
+| Restart p50 / p95 / p99 (ms), 30 samples | 0.360311 / 0.395412 / 0.488649 | 0.240815 / 0.259973 / 0.447549 |
+| Admission write syscalls / fsyncs | 4 / 2 | 2 / 1 |
+| Process peak RSS (KiB) | 2,236 | 2,200 |
+| Release harness (bytes) | 416,520 | 440,144 |
+| Journal bytes per completed request | 52.560 | 104.280 |
+| Final charge / errors | 14,100 / 0 | 14,100 / 0 |
 
-| Profile | Fixture bytes | p95 1-byte (µs) | p95 64-byte (µs) | p95 4 KiB (µs) |
-| --- | ---: | ---: | ---: | ---: |
-| Strict reference | 2,497 | 33.0 | 22.6 | 22.6 |
-| Compatibility, same wire | 2,497 | 31.9 | 22.3 | 23.3 |
-| Auxiliary events | 2,930 | 38.4 | 25.8 | 26.0 |
-| Extended, same wire | 2,497 | 36.1 | 22.3 | 22.4 |
-| Opaque reasoning | 3,080 | 38.3 | 26.8 | 28.5 |
-| Refusal | 2,394 | 28.6 | 20.2 | 20.0 |
+Candidate background charge 7,050; validation p50/p95/p99 0.101/0.150/0.301 microseconds; compilation 0.391/0.691/1.072 microseconds. Candidate 600 append records/syncs include admission and settlement. Each process asserts independent expected charges; direct answer/usage parity is additionally covered by integration tests. Larger candidate journal and harness are explicit tradeoffs.
 
-1,000 samples per profile/read size; 18,000 synthetic replays, zero errors and provider calls. Combined decoder benchmark peak RSS 2,204 KiB; excludes network, broker fsync and speech. Default conversational CLI does not link the decoder/broker. Expanded fixtures are not equivalent inputs; compare same-wire rows for overhead, not a controlled latency claim.
+| Decoder profile, latest CI | p95 1-byte (microseconds) | p95 64-byte | p95 4096-byte |
+| --- | ---: | ---: | ---: |
+| Strict reference | 27.6 | 19.7 | 19.8 |
+| Compatibility, same wire | 28.9 | 19.8 | 19.8 |
+| Auxiliary events | 33.5 | 23.0 | 24.0 |
+| Extended, same wire | 27.6 | 19.3 | 19.3 |
+| Opaque reasoning | 35.3 | 24.1 | 24.0 |
+| Refusal | 27.0 | 19.6 | 18.1 |
+
+1,000 samples per profile/read size; 18,000 synthetic replays, zero errors/provider calls. Combined process peak RSS 2,180 KiB. Compare same-wire profiles for overhead; expanded fixtures are different inputs.
+
+These are synthetic hosted process measurements, not whole-system RAM, device energy, provider billing, actual token savings or general answer-quality results. Timings vary across runners; no controlled cross-run performance claim. Earlier verified measurements are retained in [PROJECT_STATE](PROJECT_STATE.md) and [atomic admission](docs/m2-atomic-admission.md).
 
 ### Development quick start
 
@@ -112,20 +122,22 @@ Try "what is your name?" (local), "explain entropy" (mock), and "/quit". See [lo
 
 ## Design goals
 
-- Make natural, responsive, interruptible voice conversation the primary interface; retain text for accessibility and debugging. No screen or desktop is required.
+- Make text conversation through a CLI over SSH the first usable interface; keep core services reusable by a later browser or voice adapter.
 - In order of priority: conversational quality, zero incremental AI spending, persistent identity and autonomy, token efficiency, power efficiency, then hardware cost. Security and privacy are non-negotiable constraints.
-- Run continuously on efficient x86-64 hardware initially; support ARM, RISC-V and microcontroller-class satellites later.
+- Start manually on an existing Linux host with one owner and one active conversation. Continuous services, scheduling and other hardware profiles follow measured MVP use.
 - Minimize idle power, RAM, storage, CPU wakeups and network traffic without compromising conversational quality.
 - Preserve identity, conversation context, commitments and preferences across reboots and model changes.
 - Make OpenAI the first-class remote inference provider, using official ChatGPT plan sharing where eligible and authorized. Keep agent state and local operation independent of the provider.
 - Treat inference as a finite system resource: resolve routine events locally, compile minimal context and enforce token budgets before every remote request.
 - Target zero incremental AI spending; never purchase credits or silently switch to a separately billed API.
-- Keep routine scheduling, simple commands and local memory available without internet access.
+- Keep supported commands and explicit memory operations available offline. Durable scheduling is a later stage.
 - Enforce least privilege for tools, data and device access. Keep the owner in control of the agent and its data.
 - Prefer simple, auditable components and reproducible, hardware-specific builds.
 
 ## Non-goals for the first release
 
+- Voice capture/playback, a browser UI or an AtomOS network listener.
+- Automatic startup, reminders, autonomous/background workflows, multi-user sessions or full transcript persistence.
 - Training or hosting a general-purpose LLM on a microcontroller.
 - Replacing Linux with a new kernel before the agent runtime is validated.
 - Supporting arbitrary desktop applications, POSIX compatibility on microcontrollers or a graphical desktop.
@@ -136,37 +148,30 @@ Try "what is your name?" (local), "explain entropy" (mock), and "/quit". See [lo
 
 ```mermaid
 flowchart TD
-    U[Human: voice or text] <--> P[Streaming ASR, turn detection, TTS and barge-in]
-    E[Timers, sensors and authorized events] --> R
-    P <--> R[Persistent agent runtime]
-    R <--> M[AMG: identity, graph, journal, FTS]
-    R <--> S[Event scheduler and task journal]
-    R --> A[Capability and approval policy]
-    A --> T[Authorized tools and devices]
-    R <--> D[Local intent resolver and approved workflows]
-    R --> X[Context compiler]
-    M --> X
-    X --> G[Token Governor]
-    G --> B[Inference broker]
-    B <--> C[OpenAI Responses API via authorized ChatGPT plan]
-    B <--> H[Optional self-hosted inference]
-    R --> O[OS services: network, storage, power]
-    O --> HW[x86-64 voice host; optional ARM or MCU satellites]
+    U[Owner terminal through existing SSH or local login] <--> CLI[Thin text CLI]
+    CLI <--> R[Shared Rust conversation core]
+    R <--> L[Local intent resolver]
+    R <--> M[AMG identity and explicit facts]
+    R --> X[Bounded context compiler]
+    X --> G[Atomic account-bound admission]
+    G --> B[Text inference broker]
+    B -. separately gated integration .-> P[Authorized provider]
+    B --> R
 ```
 
-The diagram represents the target architecture, not all implemented services. The language model is a replaceable computational resource. The persistent agent runtime is responsible for state, context selection, task execution and authorization. Model output is treated as untrusted input, never as direct authority to execute a tool.
+This is the CLI MVP target, not current executable wiring. Existing conversational text and AMG paths are local/mock; admission and decoder candidates remain isolated. The CLI adds no server or authentication service. SSH authenticates host access; it does not authorize provider disclosure or make local storage encrypted. Optional existing `tmux` can keep a foreground process alive across disconnects; AtomOS session recovery and daemon startup are not implied.
 
 ### Runtime lifecycle
 
-| State | Activity |
+| State | CLI MVP target behavior |
 | --- | --- |
-| Resting | Wait for a wake word, timer, message or sensor event. |
-| Perceiving | Capture speech or text and classify the event. |
-| Responding | Retrieve relevant context and perform local or delegated conversation. |
-| Reasoning | Invoke an appropriate model only when necessary. |
-| Consolidating | Checkpoint state, summarize selected interactions and maintain memory within quotas. |
+| Waiting | Wait for submitted terminal input; zero idle inference |
+| Resolving | Validate turn/task and attempt supported local commands or memory lookup |
+| Responding | Use bounded working context and admitted text inference only when enabled by a reviewed provider gate |
+| Cancelling / failed | Stop stale delivery, preserve accounting and show local status without automatic retry |
+| Exiting / restarting | Preserve committed identity/facts; do not promise full transcript or volatile turn recovery |
 
-Use an event-driven architecture with bounded queues, explicit timeouts, retry backoff and no mandatory continuous inference loop. Keep task checkpoints durable, and make retried operations idempotent wherever possible.
+Keep one active conversation and bounded state. Terminal EOF/disconnect and user cancellation need an explicit contract; closing SSH does not guarantee upstream generation stops. Scheduling, tools and memory consolidation are outside the first MVP. See [the roadmap](docs/cli-mvp-roadmap.md).
 
 ## OpenAI-native inference and token economics
 
@@ -219,11 +224,13 @@ Use compact typed memory, local indexing, bounded context windows, stable prompt
 
 These are internal design targets, not ChatGPT Plus entitlements. For example, 100 events/day with 75% resolved locally and 900 total tokens per remote call yields 675,000 raw tokens over 30 days, before any additional calls. Measure actual usage and quality with a representative workload including tool loops and memory maintenance. Do not claim a month fits Plus until tested against real account limits.
 
-### Voice pipeline
+### Deferred voice pipeline
+
+Voice development and physical qualification are paused under the [CLI MVP roadmap](docs/cli-mvp-roadmap.md). Retain existing code/tests; the following is the optional historical implementation and later design, not an MVP dependency.
 
 Implemented: 20 ms/16 kHz mono PCM, explicit activation, 60 ms onset, up to 100 ms pre-roll, 300 ms quiet endpoint and eight-second follow-up. Default half-duplex; barge-in only when AEC explicitly verified. Optional Sherpa-ONNX/Kokoro warm development adapter (Python); whole-utterance synthesis, not incremental. Whisper.cpp/Piper remains the batch baseline. Wake word, neural VAD, actual acoustic AEC and physical latency/quality validation remain outstanding. See [M1.3](docs/persistent-conversation.md), [M1.4a](docs/m1-amg-foundation.md), [M1.4b](docs/m1-amg-conversation.md). The following describes the target pipeline.
 
-Keep wake-word detection and voice activity detection local. Use a bounded volatile pre-roll buffer, stream ASR during active speech, commit text only at a valid turn boundary, route through local intent resolution and the Token Governor, and synthesize streamed text in speakable chunks. Continue listening during playback with acoustic echo cancellation and cancel playback promptly on barge-in. Do not persist audio by default. No continuous cloud audio stream. Do not assume standalone OpenAI audio or Realtime endpoints are covered by plan sharing; disable them under subscription-only policy unless eligibility and zero incremental cost are verified. Voice quality and latency must be measured from the first prototype, including in-room acoustics and interruptions. See [voice architecture](docs/architecture.md) and [resource budget](docs/resource-budget.md).
+Keep wake-word detection and voice activity detection local. Use a bounded volatile pre-roll buffer, stream ASR during active speech, commit text only at a valid turn boundary, route through local intent resolution and the Token Governor, and synthesize streamed text in speakable chunks. Continue listening during playback with acoustic echo cancellation and cancel playback promptly on barge-in. Do not persist audio by default. No continuous cloud audio stream. Do not assume standalone OpenAI audio or Realtime endpoints are covered by plan sharing; disable them under subscription-only policy unless eligibility and zero incremental cost are verified. If voice is resumed, qualify its quality, latency, in-room acoustics and interruptions before declaring that interface usable. See [voice architecture](docs/architecture.md) and [resource budget](docs/resource-budget.md).
 
 ## AtomOS Memory Graph (AMG) and identity
 
@@ -246,6 +253,8 @@ M1.4a implements a stable local agent ID, owner scope and display name; M1.4b re
 
 ### Current conversational memory behavior
 
+The conversational CLI is read-only today. Explicit mutations remain in the separate `atomos-memory` administration CLI; a unified owner command surface is planned, not implemented. The MVP persists approved identity and explicit facts, not complete transcripts or automatic extracted memories.
+
 Opt in with `atomos --memory DIR OWNER` (also before `--single-turn` or `--voice-events`). The existing database must be initialized by `atomos-memory`. The runtime uses a read-only SQLite connection and typed MemoryReader. Supported English grammar includes "what is your name?", "what is my favorite color?", "recall project status", and "and count" (previous subject). Exact values are re-read on each turn; only the subject key is retained in RAM. Clear it on unrelated or failed requests, mute, interruption, idle and restart. Missing facts or storage errors produce local status. Other open-ended questions still use mock reasoning. No model calls, automatic learning or voice mutations.
 
 Synthetic data only: voice recall is explicitly opt-in and restricted to owner favorite_color, favorite_food and favorite_music text values plus agent display name. Voice is not authentication; the allowlist is not a privacy classifier. Text administration assumes a trusted OS operator. See [M1.4b](docs/m1-amg-conversation.md) for commands and tests. M1.4c adds explicit text-only scoped previews (`context SUBJECT QUESTION`), deterministic graph/FTS ranking and a conservative byte-bounded data packet. No automatic model routing. Scoped context compilation and active-store benchmarks are implemented; full policy-aware provider integration and authenticated private-memory controls remain pending; see [M1.4c](docs/m1-amg-context.md).
@@ -255,12 +264,12 @@ Synthetic data only: voice recall is explicitly opt-in and restricted to owner f
 | Component | Initial choice |
 | --- | --- |
 | Agent runtime | Rust, with a small dependency footprint |
-| OS foundation | Headless Linux for development and audio validation; Buildroot x86-64 image after the pipeline is proven |
+| OS foundation | Existing headless Linux host for CLI/SSH; custom images and audio validation deferred |
 | Event processing | Bounded asynchronous Rust tasks |
 | Persistent state | AMG temporal property graph, SQLite + FTS5 for M2; compact journal on constrained targets planned |
 | Serialization | CBOR internally where useful; JSON for provider APIs |
 | Networking | HTTPS/TLS, streaming WebSocket where supported |
-| Voice | Rust coordinator; optional Sherpa-ONNX/Kokoro warm adapter, Whisper.cpp/Piper batch baseline; wake word, neural VAD, AEC and physical validation pending |
+| Voice (deferred) | Preserve Rust coordinator; optional Sherpa-ONNX/Kokoro warm adapter, Whisper.cpp/Piper batch baseline; wake word, neural VAD, AEC and physical validation pending |
 | Inference | OpenAI-first streaming Responses API adapter using eligible ChatGPT plan sharing; local rules and mock adapter as offline baseline |
 | Inference policy | Local resolver, bounded AMG context compiler and offline broker with durable admission implemented; calendar/rolling budgets and authenticated provider permits planned |
 | Security | Capability-based tool authorization, Ed25519 device identity, vetted cryptography |
@@ -269,6 +278,8 @@ Synthetic data only: voice recall is explicitly opt-in and restricted to owner f
 Use Linux first to avoid spending the initial development cycle on hardware drivers. Consider ESP32 firmware or a dedicated kernel only after profiling shows where the OS foundation creates a measurable bottleneck. Keep platform-specific code behind narrow interfaces; do not assume Linux binaries or libraries can simply be recompiled for a microcontroller.
 
 ## Reference hardware and resource budgets
+
+For the CLI MVP, reuse the existing Linux/SSH host. No audio equipment, dedicated board, GPU, new purchase or minimal OS image is required. Measure the CLI and active memory/inference paths on the actual test host. The following hardware/audio planning figures are retained for a possible later voice appliance; they are not CLI MVP exit criteria.
 
 Primary conversational reference: efficient x86-64 mini PC, Intel N100/N150-class minimum or equivalent; prefer a refurbished Core i5/Ryzen 5 with 16 GB RAM and 256 GB SSD if it meets the latency and power gates. A USB far-field microphone array with echo cancellation (e.g. ReSpeaker XVF3800) and a compatible speaker form the reference audio path. Exact SKU and audio routing remain subject to measured tests.
 
@@ -286,7 +297,7 @@ Primary conversational reference: efficient x86-64 mini PC, Intel N100/N150-clas
 
 These are unvalidated engineering targets, not guarantees or price quotes. Host costs include audio and basic accessories; measure at the wall including audio equipment. Report OS, runtime, models and retained user data separately. Prioritize conversation quality over hardware price or an arbitrary footprint; report peak/idle RAM, whole-device energy, latency and quality together. Do not buy a dedicated GPU for the initial prototype.
 
-### Voice quality gates
+### Deferred voice quality gates
 
 | Metric | Initial target |
 | --- | --- |
@@ -315,37 +326,25 @@ Targets must be validated end to end; network latency is variable. A text-mediat
 
 ## Development roadmap
 
-| Milestone | Deliverable / exit criteria |
+The owner-approved [CLI MVP roadmap](docs/cli-mvp-roadmap.md) supersedes the earlier voice-first release sequence. Completed milestone numbers and historical evidence are preserved.
+
+| Stage | Deliverable / exit criteria |
 | --- | --- |
-| M0 — Design | README, architecture, threat model, resource and inference budgets, and reference hardware selection. |
-| M1 — Voice-first agent core | Rust runtime, mock inference, identity and journal, local intent resolver and Token Governor. Parallel local voice spike: streaming ASR/TTS, VAD, barge-in and latency instrumentation. Validate official OpenAI eligibility before live calls. |
-| M2 — Conversational integration | Integrate streaming OpenAI text responses with local voice pipeline, context compiler, model discovery and quota/error handling. Validate full-duplex interaction and no paid fallback. |
-| M3 — Memory and scheduling | Bounded local retrieval, memory editing/export, durable reminders, approved workflow reuse, cancellation and restart recovery; budgeted consolidation. |
-| M4 — Minimal OS | Bootable Buildroot x86-64 image for selected voice host, automatic startup, health checks and measured resource budgets. |
-| M5 — Voice refinement | Improve acoustic robustness, prosody, turn-taking and far-field quality; tune power, latency and memory against measured baselines. |
-| M6 — Tools and security | Typed tool calls, policy enforcement, approval flow, audit logging and adversarial tests before broad tool access. |
-| M7 — Embedded port | Evaluate ESP32-S3 implementation, power management, storage durability and audio performance. |
-| M8 — Distributed agent | Optional authorized node discovery, encrypted synchronization, conflict resolution and inference routing. Evaluate Nostr as an optional transport. |
-| M9 — OS specialization | Compare optimized Linux, RTOS and custom kernel approaches using equivalent workloads. Proceed only with demonstrated benefits. |
+| M1 through M2.5a foundations | Existing local/mock text, AMG and synthetic inference/admission components; optional voice assets retained |
+| M2.5b: next scope to define | Offline extended decoder outcomes with atomic admission, cancellation and settlement for text conversation; preserve strict reference and accounting |
+| CLI integration | One owner/session, bounded working context, explicit local memory operations, clear cancellation/error/accounting status, mock/synthetic responses |
+| Provider gate and integration | Separately reviewed credentials, eligibility, spending/output exposure, trusted time and usage reconciliation; new live checks need explicit owner authorization |
+| CLI MVP acceptance | Owner journey over existing SSH with persistence, local failure behavior and separately authorized real text conversation evidence |
+| After MVP | Evaluate browser or voice adapter, then separately scoped reminders, scheduling and approved tools |
+| Long-term | Bootable OS, broader autonomy, embedded/distributed operation and specialization, deferred |
 
-M1 slices: M1.1 offline core, M1.2 audio smoke harness, M1.3 persistent voice coordinator, M1.4a durable AMG, M1.4b read-only recall, M1.4c scoped retrieval and M1.4d disclosure/recovery are merged and CI-tested. M1.4e: active SQLite scale benchmark passed; M1.4f: optimization and streaming recovery passed. Retain SQLite + FTS5 for M2; alternate adapters deferred, not measured. M2.1 offline broker merged and tested; M2.2 bounded Responses stream parsing and replay merged and tested; M2.3 synthetic account authorization and owner-run official OAuth/model discovery/refresh verified; M2.4b–c offline compatibility profiles verified. M2.4's live harness is closed without completed inference; M2.5a offline atomic admission is implemented, with the admission-context follow-up in PR #31 merged and extended decoder integration deferred to M2.5b. M1 exit still requires real model/device validation, measured acoustic interruption, activation evaluation and the remaining AMG acceptance gates. M2 requires official provider eligibility and spending controls. M3 expands memory management, scheduling and approved workflows rather than duplicating M1.4.
+Basic security remains mandatory throughout. M1 physical voice exit gates are deferred; they do not block the CLI MVP. Existing voice regression tests remain in the suite. Real provider access and private memory deployment are not unlocked by removing audio.
 
-Security requirements apply from M1; M6 expands and verifies the tool execution surface rather than deferring basic security until then.
+### First MVP acceptance criteria
 
-### First prototype acceptance criteria
+Start over SSH on existing Linux; conduct bounded text turns; explicitly save a synthetic fact; restart; recall, correct and forget it; inspect local/inference/accounting status; and verify offline continuation, cancellation and unknown-usage behavior. Use existing memory administration until a unified command contract is implemented. Identity and committed facts persist; full transcript/session history and reminders are outside the MVP.
 
-1. Boot and start automatically on the reference board without a desktop environment.
-2. Accept text input, resolve supported routine intents locally and stream an eligible OpenAI response through the Token Governor when inference is necessary; verify subscription-only controls before live use.
-3. Preserve agent identity, conversation history and pending reminders after a controlled restart.
-4. Continue local scheduling and safe commands when the inference provider is unreachable.
-5. Recover from provider errors without an unbounded retry loop or duplicate side effects.
-6. Measure image size, peak and idle RAM, CPU utilization, power, boot time and response latency. Document hardware and test conditions.
-7. Verify zero remote inference while idle and no remote calls for deterministic test cases. Measure local resolution rate, total tokens per task, response quality and quota consumption on a reproducible workload.
-8. Test budget exhaustion, concurrent reservations, restart recovery, denied scopes, unavailable allowance and provider quota limits. Demonstrate offline continuation, no paid fallback and no bypass of the Token Governor.
-
-9. Demonstrate a complete microphone-to-speaker local conversation loop, barge-in, echo suppression and visible mute/listening states with deterministic mock inference; measure latency before enabling live OpenAI integration.
-
-Voice is a first-milestone requirement. A CLI is a test interface, not the intended user experience.
+The current executable still uses mock reasoning for open-ended questions. Completion requires separately gated real text conversation, zero idle inference and no paid fallback. See the [full acceptance criteria](docs/cli-mvp-roadmap.md#cli-mvp-acceptance-criteria) for data, failure and measurement boundaries.
 
 ## Repository layout and planned expansion
 
