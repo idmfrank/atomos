@@ -45,6 +45,12 @@ Keep existing Rust crate/interface boundaries where useful; do not create new pr
 6. On cancellation, EOF, disconnect or errors, stop stale delivery and expose local status. Define signal/exit behavior in the CLI contract. A disconnect/socket close does not prove upstream generation or usage stopped.
 7. Persist explicit memory commits and accounting outcomes. Restart restores identity and committed facts, not necessarily volatile working turns. No automatic retry, transcript archive, reminders or background consolidation.
 
+## Verified Linux deployment profile
+
+The [owner-local CLI deployment](linux-cli-deployment.md) is verified at PR #34 main `5869e205167a3dde3a6a77392af294101e6a46c3`. One owner account holds clean source, tested versioned binaries and a private generic identity store; one local/mock foreground CLI runs in tmux. No service autostart, browser/audio stack, extra inference model or production provider path is introduced. Build/test tools are separate from running CLI dependencies.
+
+All 173 host tests, 18,000 decoder samples and SSD-backed 1K/10K/100K memory recovery passed. At 100K, selective context p95 0.3974 ms and incremental CLI RSS 1,448 KiB meet existing targets. Keep the existing Rust/SQLite architecture and Linux foundation; no rewrite or enlarged resource allocation is justified. The ordinary CLI remains local/mock and read-only against AMG; explicit mutations use its separate administration binary. Private/provider gates remain unchanged.
+
 ## M2.5b contract boundary
 
 The [offline text-outcome contract](m2-text-outcomes.md) specifies explicit extended atomic replay with Local/Completed/Refused/Failed final results. It reuses existing decoder profiles, immutable request identity, fresh context and v1 accounting records; preserves the strict reference; and adds outcome/cancellation/persistence-fault tests. Implementation is pending. No CLI command/session wiring, transport, incremental display or private memory access is added by the contract.

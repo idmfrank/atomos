@@ -12,6 +12,12 @@ Define cancellation, EOF, disconnect and process termination behavior. Preserve 
 
 Voice risks and controls below are retained for optional later use. Physical mute, AEC and bystander-capture qualification are deferred; they no longer block the text MVP. Existing offline tests remain mandatory.
 
+## Verified local deployment and retained gates
+
+The [Linux CLI setup](linux-cli-deployment.md) uses the explicitly selected owner account for build, release and data; package administration is separate. Existing SSH public-key access was authorized for that account without copying a private key or changing sshd/network configuration or sudo privileges. Source stays clean at the tested SHA; copied release hashes, store integrity and installed local/mock behavior were verified. The private new store contains generic identity only, with no seeded personal facts. Public docs omit actual account/host/key identifiers.
+
+A tmux session is process continuity, not authenticated private-memory deployment, credential unlock, transcript persistence, reboot recovery or automatic service startup. No real owner inference vault, raw provider stream or private AMG data was accessed/copied. Same-UID/root/rollback and storage power-loss limitations remain. Benchmark temp stores must be explicitly placed on the intended persistent filesystem before making device-durability claims; tmpfs evidence remains separately labeled.
+
 ## Planned M2.5b outcome boundary
 
 The [offline integration contract](m2-text-outcomes.md) preserves strict/extended parser caps and explicit profile selection. Refusal and failure carry no answer/raw refusal/reasoning text. Validated known usage settles once; unknown/cancelled/invalid outcomes retain the reservation. Rate/auth failures and overrun suspend durably. Admission, settlement and revocation storage faults must suppress delivery and poison the instance; complete surviving records may have committed despite a returned sync error. Forced termination leaves a stale writer lock for investigation, not automatic cleanup. These are planned acceptance requirements, not newly verified runtime controls.

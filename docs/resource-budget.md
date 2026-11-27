@@ -18,6 +18,44 @@ PR #33's documentation-only CLI roadmap is now merged at `c563599f2e2c8b5abb7e03
 
 The [implementation contract](m2-text-outcomes.md#benchmark-contract) requires equal-wire frozen strict-atomic versus extended-atomic measurements on identical policies, request sequences, state, filesystem and durability. Preserve 300-request mixed-priority independent expectations (14,100 total / 7,050 background), separate compilation/validation, first-read admission, complete decode/settlement and restart timings, actual syscall traces, peak RSS, harness/CLI bytes and journal growth. Auxiliary/reasoning/refusal workloads are reported separately with typed outcome/error counts; different fixtures are not equal-input overhead evidence. Full runtime regression/1K/10K/100K validation remains required for the future implementation PR. No M2.5b measurements or performance improvement are claimed by this documentation-only contract.
 
+## Verified Linux CLI host baseline
+
+Direct host verification on 2026-11-27 at `5869e205167a3dde3a6a77392af294101e6a46c3` (merged PR #34), distinct from [main CI](https://github.com/idmfrank/atomos/actions/runs/46055361823). Headless Ubuntu 26.04, kernel 7.0.0-44, i7-6700 (4C/8T), 16 GB RAM, SATA SSD/ext4; Rust 1.95.0, Node 22.22.1, SQLite 3.46.1; eight build jobs and sequential timing runs. No runtime code/profile change. [Reproduction, deployment layout and local log provenance](linux-cli-deployment.md).
+
+All 173 distinct tests and 18,000 decoder samples passed. CLI 479,672 bytes; memory administrator 462,280 bytes; installed-copy SHA-256, identity-store integrity and local/mock smoke checks passed. Decoder process RSS 2,216 KiB; strict p95 at 1/64/4096-byte reads 41.6/27.1/26.9 microseconds. Different hardware/toolchain from hosted CI; these are not controlled binary-size or speed regressions/improvements.
+
+The host's default /tmp is tmpfs. Initial RAM-backed admission/full-scale checks passed but are not device-durability evidence. Storage comparisons were rerun with explicit private TMPDIR on the deployment SSD's ext4 filesystem; statfs reports the shared ext2/ext3 family. No sync/durability/policy check was disabled. SSD results below are the local storage baseline, not a power-loss certification.
+
+| SSD-backed AMG metric, p95 unless stated | 1K | 10K | 100K |
+| --- | ---: | ---: | ---: |
+| Exact recall (ms) | 0.0661 | 0.0701 | 0.0793 |
+| Selective context (ms) | 0.3439 | 0.3764 | 0.3974 |
+| Common-term context (ms) | 0.3905 | 0.7697 | 3.0336 |
+| Reference common term (ms) | 0.5665 | 4.6226 | 44.0687 |
+| Remember (ms) | 7.2749 | 6.5213 | 6.2077 |
+| Correct (ms) | 7.6329 | 6.8616 | 6.7329 |
+| Forget (ms) | 7.2377 | 6.5010 | 6.3349 |
+| Active CLI peak RSS (KiB) | 4,404 | 4,380 | 4,500 |
+| Restore (seconds) | 0.1661 | 1.7859 | 18.7494 |
+| Recovery peak RSS (KiB) | 7,824 | 9,588 | 9,276 |
+
+No-store CLI RSS 3,052 KiB; 100K incremental 1,448 KiB. Every size: 300/300 expected facts, 100 complete packets, precision/recall 1, 0/30 parity mismatches, zero recovery verification errors and remote calls. Common-term 100K p99 7.1607 ms and maximum 7.1607 ms are retained; remember maximum 12.2628 ms, correct maximum 7.8196 ms and forget maximum 6.9315 ms. Synthetic recall is not general answer quality.
+
+| SSD-backed admission metric | Two-journal reference | Atomic candidate |
+| --- | ---: | ---: |
+| Admission p50 / p95 / p99 (ms), 300 samples | 4.941412 / 5.150968 / 5.212177 | 2.504588 / 2.623407 / 2.710393 |
+| Completion p50 / p95 / p99 (ms) | 10.007163 / 10.323192 / 10.428832 | 5.146991 / 5.347218 / 5.439303 |
+| Restart p50 / p95 / p99 (ms), 30 samples | 3.880282 / 4.074861 / 4.085702 | 1.485559 / 1.533084 / 1.648072 |
+| Traced admission writes / fsyncs | 4 / 2 | 2 / 1 |
+| Process peak RSS (KiB) | 2,516 | 2,348 |
+| Release harness (bytes) | 422,584 | 447,368 |
+| Journal bytes per completed request | 52.560 | 104.280 |
+| Final charge / errors | 14,100 / 0 | 14,100 / 0 |
+
+Candidate background charge 7,050 and 600 append records/syncs include settlement. Independent per-request expectations and parity tests passed. Tracing is a separate run, not part of reported timings.
+
+These local retrieval/footprint results fit the existing targets and do not justify replacing Linux, adding another database server/local model, enlarging caches indiscriminately or consuming CPU/RAM while idle. Local context/recall remains zero-inference work. Physical power/energy, real provider token savings, model quality and end-to-end network conversation remain unmeasured. Test retained data are synthetic; no private AMG or vault was copied. Earlier GitHub tables retain their own tested SHA and provenance.
+
 ## Historical evidence and deferred voice reference configuration
 
 Historical verified main `a91ccd9e9190334f1d7259c9413e40494121a01c`: [post-merge CI](https://github.com/idmfrank/atomos/actions/runs/46024100103) / [scale](https://github.com/idmfrank/atomos/actions/runs/46024473201), all 173 tests, Rust 1.75 core targets and 18,000 decoder samples passed. Admission p50/p95/p99 reference 0.563104/0.641059/0.777855 ms vs candidate 0.276983/0.324064/0.413111 ms; trace fsyncs 2/1, write syscalls 4/2. RSS 2,260/2,264 KiB, harness size 416,520/440,144 bytes, journal bytes/request 52.560/104.280, exact charge 14,100 each, zero errors/parity. Decoder process 2,204 KiB. 100K CLI 4,268 KiB vs 2,612 no-store; selective p95 0.2966 ms, common 1.9801 vs 30.1055 reference, restore 9.1048 s / 8,988 KiB. Earlier head 10K remember tail returned to 0.6367 ms p95; cause unisolated. [Full post-merge method/results](m2-atomic-admission.md#post-merge-main-verification). Both runtime PRs were merged externally, not by the agent; the subsequent PR #32 documentation reconciliation is merged.
