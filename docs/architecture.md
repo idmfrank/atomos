@@ -1,6 +1,6 @@
 # AtomOS architecture
 
-Status: target architecture with M1.1–M1.4f and M2.1–M2.4c offline implementation verified. Owner-run OAuth/catalog/refresh succeeded; three historical live qualification attempts consumed without a validated terminal response. M2.5 offline integration next. See [current state](../PROJECT_STATE.md), [README](../README.md), [threat model](threat-model.md), [resource budget](resource-budget.md), [inference architecture](inference-architecture.md), [AMG architecture](amg-architecture.md).
+Status: target architecture with M1.1–M1.4f and M2.1–M2.4c offline implementation verified. Owner-run OAuth/catalog/refresh succeeded; three historical live qualification attempts consumed without a validated terminal response. M2.5a isolated atomic admission merged; PR #31 time/task follow-up merged externally and verified in post-merge CI/scale. M2.5b extended decoder integration remains next. See [current state](../PROJECT_STATE.md), [README](../README.md), [threat model](threat-model.md), [resource budget](resource-budget.md), [inference architecture](inference-architecture.md), [AMG architecture](amg-architecture.md).
 
 ## System boundary
 
