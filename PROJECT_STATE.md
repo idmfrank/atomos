@@ -1,6 +1,6 @@
 # AtomOS current engineering state
 
-Updated 2026-11-27. Active work: durable synthetic task/action runtime on main base 5edefff40248c91427270ce0422bf60e9998f82a (PR #42 merged). [Post-merge CI 46101698882](https://github.com/idmfrank/atomos/actions/runs/46101698882) passed. No merge/deployment, host configuration, credentials, private data or real inference is performed by this slice.
+Updated 2026-11-27. Active work: durable synthetic task/action runtime on main base 5edefff40248c91427270ce0422bf60e9998f82a (PR #42 merged). [Post-merge CI 46101698882](https://github.com/idmfrank/atomos/actions/runs/46101698882) passed. No PR merge/deployment, host configuration, credentials, private data or real inference is performed by this slice.
 
 ## Task foundation
 
@@ -14,8 +14,9 @@ Documentation review includes README, roadmap, architecture, contract, security,
 
 ## Publication privacy
 
-Deployment inventory, installed-version fingerprints and private environment measurements are excluded from public documentation and PR text. This documentation/checker change removes current public references, adds a publication rule and checks common accidental disclosures before CI proceeds. It does not erase earlier Git/PR revisions or external copies. No history rewrite, deployment or runtime change. Current-tree link/fence checks, publication-checker self-tests and source scan, and whitespace passed. The private audit found one older PR description needing sanitization, which was updated; returned issue/review metadata contained no remaining matching content. No private inventory is included in the checker itself. This privacy-only PR has its own CI pending.
+Deployment inventory, installed-version fingerprints and private environment measurements are excluded from public documentation, metadata and evidence. The shared publication baseline from PR #44 adds generic operations guidance, mandatory manual review and a heuristic source/event-metadata check; [its CI 46104641945](https://github.com/idmfrank/atomos/actions/runs/46104641945) passed. An older PR description was sanitized; the returned issue/review metadata audit contained no remaining matching content. No private inventory is embedded in the checker. Source/link/fence/whitespace checks and sanitized metadata rejection passed.
 
+Current-text removal does not erase earlier Git/PR revisions or external copies. No shared-history rewrite or deployment was performed. This subsection concerns publication controls only; the task-runtime implementation is described above. The combined task/publication follow-up has its own CI pending.
 
 ## Product and implementation
 
