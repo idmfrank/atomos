@@ -25,7 +25,7 @@ This is target integration, not current executable wiring. The conversational CL
 
 | Component | CLI MVP responsibility | Boundary |
 | --- | --- | --- |
-| CLI adapter | Terminal input/output, command parsing, exit/status and cancellation signals | Thin adapter; one owner and active session; [session contract](cli-session-contract.md) specified; runtime pending |
+| CLI adapter | Terminal input/output, command parsing, exit/status and cancellation signals | Thin adapter; one owner and active session; [session contract](cli-session-contract.md) verified offline on PR #38; review pending |
 | Conversation core | Turn/task ownership and bounded working context | Reject stale delivery; no full transcript persistence by default |
 | Memory | Identity, explicit facts, correction/forget/export and local retrieval | Typed APIs; short transactions; separate current administration CLI |
 | Local resolver | Deterministic supported commands and fact queries | No inference charge; expose unsupported/ambiguous states honestly |
@@ -55,9 +55,9 @@ All 173 host tests, 18,000 decoder samples and SSD-backed 1K/10K/100K memory rec
 
 The [offline text-outcome contract](m2-text-outcomes.md) specifies explicit extended atomic replay with Local/Completed/Refused/Failed final results. It reuses existing decoder profiles, immutable request identity, fresh context and v1 accounting records; preserves the strict reference; and adds outcome/cancellation/persistence-fault tests. The implementation and required offline evidence passed on PR #36, merged with successful post-merge CI. No CLI command/session wiring, transport, incremental display or private memory access is added by the contract.
 
-## Proposed CLI session boundary
+## CLI session boundary
 
-The [session contract](cli-session-contract.md) defines an opt-in synchronous terminal adapter while preserving legacy launch modes. Proposed help/status/clear/quit commands remain local; memory mutations stay in atomos-memory. Retain at most four completed delivered pairs/16 KiB of local-only text; do not feed that history into the current-question digest or claim it is provider-bound context. Explicit replay is isolated from AMG. A read-only atomic status snapshot distinguishes pending/halted/unhealthy without exposing a permit or response data. Default Ctrl-C terminates the process and may leave a stale replay lock; graceful transport cancellation remains a later gate. No new session runtime is implemented by this specification.
+The [session contract](cli-session-contract.md) defines an opt-in synchronous terminal adapter while preserving legacy launch modes. Help/status/clear/quit commands remain local; memory mutations stay in atomos-memory. Retain at most four completed delivered pairs/16 KiB of local-only text; do not feed that history into the current-question digest or claim it is provider-bound context. Explicit replay is isolated from AMG. A read-only atomic status snapshot distinguishes pending/halted/unhealthy without exposing a permit or response data. Default Ctrl-C terminates the process and may leave a stale replay lock; graceful transport cancellation remains a later gate. The shared Rust session and thin adapter now implement this boundary on PR #38; full offline verification passed, with review/merge and deployment pending.
 
 ## State, persistence and concurrency
 

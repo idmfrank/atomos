@@ -10,7 +10,7 @@ AtomOS is an experimental project to build a persistent, conversational AI agent
 
 **M2.5b complete offline:** [PR #36](https://github.com/idmfrank/atomos/pull/36) merged typed extended outcomes and atomic settlement; [post-merge CI](https://github.com/idmfrank/atomos/actions/runs/46080072830) passed on `e3ebf24`. All 193 tests, Rust 1.75 core targets, 18,000 decoder samples, frozen-reference comparison and full 1K/10K/100K scale/recovery passed. [Exact commits, runs and limits](docs/m2-text-outcomes.md#verified-candidate-evidence). Ordinary conversation still uses the installed local/mock CLI; development continues directly here without a separate handoff.
 
-**Next implementation:** [CLI session contract](docs/cli-session-contract.md). Proposed commands are not implemented yet. Preserve existing launch modes; add bounded local/mock and synthetic session behavior before separately reviewed provider integration.
+**CLI session implementation:** [Session implementation and commands](docs/cli-session-contract.md) are implemented offline and under review in [PR #38](https://github.com/idmfrank/atomos/pull/38): local help/status/clear/quit, bounded local-only working turns, read-only memory and explicit synthetic outcome/accounting status. All 215 distinct tests, Rust 1.75 core targets, 18,000 decoder samples, session parity and full host/CI scale/recovery passed. [Exact evidence and footprint costs](docs/resource-budget.md#cli-session-verified-evidence). Existing launch modes and the installed release remain unchanged. No provider connection.
 
 **Session handoff:** [PROJECT_STATE.md](PROJECT_STATE.md) records the current verified baseline, next steps and gates for ChatGPT and Codex.
 
@@ -343,7 +343,7 @@ The owner-approved [CLI MVP roadmap](docs/cli-mvp-roadmap.md) supersedes the ear
 | M1 through M2.5a foundations | Existing local/mock text, AMG and synthetic inference/admission components; optional voice assets retained |
 | Linux CLI deployment | Verified minimal host, owner-local release and generic identity store; running local/mock terminal session; [deployment guide](docs/linux-cli-deployment.md) |
 | M2.5b: complete offline, PR #36 merged | [Offline extended decoder outcomes](docs/m2-text-outcomes.md) with atomic admission, cancellation and settlement; preserve strict reference/accounting and test persistence faults |
-| CLI integration: specified, runtime pending | [Session contract](docs/cli-session-contract.md): opt-in terminal mode, help/status/clear/quit, bounded local-only working turns, read-only memory and explicit synthetic outcomes/accounting |
+| CLI integration: verified offline, PR #38 awaiting review | [Session contract](docs/cli-session-contract.md): opt-in terminal mode, help/status/clear/quit, bounded local-only working turns, read-only memory and explicit synthetic outcomes/accounting |
 | Provider gate and integration | Separately reviewed credentials, eligibility, spending/output exposure, trusted time and usage reconciliation; new live checks need explicit owner authorization |
 | CLI MVP acceptance | Owner journey over existing SSH with persistence, local failure behavior and separately authorized real text conversation evidence |
 | After MVP | Evaluate browser or voice adapter, then separately scoped reminders, scheduling and approved tools |

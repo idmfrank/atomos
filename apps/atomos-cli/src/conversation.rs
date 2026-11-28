@@ -42,6 +42,25 @@ impl Conversation {
     }
     pub fn clear(&mut self) { self.last_subject=None; }
     pub fn local_recalls(&self)->usize { self.local_recalls }
+    /// New session adapter only; preserve the legacy reply grammar and paths.
+    pub fn session_local(&mut self, input: &str) -> Option<String> {
+        let normalized=input.trim().trim_end_matches('?').trim().to_ascii_lowercase();
+        let s=normalized.as_str();
+        if ["remember","forget","correct","delete","learn"].iter().any(|w|s==*w||s.strip_prefix(*w).is_some_and(|t|t.starts_with(' '))) {
+            self.clear();
+            return Some("Use atomos-memory to change stored facts.".into());
+        }
+        let name=matches!(s,"what is your name"|"what's your name");
+        let memory=s=="context"||s.starts_with("context ")||s=="recall"||s.starts_with("recall ")
+            ||s.starts_with("what is my ")||s.starts_with("what's my ")||s.starts_with("and ");
+        if !name&&!memory {self.clear();return None;}
+        if self.reader.is_none() {
+            self.clear();
+            return Some(if name {"I am AtomOS."}else{"My local memory is unavailable."}.into());
+        }
+        if s=="recall" {self.clear();return Some("Please specify the subject and fact to recall.".into());}
+        Some(self.reply(&mut MockInference::default(),input))
+    }
     pub fn reply(&mut self,provider:&mut MockInference,input:&str)->String {
         let normalized=input.trim().trim_end_matches('?').trim().to_ascii_lowercase();
         let s=normalized.as_str();

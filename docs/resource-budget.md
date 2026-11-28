@@ -14,9 +14,89 @@ Hosted synthetic timings are not controlled cross-run comparisons or whole-devic
 
 PR #33's documentation-only CLI roadmap is now merged at `c563599f2e2c8b5abb7e03c75bb85e67e831e75d`; [post-merge CI 46029012445](https://github.com/idmfrank/atomos/actions/runs/46029012445) passed with unchanged runtime. Its CI admission/decoder/text/1K smoke checks do not replace the separately labeled PR #32 full-scale measurements above.
 
-## Proposed CLI session measurements
+## CLI session verified evidence
 
-The [session contract](cli-session-contract.md) specifies a 1,024-byte input limit, at most four whole delivered pairs/16 KiB retained UTF-8 payload, 4,096-byte inference output and existing 4,096-byte local context packet with an 8,192-byte final local response cap. These are proposed payload bounds, not measured allocation/RSS or implemented behavior. Measure container overhead, default versus replay-enabled binary size, direct replay versus session-driver latency and terminal delivery separately. Retain all existing benchmark/durability assertions and run full regression/scale for the future runtime PR. No new session measurements are claimed.
+Runtime `1823fb9bdd210f841fd99ba1b4ac0d6bc965e050` passed [PR CI 46090015295](https://github.com/idmfrank/atomos/actions/runs/46090015295) and [full 1K/10K/100K scale/recovery 46090412719](https://github.com/idmfrank/atomos/actions/runs/46090412719). CI exercised synthetic merge `912d661718f238e58c09afd0ed70b245919001a5`; scale tested the branch head. All **215 distinct tests** passed: **152 Rust / 20 Python / 43 Node**, comprising the original 193 plus 13 new Rust and nine new process tests. Repeated feature/compiler executions and the existing ignored child fixture are not extra tests. Rust 1.75 core all-targets, 18,000 decoder samples, original admission/outcome benchmarks, new session tests/benchmarks and 1K smoke passed. Whole-workspace Rust 1.75 remains unverified because of the existing unrelated dependency.
+
+### Method, outcomes and durability
+
+Initial implementation `84ac69b333cf2cded66022710db45fece27d1781` passed all ten direct-host stages (full regression, decoder prerequisite/replays, 43 Node tests, atomic suite, session/frozen-CLI process suite, outcome benchmark, session benchmark, full AMG scale/recovery and default footprint). It also passed [initial PR CI](https://github.com/idmfrank/atomos/actions/runs/46089508572) and [full scale](https://github.com/idmfrank/atomos/actions/runs/46089681103). The final runtime above adds only a numeric storage-capacity report; its core/session tests and refreshed 300-request SSD benchmark passed, followed by full hosted CI/scale. No dependency, ledger-format, parser-profile or existing replay-method change. Legacy default/single-turn/voice/AEC/memory output and exit behavior were compared with a separately compiled historical CLI at `1b07356a6ceaaaa724e3ce3329500d206cb88cf9`.
+
+Run `bash scripts/test-session.sh` and, with private persistent TMPDIR, `bash scripts/benchmark-session.sh`. Same preloaded bytes, initial policy, fixture time, current questions, mixed priorities and durability flow through direct extended replay and the new Session driver. Both intervals include compilation, admission, decoding, outcome checks and settlement; Session additionally owns turn/delivery/history work. Terminal I/O is excluded from the core comparison and measured separately through real stdin/stdout pipes. Finite fixtures and zero provider calls throughout.
+
+Each path has 300 text, 300 refusal, 300 known-failure, 300 unknown-failure and 300 cancellation samples. Text returns 300 exact ordinary completed answers; refusal returns 300 typed refusals; failure cases return 300 typed failures each; cancellation returns 300 cancelled/stale-delivery results. Unknown-usage count is 300 in unknown-failure/cancellation, overlapping those outcome categories. All unexpected-error/accounting/answer/outcome mismatch counts are zero, backed by assertions. Only completed text retains four pairs/100 payload bytes in the fixture run; every other case retains zero pairs/bytes.
+
+Settled text/refusal/known-failure cases each charge 14,100 total / 7,050 background fixture units. Unknown-failure/cancellation use a **fresh synthetic ledger for each request**, because a pending A correctly blocks its ledger; each holds 200 units and the reported 60,000 total / 30,000 background is the sum across those test ledgers, not a reset/retry of one ledger. Initialization is outside their request timing. Completed cases add 31,776 journal bytes (105.920/request) on both paths. Unknown/cancelled cases add 49,092 bytes (163.640/request), including isolated headers. Counts are apparent journal bytes, not allocated filesystem blocks. Current turn numbers vary 1–300; their extra digits explain the difference from the older fixed-turn outcome benchmark's 104.280 bytes/request. The v1 format is unchanged.
+
+Separate actual strace runs (three settled requests/path) measured **2 journal write syscalls + 1 fsync before first read**, then **2 writes + 1 fsync before result delivery**, on both direct/session paths. Same-wire journals compare byte-for-byte with zero mismatches. Unknown/cancelled cases assert one A record/sync and no S internally; the syscall figures above are from the separately traced settled workload. Cancellation before read has no first-read timing, never a fabricated zero. No fsync removal, repair, refund, automatic retry or crash-lock cleanup. Clean-reopen timing is not power-loss/crash recovery certification.
+
+### Direct Linux SSD measurements
+
+Ubuntu 26.04 / Linux 7.0.0-44, i7-6700 4C/8T, 16 GB, SATA SSD **ext4**, Rust 1.95.0, eight build jobs; private persistent TMPDIR. `/tmp` is tmpfs and was not used for these durability measurements. Private logs: `~/.local/state/atomos/cli-session-84ac69b/` (ten stage logs/results.json) and `~/.local/state/atomos/cli-session-1823fb9/` (refreshed tests/benchmark). No installed release, host configuration, private facts, owner vault or live request changed.
+
+Values below are p50 / p95 / p99 **milliseconds**, 300 requests and 30 clean reopens per case:
+
+| Path / workload | Admission at first read | Full replay/session work | Clean reopen | Peak RSS KiB |
+| --- | --- | --- | --- | --- |
+| direct / text | 1.946237 / 1.988465 / 2.123637 | 3.968955 / 4.027485 / 4.142877 | 0.903083 / 0.914248 / 1.033919 | 2424 |
+| direct / refusal | 1.957436 / 2.007312 / 2.156732 | 4.004264 / 4.193735 / 4.316051 | 1.111414 / 1.139783 / 1.216650 | 2348 |
+| direct / failed-known | 2.038215 / 2.173145 / 2.435829 | 4.126737 / 4.309890 / 4.624636 | 1.020994 / 1.561521 / 1.679987 | 2444 |
+| direct / failed-unknown | 1.841719 / 2.028538 / 2.100460 | 1.877563 / 2.068213 / 2.139898 | 0.094498 / 0.106700 / 0.164905 | 2288 |
+| direct / cancelled | not reached (cancelled before read) | 2.032011 / 2.123158 / 2.215333 | 0.095174 / 0.113575 / 0.154108 | 2388 |
+| session / text | 2.396017 / 2.536150 / 2.719240 | 4.929545 / 5.167760 / 5.325365 | 1.409677 / 1.560196 / 1.751251 | 2296 |
+| session / refusal | 2.410506 / 2.603630 / 2.665772 | 4.932150 / 5.298259 / 5.392528 | 1.483067 / 1.528199 / 1.684815 | 2216 |
+| session / failed-known | 2.515343 / 2.597558 / 2.777959 | 5.039000 / 5.249707 / 5.287370 | 1.461638 / 1.534749 / 1.681981 | 2392 |
+| session / failed-unknown | 2.143930 / 2.265783 / 2.403765 | 2.184988 / 2.305413 / 2.444137 | 0.106571 / 0.136906 / 0.153185 | 2400 |
+| session / cancelled | not reached (cancelled before read) | 2.172522 / 2.243325 / 2.314577 | 0.093968 / 0.123867 / 0.159129 | 2408 |
+
+Core harness process RSS includes the separate bounded-history microbenchmark in both modes; it is not an isolated resident-overhead subtraction. On the completed Session fixture, measured inline Session size is **80 bytes**, retained UTF-8 payload **100 bytes**, and Rust inline/container/String capacity **372 bytes**. The capacity report includes pair slots and retained String capacities; it excludes allocator bookkeeping/rounding, transient buffers, decoder state and process overhead. Worst-case logical history eviction at 15,360 payload bytes is separately tested; 372 is not a whole-session maximum RAM claim.
+
+Completed Session bounded-history eviction p50/p95/p99: **0.000246 / 0.000270 / 0.000276 ms**; clear **0.000102 / 0.000119 / 0.000129 ms**, 300 each. Clear frees logical strings but is not secure erasure and may retain container capacity/allocator pages.
+
+Release bytes: default CLI **491,896**, replay-enabled CLI **582,384**, core harness **444,832**. The prior same-host installed default was 479,672 bytes: the new default adds 12,224 bytes; opt-in replay adds 90,488 beyond the new default. These are explicit footprint costs, not a token/power/performance saving. Standalone CLI process peak RSS: local/mock **3144 KiB**, synthetic replay **3332 KiB**. The separate pipe harness peaks at 13204 KiB **including Python** and must not be reported as Rust CLI RSS; Python is a test tool, not a resident session worker.
+
+Actual CLI pipe round trip p50/p95/p99: **3.856673 / 3.993940 / 4.102077 ms**, 300 foreground-only requests, charge 14,100, background 0, errors 0. Includes terminal-adapter/pipe/flush work and is not SSH or physical terminal latency. Do not subtract it from separate sequential core runs to infer negative/isolated overhead.
+
+The Session path is slower in this SSD run (text full p95 5.167760 vs direct 4.027485 ms), including time before decoding. Earlier initial-runtime SSD text full p95 direct/session was 4.762605/5.172378 ms. Preserve both observations; uncontrolled scheduling/storage and sequential order prevent attributing the entire difference to CPU/session logic or claiming an improvement.
+
+Full SSD AMG scale/recovery on initial runtime `84ac69b`:
+
+| Entities | Exact p95 ms | Context p95 ms | Common-term p95 ms | Restore ms | Active CLI KiB | Recovery KiB |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1000 | 0.0643 | 0.3340 | 0.3888 | 165.0723 | 4476 | 7840 |
+| 10000 | 0.0708 | 0.3880 | 0.7783 | 1784.5041 | 4556 | 9552 |
+| 100000 | 0.0775 | 0.3942 | 3.1458 | 18741.2143 | 4476 | 9316 |
+
+Every size: 300/300 matched facts, 100 complete packets, precision/recall 1, zero of 30 parity mismatches and zero recovery errors/provider calls. Same-run no-store RSS 3,060 KiB; at 100K incremental 1,416 KiB, common-term reference p95 44.2897 ms and restore 18.7412143 seconds. The numeric-report follow-up does not change memory/legacy/session behavior; the full refreshed hosted scale below is at its exact runtime SHA. No real-world answer-quality or power claim.
+
+### Hosted measurements
+
+[CI 46090015295](https://github.com/idmfrank/atomos/actions/runs/46090015295), Rust 1.100, ext4, synthetic PR merge identified above. Same sample counts, exact outcomes, accounting and measured syscall checks passed. Hosted p50 / p95 / p99 **milliseconds**:
+
+| Path / workload | Admission at first read | Full replay/session work | Clean reopen | Peak RSS KiB |
+| --- | --- | --- | --- | --- |
+| direct / text | 0.192593 / 0.271121 / 0.376018 | 0.422186 / 0.542522 / 0.846105 | 0.318721 / 0.348888 / 0.405284 | 2288 |
+| direct / refusal | 0.186662 / 0.259308 / 0.375688 | 0.408670 / 0.567630 / 0.865642 | 0.320925 / 0.360941 / 0.392871 | 2312 |
+| direct / failed-known | 0.194567 / 0.255262 / 0.350591 | 0.402168 / 0.505513 / 0.646358 | 0.321466 / 0.371981 / 0.375067 | 2288 |
+| direct / failed-unknown | 0.204606 / 0.298833 / 0.430281 | 0.213823 / 0.308912 / 0.439469 | 0.024576 / 0.036249 / 0.051948 | 2296 |
+| direct / cancelled | not reached (cancelled before read) | 0.198454 / 0.287432 / 0.479394 | 0.024185 / 0.037030 / 0.037802 | 2288 |
+| session / text | 0.188104 / 0.365638 / 0.427726 | 0.427777 / 0.671416 / 0.813383 | 0.322709 / 0.361822 / 0.398241 | 2204 |
+| session / refusal | 0.201760 / 0.437113 / 0.605642 | 0.475206 / 0.751656 / 0.984536 | 0.319803 / 0.341063 / 0.374956 | 2304 |
+| session / failed-known | 0.200508 / 0.436393 / 0.607956 | 0.445390 / 0.723754 / 0.838560 | 0.320214 / 0.392560 / 0.403140 | 2220 |
+| session / failed-unknown | 0.389804 / 0.639516 / 1.222714 | 0.400104 / 0.648853 / 1.233234 | 0.023975 / 0.036288 / 0.060154 | 2312 |
+| session / cancelled | not reached (cancelled before read) | 0.209585 / 0.451601 / 0.559093 | 0.024416 / 0.031720 / 0.037611 | 2308 |
+
+Hosted release bytes default/replay/harness **478,664 / 569,072 / 438,616**. Standalone local/mock/replay CLI RSS **2772 / 2888 KiB**. Pipe p50/p95/p99 **0.418749 / 0.536060 / 0.703055 ms**, zero errors; Python-inclusive harness RSS is separately labeled in logs. Inline/payload/capacity again 80/100/372 bytes for the completed fixture. Bounded-history eviction **0.000241 / 0.000261 / 0.000321 ms**, clear **0.000100 / 0.000110 / 0.000120 ms**. Do not compare across hardware/compiler/runners as a controlled speed or RAM regression/improvement.
+
+[Full hosted scale 46090412719](https://github.com/idmfrank/atomos/actions/runs/46090412719) tested branch head `1823fb9bdd210f841fd99ba1b4ac0d6bc965e050`:
+
+| Entities | Exact p95 ms | Context p95 ms | Common-term p95 ms | Restore ms | Active CLI KiB | Recovery KiB |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1000 | 0.0408 | 0.2144 | 0.2617 | 114.1329 | 4136 | 7456 |
+| 10000 | 0.0533 | 0.2734 | 0.5741 | 1372.4746 | 4280 | 9232 |
+| 100000 | 0.0705 | 0.3083 | 2.5403 | 14282.2454 | 4280 | 9108 |
+
+All sizes: 300/300 facts, 100 complete packets, precision/recall 1, zero of 30 parity mismatches, zero recovery verification errors and zero provider calls. Same-run no-store RSS 2580 KiB. Full details, slow tails and all original benchmark output remain in linked job logs. No general token savings, real eligibility/billing, model quality, whole-device power, physical terminal or power-loss qualification.
 
 ## M2.5b offline candidate evidence
 

@@ -42,6 +42,13 @@ jobs:
           timeout --kill-after=5s 120s bash scripts/test-atomic-admission.sh
       - name: Frozen strict versus extended atomic outcome benchmark
         run: timeout --kill-after=5s 180s bash scripts/benchmark-outcomes.sh
+      - name: CLI session regression and frozen legacy comparison
+        # Session tests include a separately compiled historical CLI reference.
+        # Full checkout history is already provisioned above.
+        run: |
+          timeout --kill-after=5s 180s bash scripts/test-session.sh
+      - name: Session overhead, accounting and pipe benchmark
+        run: timeout --kill-after=5s 180s bash scripts/benchmark-session.sh
       - name: Candidate minimum compiler compatibility
         run: |
           rustup toolchain install 1.75.0 --profile minimal
