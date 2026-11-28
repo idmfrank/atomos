@@ -45,4 +45,4 @@ PR #28 merged f422abf; [CI](https://github.com/idmfrank/atomos/actions/runs/4591
 
 ## Session adapter candidate
 
-The new opt-in session-replay build consumes existing finite fixtures through the same extended atomic method. Fixed startup fixture selection is explicit, not negotiation or automatic fallback; no arbitrary fixture/URL, provider credentials, decoder-cap change or live request. The legacy single-turn and voice protocols remain unchanged. Full session integration verification is pending.
+The new opt-in session-replay build consumes existing finite fixtures through the same extended atomic method. Fixed startup fixture selection is explicit, not negotiation or automatic fallback; no arbitrary fixture/URL, provider credentials, decoder-cap change or live request. The legacy single-turn and voice protocols remain unchanged. Full session integration verification passed on PR #38; [exact evidence](cli-session-contract.md#verified-session-implementation).

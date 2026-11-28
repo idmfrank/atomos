@@ -18,7 +18,7 @@ M2.5b's extended synthetic replay and typed Local/Completed/Refused/Failed resul
 
 ## CLI session and future context binding
 
-The [session contract](cli-session-contract.md) is now an implementation candidate, with complete validation pending; it is not an enabled provider client. Explicit fixed-fixture replay uses the same current-question admission and v1 ledger. Working turns are bounded, volatile and local-only; they do not enter the digest or reservation estimate. Before any provider sends history or AMG context, define a complete owned/canonical request that binds every byte and obeys reviewed disclosure and input/output bounds. Never bolt extra history onto a previously authorized current-question request. Status distinguishes mock calls/synthetic units from real usage, and no automatic retry is introduced. Cooperative replay tests do not establish signal handling, blocking-I/O cancellation or a production deadline.
+The [session contract](cli-session-contract.md) is implemented and verified offline on PR #38; it is not an enabled provider client. Explicit fixed-fixture replay uses the same current-question admission and v1 ledger. Working turns are bounded, volatile and local-only; they do not enter the digest or reservation estimate. Before any provider sends history or AMG context, define a complete owned/canonical request that binds every byte and obeys reviewed disclosure and input/output bounds. Never bolt extra history onto a previously authorized current-question request. Status distinguishes mock calls/synthetic units from real usage, and no automatic retry is introduced. Cooperative replay tests do not establish signal handling, blocking-I/O cancellation or a production deadline.
 
 ## Integration contract
 
@@ -86,4 +86,4 @@ M2.4b–c [protocol compatibility](m2-protocol-compatibility.md) validated separ
 
 ## Session candidate implementation
 
-The new shared Session wraps the existing extended replay in one synchronous call, with turn ownership, post-settlement stale-delivery suppression and retention only after successful output/flush. AtomicReplay.status is a read-only accounting view, not a dispatch permit. Unknown usage, storage failure and durable halt retain the existing state-machine semantics. The CLI remains local/mock or explicit fixed-fixture replay; full regression, resource and CI evidence are pending.
+The new shared Session wraps the existing extended replay in one synchronous call, with turn ownership, post-settlement stale-delivery suppression and retention only after successful output/flush. AtomicReplay.status is a read-only accounting view, not a dispatch permit. Unknown usage, storage failure and durable halt retain the existing state-machine semantics. The CLI remains local/mock or explicit fixed-fixture replay; full regression, resource and CI evidence passed. [Exact tested commits and measurements](resource-budget.md#cli-session-verified-evidence).
