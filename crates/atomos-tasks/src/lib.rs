@@ -17,8 +17,9 @@ pub const MAX_ACTIONS: i64 = 32;
 pub const MAX_ACTIVE_MS: i64 = 600_000;
 pub const ACTION_MS: i64 = 60_000;
 const SCHEMA: &str = include_str!("schema.sql");
+pub mod worker;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Error {
     Invalid,
     Missing,
@@ -265,6 +266,23 @@ fn charge(c: &Connection, id: i64, now: i64) -> Result<bool> {
 }
 
 impl Runtime {
+    pub(crate) fn fixture_matches(&self, id: i64, item: &str, delta: i64) -> Result<bool> {
+        if !self.healthy {
+            return Err(Error::Unhealthy);
+        }
+        Ok(self.conn.query_row("SELECT count(*)=0 FROM action WHERE task_id=?1 AND (kind!='add' OR item!=?2 OR argument!=?3)",params![id,item,delta],|r|r.get(0))?)
+    }
+    /// Scheduler discovery only: never claims, starts or retries a task.
+    pub fn next_queued(&self) -> Result<Option<i64>> {
+        if !self.healthy {
+            return Err(Error::Unhealthy);
+        }
+        Ok(self
+            .conn
+            .query_row("SELECT min(id) FROM task WHERE state='queued'", [], |r| {
+                r.get(0)
+            })?)
+    }
     /// Explicit fresh initialization. `store_bytes` bounds the main DB only;
     /// rollback journal and filesystem free-space reserves require deployment policy.
     pub fn initialize(dir: &Path, owner: &str, policy: &str, store_bytes: u64) -> Result<Self> {

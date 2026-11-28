@@ -9,12 +9,12 @@ AtomOS will learn from owner interactions, verified task results and scoped syst
 ## Current implementation
 
 - Local/mock text CLI and bounded sessions; the CLI remains a maintenance interface.
-- [Durable synthetic task library](docs/task-runtime.md): task identities, bounded queue, intent/effect/verification records, cancellation and explicit restart reconciliation. No worker/service or real tools.
+- [Durable tasks and worker](docs/worker-service.md): persistent identities, bounded queue, intent/effect/verification, cancellation and recovery, with a synthetic actor and supervised local control process. No real tools or listener.
 - SQLite/FTS5 memory graph with owner scope, typed facts/relationships, source IDs, correction, deletion, scoped retrieval, integrity checks and logical recovery.
 - Offline inference broker, strict/extended response decoding, durable request-bound admission, usage settlement and conservative handling of unknown usage.
 - Explicit [owner-run authentication utility](docs/owner-auth.md) with encrypted credentials and model discovery. No production inference connection.
 
-The task library is not connected to the CLI. The persistent task service, LAN web interface, autonomous executor, learning pipeline, packet observation and local model are not yet implemented. Mock responses are not evidence of intelligence. Source cleanup removes voice runtime/adapters and obsolete one-shot inference tools; voice communication is outside the project. Existing data formats remain readable without rewriting owner stores.
+The task library/worker is separate from the text CLI. The LAN web interface, autonomous executor, learning pipeline, packet observation and local model are not yet implemented. The task service executes a fixed counter fixture, not natural-language goals. Mock responses are not evidence of intelligence. Source cleanup removes voice runtime/adapters and obsolete one-shot inference tools; voice communication is outside the project. Existing data formats remain readable without rewriting owner stores.
 
 ## Product contract
 
@@ -39,6 +39,7 @@ bash scripts/test-responses.sh
 node --test scripts/auth/protocol.test.mjs
 bash scripts/test-atomic-admission.sh
 bash scripts/test-session.sh
+bash scripts/test-task-service.sh
 ```
 
 Provisioning is explicit. Tests do not need real credentials, inference or capture privileges. See [resources](docs/resource-budget.md) and [operations](docs/linux-cli-deployment.md). Evidence for the final candidate belongs in PROJECT_STATE.
@@ -55,10 +56,10 @@ Use `/help`, `/status`, `/clear`, `/quit`. Default is local/mock. Explicit memor
 
 The [MVP contract](docs/mvp-contract.md) defines supported journeys, local/external authority, durable tasks, retention, initial work bounds and acceptance gates A01-A13. It is a specification; these agent capabilities and acceptance tests are not implemented. The first MVP must work locally without a provider connection.
 
-Follow the [roadmap](docs/agent-roadmap.md): cleanup, durable task foundation and service loop, LAN browser, verified local execution, continuous graph learning, measured local reasoning, optional external augmentation and sustained acceptance.
+Follow the [roadmap](docs/agent-roadmap.md): cleanup, durable tasks and synthetic worker/service, LAN browser, verified local execution, continuous graph learning, measured local reasoning, optional external augmentation and sustained acceptance.
 
 Voice, custom kernels, public hosting, multi-user operation, unbounded surveillance and automatic model training are outside scope. Repository history holds prior implementations/evidence; active documentation describes the current project only.
 
 ## Current validation
 
-The task runtime passed [hosted CI](https://github.com/idmfrank/atomos/actions/runs/46104110281): 191 distinct tests, 18,000 decoder samples, Rust 1.77 tasks, core Rust 1.75 and accounting/session/task measurements. [Full 1K/10K/100K graph scale/recovery](https://github.com/idmfrank/atomos/actions/runs/46104029156) passed with zero parity/recovery errors or remote calls. Publication-only follow-up checks are pending. These fixtures do not qualify real worker behavior, local intelligence or a deployment. [Current scope/provenance](PROJECT_STATE.md#validation).
+The worker/service implementation adds bounded-channel, worker lifecycle and process coverage; the expected distinct suite is 210 tests. Remote offline regression/process checks passed, including signal/EOF/forced-death recovery, output backpressure, duplicate prevention, 18,000 decoder samples and supervisor-template syntax. Candidate hosted CI, minimum-compiler gates and full graph scale/recovery are pending. Only hosted runner measurements may be published. No real-worker tool, model, LAN or deployment qualification is implied. [Current scope and progress](PROJECT_STATE.md).

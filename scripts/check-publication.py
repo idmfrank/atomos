@@ -52,7 +52,7 @@ def main():
     for name in names:
         path = root / name
         if not name or not path.is_file() or path.suffix not in {
-            ".md", ".rs", ".py", ".mjs", ".sh", ".sql", ".toml", ".yml", ".yaml", ".json", ".sse"
+            ".md", ".rs", ".py", ".mjs", ".sh", ".sql", ".toml", ".yml", ".yaml", ".json", ".sse", ".in", ".service"
         }:
             continue
         for line, kind in findings(path.read_text(encoding="utf-8")):

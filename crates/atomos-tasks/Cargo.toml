@@ -6,3 +6,4 @@ rust-version = "1.77"
 
 [dependencies]
 rusqlite = { version = "=0.32.1", default-features = false }
+signal-hook = { version = "=0.3.18", default-features = false }

@@ -1,0 +1,21 @@
+# User-service template only. Render and validate privately before installation.
+[Unit]
+Description=AtomOS synthetic task worker
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=simple
+ExecStart="@BINARY@" --store "@STORE@" --owner "@OWNER@" --daemon
+Restart=on-failure
+RestartSec=2
+TimeoutStopSec=5
+KillSignal=SIGTERM
+UMask=0077
+NoNewPrivileges=yes
+PrivateNetwork=yes
+ProtectSystem=strict
+ReadWritePaths="@STORE@"
+
+[Install]
+WantedBy=default.target

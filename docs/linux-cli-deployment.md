@@ -19,3 +19,10 @@ Keep source separate from installation. Fetch the reviewed commit, build a versi
 Define service identity, administrative mediation, egress enforcement, resource/storage limits and task recovery. Verify LAN address/subnet, IPv4/IPv6 firewall exposure, trusted HTTPS and owner login. No public forwarding/proxy/tunnel. Startup/reconnect must not duplicate ambiguous effects.
 
 Identify backing filesystem before durability testing; `/tmp` may be tmpfs. Use private TMPDIR on persistent disk and label RAM-backed runs separately. Bound/redact logs; keep credentials outside memory. Verify capacity/free space before capture/learning quotas. This cleanup installs no service, privileges or capture configuration.
+
+
+## Synthetic worker supervision
+
+The worker/service implementation is ready for review, not installed. Use the generic user-service template and private values described in [worker/service operations](worker-service.md). Initialization must be explicit and is never included in automatic restart. Daemon mode ignores stdin EOF and quiesces on TERM/INT; stdio EOF stops its process. Successful process exit acknowledges quiescence. A forced supervisor kill retains interruption/ambiguity for the next start.
+
+Builds, tests and Git preparation use the approved remote development checkout or hosted CI. Keep the control client free of Cargo workloads. Do not publish connection profiles, rendered units, resource inventory, private logs or installed-version manifests. GitHub publication may use the connected account when server push authentication is unavailable; credentials need not be copied.

@@ -4,7 +4,7 @@ One always-running local agent on existing Linux, with one owner using authentic
 
 | Component | Responsibility | Status |
 | --- | --- | --- |
-| Task/service runtime | Durable goals, action IDs, bounded queue, cancellation, restart reconciliation | Synthetic persistence library implemented; service/worker loop planned |
+| Task/service runtime | Durable goals, action IDs, bounded queue, cancellation, restart reconciliation | Synthetic persistence, bounded actor and local supervised process implemented; LAN adapter planned |
 | LAN web | Chat, progress, cancel, approvals, knowledge inspection, reconnect | Planned |
 | Executor | Local policy checks, bounded tools, mediated administration, verification/recovery | Planned |
 | Learning | Scoped observations, consolidation, provenance, retention/derived deletion | Planned |
@@ -17,7 +17,7 @@ The [MVP contract](mvp-contract.md) defines the required state machine, action/a
 
 ## Task lifecycle
 
-Submitting work assigns a durable identity. Reconnect reads existing state without resubmission; browser closure does not cancel a task. Explicit cancel prevents stale delivery and requests bounded shutdown. Restart reconciles interrupted work before retrying ambiguous effects. The [task library](task-runtime.md) implements the synchronous synthetic persistence subset. Worker/service/browser behavior remains planned, not a current CLI guarantee.
+Submitting work assigns a durable identity. Reconnect reads existing state without resubmission; browser closure does not cancel a task. Explicit cancel prevents stale delivery and requests bounded shutdown. Restart reconciles interrupted work before retrying ambiguous effects. The [task library](task-runtime.md) and [worker/service](worker-service.md) implement the synthetic persistence/lifecycle subset. Browser behavior, real tools and actual deployment remain pending.
 
 Keep web handling unprivileged. Separate administrative execution and external authority: unrestricted root cannot be claimed as confined by application checks. Protect SSH and recovery resources. Test bypass/failure cases on disposable hosts before enabling administration.
 

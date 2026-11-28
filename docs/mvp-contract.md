@@ -69,7 +69,7 @@ Service starts after reboot and exposes truthful starting/ready/degraded state. 
 
 ## Acceptance gates
 
-Only persistence subsets of A05-A07 are implemented by the [synthetic task library](task-runtime.md); full service, worker, device and security gate results remain pending. Use synthetic data and disposable services before testing the actual device. Record source, environment, inputs, expected/actual state, failures and measurements. No silent threshold reductions after observing failures.
+Persistence and synthetic worker/process subsets of A05-A07 are implemented by the [task library](task-runtime.md) and [worker/service](worker-service.md); actual deployment-load, browser and security qualifications remain pending. Use synthetic data and disposable services before testing the actual device. Record source, environment, inputs, expected/actual state, failures and measurements. No silent threshold reductions after observing failures.
 
 | ID | Pass condition |
 | --- | --- |
@@ -110,4 +110,4 @@ These are acceptance fixtures to implement, not passing results. Add unseen para
 
 ## Next implementation handoff
 
-The durable synthetic task library now implements the state-machine/idempotency/recovery foundation, with crash-point fixtures for subsets of A05-A07. The next slice adds the bounded worker/service loop and a thin LAN adapter around those APIs. It must not introduce a public listener, unrestricted shell, private capture, credentials or real inference. Wire the web interface and real executor only after those shared contracts are testable. This contract is the current specification; its acceptance suite and numeric targets are not yet implemented or measured.
+The durable synthetic task library now implements the state-machine/idempotency/recovery foundation, with crash-point fixtures for subsets of A05-A07. The bounded worker/service loop is now implemented for fixed synthetic actions and process lifecycle tests. The next slice adds the authenticated LAN adapter around those APIs. It must not introduce a public listener, unrestricted shell, private capture, credentials or real inference. Wire the web interface and real executor only after those shared contracts are testable. This contract is the current specification; its acceptance suite and numeric targets are not yet implemented or measured.

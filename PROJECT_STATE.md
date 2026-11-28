@@ -1,46 +1,39 @@
 # AtomOS current engineering state
 
-Updated 2026-11-27. Active work: publication privacy and hosted-CI validation evidence. The task foundation merged in PR #43 as main 425afd58d21ebcde75d4f76e24c2a73cf94f1c85; the agent did not merge it. The follow-up branch is synchronized with that merged main so PR #44 exposes only publication/evidence changes. This follow-up changes documentation and a development publication check only, not Rust/runtime/dependency sources or a deployment.
+Updated 2026-11-28. Active work: finish MVP Step 2 with a bounded synthetic worker and supervised local process. Main base 135ad65256def353ff106e04d57a172ef29f2f5f (PR #44) passed [post-merge CI](https://github.com/idmfrank/atomos/actions/runs/46105407113). This slice changes source/tests/docs only; no PR merge, deployment, live inference, credential access or real command execution.
 
-## Task foundation
+## Progress
 
-New Rust library atomos-tasks uses the existing pinned rusqlite dependency in a separate private owner/policy-bound SQLite store. Implements durable submit/idempotency, FIFO/single active task, bounded admission, prepared intent/effect/verification records, cancellation, explicit post-open recovery and metadata cursor inspection. Only built-in synthetic counter operations exist; no worker loop, listener, planner, command callback, real permissions or external approval API. Task completion proves synthetic action results, not arbitrary natural-language goal success. [Implementation](docs/task-runtime.md).
+| Step | Scope | Current status |
+| --- | --- | --- |
+| 1 | MVP contract | Complete and merged |
+| 2 | Persistent task runtime and worker/service loop | Implementation and remote offline tests complete; review/CI pending |
+| 3 | Authenticated LAN web interface | Next; not started |
+| 4 | Local tools and administrative authority | Not started |
+| 5 | Local reasoning/model integration | Not started; private calibration required |
+| 6 | Continuous learning/graph consolidation | Not started; AMG foundations available |
+| 7 | Scoped system/network observation | Not started; payload capture remains later |
+| 8 | Optional external inference | Not integrated; auth/accounting foundations available |
+| 9 | Deployment and MVP qualification | Not started |
 
-Limits: 8 KiB goals, 16 newly admitted pending tasks plus the existing active task, 32 dispatches/600,000 active ms per task, 60,000 ms fixture effect deadline, metadata pages of 64 events/32 actions, required 64 KiB to 256 MiB main-DB cap. Recovery conservatively counts interrupted downtime and never drops acknowledged records. Terminal retention/free-space/aggregate quota, caller clock authenticity, worker cancellation and service isolation remain pending. Goals are private durable application state; Debug/events omit goal/key text. Storage failure poisons the runtime; no state reset.
+Publication privacy rules/checks are implemented. Current-text corrections do not erase earlier public revisions or copies.
 
-Seventeen new task tests passed, including actual child death at eight boundaries, rollback, exclusive lease contention, full-database failure, limits, redaction and durable failure reasons. [Hosted PR CI 46104110281](https://github.com/idmfrank/atomos/actions/runs/46104110281) passed on synthetic merge a85271e8c0dd1779d211a7642076b5b7af1757cb of runtime source f611f3dbeb37e7933eb934e932f6aa83c47bb690. It verified Rust 1.77 task all-targets and core Rust 1.75, all 191 distinct tests, 18,000 decoder samples and accounting/session/task measurements. Ignored child fixtures and repeated compiler/feature runs are not extra tests. No deployment inventory or private-environment measurements are public evidence.
+## Implemented scope
 
-Documentation review includes README, roadmap, architecture, contract, security, resources, operations and engineering instructions. AMG, reasoning and auth APIs are unchanged; no private graph, auth vault or inference accounting access is added. Next: bounded worker/service loop and thin authenticated LAN adapter with synthetic actions; real executor and permission boundary require their own slice.
+Rust task persistence now has a single owning actor, a bounded 16-command control queue, fixed-policy synthetic execution, FIFO work, idempotent submissions, cancellation, explicit recovery/resume and clean/drop shutdown. The new atomos-taskd process supports bounded private stdio control or daemon mode, TERM/INT quiescence, EOF semantics, redacted output and competing-instance rejection. It processes one fixed counter recipe; goals remain private labels, not plans. [Worker/service](docs/worker-service.md), [task storage](docs/task-runtime.md).
 
-## Publication privacy
-
-Deployment inventory, installed-version fingerprints and private environment measurements are excluded from public documentation, metadata and evidence. The shared publication baseline from PR #44 adds generic operations guidance, mandatory manual review and a heuristic source/event-metadata check; [its CI 46104641945](https://github.com/idmfrank/atomos/actions/runs/46104641945) passed. An older PR description was sanitized; the returned issue/review metadata audit contained no remaining matching content. No private inventory is embedded in the checker. Source/link/fence/whitespace checks and sanitized metadata rejection passed.
-
-Current-text removal does not erase earlier Git/PR revisions or external copies. No shared-history rewrite or deployment was performed. This subsection concerns publication controls only; the task-runtime implementation is described above. PR #44 combines the publication correction with current hosted validation evidence; its final-head CI is pending.
-
-## Product and implementation
-
-One owner, continuous Linux service, LAN browser interaction, broad local agency and graph-based learning. Optional external reasoning supplements local capability with zero incremental inference spending. External effects require approval or standing policy. [Roadmap](docs/agent-roadmap.md).
-
-Implemented: local/mock text CLI, bounded sessions, SQLite/FTS5 typed graph with retrieval/correction/deletion/recovery, offline accounting/decoder/broker foundations, durable synthetic tasks and owner auth/model discovery. Service, web, autonomous executor, learning/capture, local models and production inference remain unimplemented.
-
-Cleanup removes voice/audio components and public interfaces, obsolete one-shot inference tools and ledger writers, and archived documentation. Auth is auth/catalog only. Existing accounting files are untouched; a missing host cannot be initialized in a nonempty credential directory. Required SQLite schema/migration/integrity compatibility remains without removed voice APIs.
-
-## Current deployment
-
-Deployment versions and inventory are maintained privately. Source changes do not authorize deployment, host configuration, credential access, capture or privilege changes. [Operations](docs/linux-cli-deployment.md).
+Known effects resume without reexecution; unknown intent remains ambiguous until cancelled. Queued work survives restart. Persistence failures stop the actor without resetting state or losing acknowledged submissions. Supervisor template syntax is tested with a dummy executable; actual boot/session/linger policy, sandbox qualification and installation remain Step 9 work. No network listener, model, real tools, external approval grant or automatic learning is added. The text CLI is unchanged.
 
 ## Validation
 
-Runtime source f611f3dbeb37e7933eb934e932f6aa83c47bb690 passed hosted CI as linked above and [full graph scale/recovery 46104029156](https://github.com/idmfrank/atomos/actions/runs/46104029156). The graph run passed 1K/10K/100K: each size returned 300/300 expected facts and 100 complete packets, with zero parity mismatches, recovery-verification errors and remote calls. This is synthetic hosted-runner evidence, not deployment or model qualification.
+The approved remote development checkout passed workspace/CLI/memory recovery, decoder, session/text-reference, worker/process, auth, task measurement and publication checks. No private environment inventory or numeric performance data is published. Source-level minimum compiler gates remain in hosted CI: tasks Rust 1.77 and core Rust 1.75. Candidate hosted CI and full graph scale/recovery are pending at authoring.
 
-The hosted task measurement asserted 100 completed, 100 cancelled, counter 100 and 700 events, zero errors/calls; acknowledgement p95 0.995897 ms, process RSS 4,416 KiB, apparent fixture store 86,528 bytes and example 432,112 bytes. These characterize the published fixture on hosted CI only, not a deployed system. Current follow-up changes publication policy/checks/docs only; Rust/runtime/dependency sources are unchanged. Current-tree publication, metadata-rejection (without matched-text echo), link/fence and whitespace checks passed. Follow-up CI is pending; full MVP gates, real worker and device qualification remain pending.
+New coverage: one bounded-channel unit test, eight Rust worker integration tests, and ten process tests. Total expected distinct suite is 210: 163 Rust, 27 Python, 20 Node. Repeated feature/compiler runs, test samples and child-only fixtures are not additional tests. Thirty process cancellation trials and real TERM/INT/SIGKILL cases retain their deadlines. Signal tests caught a stdout-lock shutdown defect; the corrected duplicate-FD transport, unread-output test and regular-file output-order test pass. Existing task/store tests remain required.
 
-All 15 active docs and local paths/anchors/fences passed before publication review. Existing CLI/core/memory sources remain unchanged; lockfile adds only the task workspace package with existing registry versions. No private graph, vault or inference ledger access.
+The signal-handling dependency is pinned and flag-only; its callbacks do no storage work. The lock adds signal-hook/registry and supporting errno/platform packages without upgrading existing package versions. No unsafe code is introduced in project source. API publication will use the connected repository account if remote push authentication is unavailable, without copying credentials.
 
+## Operations and publication
 
-## Constraints and next work
+Development source and installed releases remain separate. Builds/tests and Git preparation now run in the approved remote checkout, not the desktop/WSL control client. Private connection details, manifests, resource budgets and raw logs stay outside GitHub. Hosted runner fixture evidence is distinct from deployment qualification. No unit is installed/enabled by this change.
 
-Deployment inventory is private. Verify free/usable capacity, filesystem and headroom privately before quotas/model selection. No new model-quality, token/power-saving or isolation claim is established.
-
-Next: implement the bounded task worker/service loop and LAN adapter; then verified local execution/external boundary, graph learning/retention, measured local reasoning and optional external integration. [Architecture](docs/architecture.md), [memory](docs/amg-architecture.md), [inference](docs/inference-architecture.md), [security](docs/threat-model.md), [resources](docs/resource-budget.md).
+Review/update covers README, roadmap, architecture, task/worker contract, security, resources, operations and engineering instructions. AMG, inference and owner-auth APIs are unchanged. Publication and link/anchor/fence/whitespace checks passed; remote service output confirms ten process tests and eight worker integration tests. Existing registry versions/checksums are unchanged. Hosted minimum-compiler and full graph checks remain pending at authoring. Next is Step 3: a thin authenticated LAN adapter owning the worker directly, without requiring another resident bridge.

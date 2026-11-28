@@ -47,4 +47,4 @@ Active docs contain current scope only. Git history holds prior code/evidence. E
 
 ## Immediate next step
 
-The durable synthetic task library implements idempotency, bounded queues, intent/effect/verification persistence, cancellation and explicit crash reconciliation. [Scope and tests](task-runtime.md). Next add a bounded worker/service loop and thin LAN adapter using synthetic actions, then a separately reviewed real executor. Only persistence subsets of A05-A07 are covered; no full MVP gate is claimed complete.
+The durable synthetic task library implements idempotency, bounded queues, intent/effect/verification persistence, cancellation and explicit crash reconciliation. [Scope and tests](task-runtime.md). The bounded worker/service loop and process lifecycle are now implemented and tested using synthetic actions. Next add the thin authenticated LAN adapter, then a separately reviewed real executor. Only persistence subsets of A05-A07 are covered; no full MVP gate is claimed complete.

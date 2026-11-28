@@ -18,6 +18,7 @@ Compare equivalent inputs/state/policy/durability with independent expected fact
 
 ```bash
 cargo test --locked --offline -p atomos-tasks --all-targets
+bash scripts/test-task-service.sh
 bash scripts/benchmark-tasks.sh
 bash scripts/test.sh
 bash scripts/test-responses.sh
@@ -37,3 +38,8 @@ CI runs regressions/decoder/auth/admission/session/1K checks; the manual workflo
 ## Current hosted task measurement
 
 [Hosted CI 46104110281](https://github.com/idmfrank/atomos/actions/runs/46104110281) measured the published synthetic task fixture: 200 submissions/intents, 100 effects/verifications and 100 cancellations; acknowledgement p50/p95/p99 0.804971/0.995897/2.314585 ms; one open/recovery sample 2.035816 ms; process RSS 4,416 KiB; apparent fixture store 86,528 bytes; release example 432,112 bytes. All final-state assertions passed. This is hosted-runner product validation, not deployment inventory, private-environment evidence, an equivalent-engine comparison or real-worker latency qualification. [Source/run provenance](../PROJECT_STATE.md#validation).
+
+
+## Worker/service scope
+
+The service test reports 30 synthetic process cancellation samples, verifies terminal state before acknowledgement and checks cooperative stop within the retained deadline. It also covers unread-output backpressure, ordinary file redirection and forced restart. Exact private-environment numbers are not public evidence. Hosted CI results, source and sample counts belong in current state/PR metadata. Actual device-load cancellation, total system resource caps and soak remain later acceptance gates.

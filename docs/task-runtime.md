@@ -1,6 +1,6 @@
 # Durable synthetic task runtime
 
-The `atomos-tasks` Rust library implements the persistence foundation for [MVP gates A05-A07](mvp-contract.md#acceptance-gates). It is not a service, planner, real executor, external approval system or LAN interface. The installed CLI is unchanged.
+The `atomos-tasks` Rust library implements the persistence foundation for [MVP gates A05-A07](mvp-contract.md#acceptance-gates). The [worker/service](worker-service.md) now builds on it. It is not a planner, real executor, external approval system or LAN interface. The text CLI is unchanged.
 
 ## Interfaces and state
 
@@ -12,7 +12,7 @@ The `atomos-tasks` Rust library implements the persistence foundation for [MVP g
 
 `prepare` commits immutable synthetic action intent before effects and increments the dispatch count. Only built-in `Add` and `Assert` operations on private fixture counters exist. There are no arbitrary callbacks, subprocesses, commands, credentials or network calls. `apply` commits a fixture effect and its result separately from `verify`; duplicate application fails. `verify` uses that durable fixture result, not a model claim or arbitrary command exit code. `complete` requires verified fixture actions. It does not interpret or independently prove an arbitrary natural-language goal; real goal verification is later work.
 
-`cancel` commits the stop state before acknowledging. Further prepare/apply calls fail. `finish_cancel` closes unresolved intents without executing them; existing effects remain visible through bounded `actions` status. Cancellation is not rollback. This synchronous library has no worker to stop and does not qualify device/load/browser cancellation latency.
+`cancel` commits the stop state before acknowledging. Further prepare/apply calls fail. `finish_cancel` closes unresolved intents without executing them; existing effects remain visible through bounded `actions` status. Cancellation is not rollback. The Runtime primitive is synchronous; the separate worker serializes cancellation and cooperative stop. Process fixture tests qualify that implementation subset, not device/load/browser cancellation.
 
 ## Recovery and concurrency
 
@@ -28,13 +28,13 @@ Linux canonical owner-private directory (0700), regular owner-private files (060
 
 Any SQL persistence/commit failure poisons the runtime: it will not report unconfirmed state or perform further actions. Reopening requires file/integrity checks and recovery. Same-UID/root modification, filesystem rollback, power-loss durability, backup deletion and privileged/network confinement are not solved by this library. No private AMG or inference journal is touched.
 
-`events` provides at most 64 metadata transitions after a durable cursor, rejects future/invalid cursors and never resubmits work. `actions` returns at most 32 statuses, including committed-effect presence after cancellation. These are state inspection primitives; browser sessions, streaming protocol, event expiry and action-progress subscriptions remain unimplemented.
+`events` provides at most 64 metadata transitions after a durable cursor, rejects future/invalid cursors and never resubmits work. `actions` returns at most 32 statuses, including committed-effect presence after cancellation. The worker exposes bounded state inspection through a Rust handle and local stdio process. Browser sessions, streaming protocol, event expiry and action-progress subscriptions remain unimplemented.
 
 ## Validation and measurement
 
 Seventeen independent tests cover restart/idempotency, FIFO/exclusivity/capacity, exact fixture effects, false-success prevention, wait time, cancellation before/after effects, time/dispatch limits, rollback clocks, bounded cursors/redaction, invalid/cross-task inputs, private files, missing state and database-full poisoning. One parent actually kills a child at eight boundaries: before intent, after intent, inside an uncommitted effect transaction, after effect, after verification, after completion, and cancellation before/after effect. The ignored child-only helper is not an additional test. Tests use temporary synthetic data only.
 
-The 30-trial cancellation test measures durable library acknowledgement only; A07 worker shutdown under device load remains pending. Kill/recovery fixtures are not power-loss certification. Rust 1.77 is the declared new-library minimum because the existing rusqlite dependency uses C string literals; core Rust 1.75 checks remain separate. Final minimum-version verification is recorded in [current state](../PROJECT_STATE.md).
+The 30-trial cancellation test measures durable library acknowledgement only; Process worker shutdown is tested separately; A07 under actual deployment load remains pending. Kill/recovery fixtures are not power-loss certification. Rust 1.77 is the declared new-library minimum because the existing rusqlite dependency uses C string literals; core Rust 1.75 checks remain separate. Final minimum-version verification is recorded in [current state](../PROJECT_STATE.md).
 
 ```bash
 cargo test --locked --offline -p atomos-tasks --all-targets
@@ -43,4 +43,4 @@ bash scripts/benchmark-tasks.sh
 
 The benchmark requires private persistent TMPDIR and reports 200 submissions/intents, 100 effects/verifications, 100 cancellations, one open/recovery sample, p50/p95/p99, process RSS, binary and apparent store bytes. Independent assertions require 100 completed, 100 cancelled, counter 100, 700 transition events and zero real calls. It is an initial measurement with no equivalent prior task engine or optimization claim. [Resource method](resource-budget.md).
 
-Next: add the bounded worker/service loop and a thin authenticated LAN adapter around these APIs. Preserve synthetic testing until a separately reviewed real executor and permission boundary exist. Natural-language intelligence, external approvals, learning/retention and MVP gates remain pending beyond their tested persistence subsets.
+The bounded worker/service loop is implemented. Next: a thin authenticated LAN adapter around these APIs. Preserve synthetic testing until a separately reviewed real executor and permission boundary exist. Natural-language intelligence, external approvals, learning/retention and MVP gates remain pending beyond their tested persistence subsets.
