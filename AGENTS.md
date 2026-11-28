@@ -1,6 +1,6 @@
 # AtomOS engineering instructions
 
-Read PROJECT_STATE.md and [the roadmap](docs/agent-roadmap.md) before work. Verify the actual checkout and current CI. Follow [architecture](docs/architecture.md), [memory](docs/amg-architecture.md), [security](docs/threat-model.md) and [resources](docs/resource-budget.md).
+Read PROJECT_STATE.md, [the MVP contract](docs/mvp-contract.md) and [the roadmap](docs/agent-roadmap.md) before work. Verify the actual checkout and current CI. Follow [architecture](docs/architecture.md), [memory](docs/amg-architecture.md), [security](docs/threat-model.md) and [resources](docs/resource-budget.md).
 
 ## Scope and authority
 

@@ -14,6 +14,8 @@ Start with owner interactions and verified outcomes; add host events and own con
 
 Memory classes: identity/configuration, bounded working state, selected episodes, semantic assertions, evaluated procedures and commitments. These are targets, not a claim that every class is implemented. New observations can corroborate/propose facts; conflicts and uncertainty remain visible, with no silent permission grants.
 
+The [MVP contract](mvp-contract.md#learning-observation-and-retention) specifies candidate/confirmed evidence, default retention, pause/purge/forget behavior and test gates A08-A10. These automatic-learning controls are requirements, not current AMG functionality.
+
 ## Retention and correction
 
 Provide inspect/correct/forget, pause-learning and purge-evidence. Propagate deletion through derived summaries, graph links, indexes and caches. Define backup retention/restore so forgotten facts do not silently return. Logical deletion is not forensic SSD/backup erasure.

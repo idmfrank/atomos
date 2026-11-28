@@ -2,6 +2,8 @@
 
 Current boundaries and target controls, not production security certification. [State](../PROJECT_STATE.md) | [Roadmap](agent-roadmap.md).
 
+[The MVP contract](mvp-contract.md) defines approved task scope, bound external approval, privileged confinement, protected recovery and acceptance gates. No standing external grant is activated by writing it.
+
 ## Owner authority
 
 Standing authority covers local files, processes, services and administration on the dedicated device. Routine authorized work should not prompt repeatedly. Mediate administration through a narrow executor; web must not run as root. Protect SSH, cancel and recovery. Content/model output cannot expand permissions.

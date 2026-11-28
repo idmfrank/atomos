@@ -13,6 +13,8 @@ One always-running local agent on existing Linux, with one owner using authentic
 | External reasoning | Complete context binding, admission, approved transport, settlement | Offline foundations implemented; production integration planned |
 | CLI | Local/mock text, bounded session, memory administration | Implemented |
 
+The [MVP contract](mvp-contract.md) defines the required state machine, action/approval persistence, work limits, browser semantics and verification gates. Initial implementation uses synthetic actions before real tools or a listener.
+
 ## Task lifecycle
 
 Submitting work assigns a durable identity. Reconnect reads existing state without resubmission; browser closure does not cancel a task. Explicit cancel prevents stale delivery and requests bounded shutdown. Restart reconciles interrupted work before retrying ambiguous effects. These are service requirements, not current CLI guarantees.
