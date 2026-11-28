@@ -17,6 +17,8 @@ Compare equivalent inputs/state/policy/durability with independent expected fact
 ## Offline checks
 
 ```bash
+cargo test --locked --offline -p atomos-tasks --all-targets
+bash scripts/benchmark-tasks.sh
 bash scripts/test.sh
 bash scripts/test-responses.sh
 node --test scripts/auth/protocol.test.mjs
@@ -28,6 +30,10 @@ cargo +1.75.0 test --locked --offline -p atomos-core --features atomic-admission
 AMG_SAMPLES=100 AMG_RECOVERY=1 bash scripts/benchmark-amg.sh 1000 10000 100000
 ```
 
-Provision locked dependencies explicitly. Durability benchmarks need private TMPDIR on the intended persistent filesystem and strace for syscalls. Tests may obtain frozen reference source temporarily from Git history; it is not archived in the branch. Core Rust 1.75 checks do not establish whole-workspace compiler compatibility.
+Provision locked dependencies explicitly. Durability benchmarks need private TMPDIR on the intended persistent filesystem and strace for syscalls. Tests may obtain frozen reference source temporarily from Git history; it is not archived in the branch. Core Rust 1.75 checks do not establish whole-workspace compiler compatibility. The new task library declares Rust 1.77 for existing rusqlite syntax and has separate minimum-version CI checks.
 
-CI runs regressions/decoder/auth/admission/session/1K checks; the manual workflow runs full 1K/10K/100K graph scale/recovery. Record current candidate results in PROJECT_STATE with exact source/run links. New service/model/executor/learning checks await implementation. No power, token-saving or local-model quality claim is established.
+CI runs regressions/decoder/auth/admission/session/1K checks; the manual workflow runs full 1K/10K/100K graph scale/recovery. Record current candidate results in PROJECT_STATE with exact source/run links. [Task measurements](task-runtime.md#validation-and-measurement) cover synthetic persistence and library cancellation acknowledgement only. New service/model/executor/learning checks await implementation. No power, token-saving or local-model quality claim is established.
+
+## Current task candidate measurement
+
+Local uncommitted candidate on WSL ext4: 200 submissions/intents, 100 effects/verifications and 100 cancellations; cancellation acknowledgement p50/p95/p99 7.836028/10.005317/19.988863 ms, open/recovery one sample 10.646181 ms, process RSS 4,560 KiB, apparent store 86,528 bytes, release example 432,104 bytes. All independent final-state assertions passed. This is a synthetic baseline, not a comparison with an equivalent previous engine or a Buzz/real-worker latency claim. Current published-source/CI provenance will be reconciled in PROJECT_STATE; earlier base SHA in a dirty measurement header does not identify the tested working-tree content.

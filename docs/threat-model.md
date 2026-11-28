@@ -22,7 +22,7 @@ Deletion accounts for derived knowledge, indexes, caches and backups. Restore ca
 
 ## Implemented boundaries and limits
 
-Bounded local/mock CLI; local-only history. AMG owner scope, typed queries, private directories, explicit writes and migration/integrity checks. Offline admission conservatively retains unknown usage. Private encrypted auth vault with owner interaction; no live adapter or obsolete one-shot command.
+Bounded local/mock CLI; local-only history. The separate [synthetic task store](task-runtime.md) has owner/policy binding, an OS-released exclusive SQLite lease, bounded state inspection, explicit recovery before mutation and fail-closed persistence errors. It grants no real tool or external authority; caller timestamps are rollback-checked but not authenticated. AMG owner scope, typed queries, private directories, explicit writes and migration/integrity checks. Offline admission conservatively retains unknown usage. Private encrypted auth vault with owner interaction; no live adapter or obsolete one-shot command.
 
 Trusted filesystem/process ownership is assumed. Same-UID/root tampering, rollback and physical access are not solved. Private-memory encryption/key recovery and aggregate quota remain unqualified. Web, executor/isolation, learning/capture and provider controls need implementation/adversarial validation. No credentials, private prompts/facts, payloads or raw provider errors in logs.
 

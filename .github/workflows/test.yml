@@ -25,6 +25,8 @@ jobs:
           cargo fetch --locked
       - name: Test and smoke
         run: bash scripts/test.sh
+      - name: Durable synthetic task measurement
+        run: timeout --kill-after=5s 90s bash scripts/benchmark-tasks.sh
       - name: Responses replay tests and parser benchmark
         run: timeout --kill-after=5s 120s bash scripts/test-responses.sh
       - name: Offline authentication protocol and storage tests
@@ -54,6 +56,10 @@ jobs:
           # unrelated workspace's existing edition-2024 getrandom package.
           cargo +1.75.0 check --locked -p atomos-core --features atomic-admission
           cargo +1.75.0 test --locked --offline -p atomos-core --features atomic-admission --all-targets
+          # Existing rusqlite uses C string literals, stable since Rust 1.77.
+          rustup toolchain install 1.77.0 --profile minimal
+          cargo +1.77.0 check --locked -p atomos-tasks
+          cargo +1.77.0 test --locked --offline -p atomos-tasks --all-targets
       - name: Text-only benchmark
         run: bash scripts/benchmark.sh
 
