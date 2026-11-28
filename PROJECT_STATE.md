@@ -1,6 +1,6 @@
 # AtomOS current engineering state
 
-Updated 2026-11-27. Active work: publication privacy and hosted-CI validation evidence. The task foundation merged in PR #43 as main 425afd58d21ebcde75d4f76e24c2a73cf94f1c85; the agent did not merge it. This PR #44 follow-up changes documentation and a development publication check only, not Rust/runtime/dependency sources or a deployment.
+Updated 2026-11-27. Active work: publication privacy and hosted-CI validation evidence. The task foundation merged in PR #43 as main 425afd58d21ebcde75d4f76e24c2a73cf94f1c85; the agent did not merge it. The follow-up branch is synchronized with that merged main so PR #44 exposes only publication/evidence changes. This follow-up changes documentation and a development publication check only, not Rust/runtime/dependency sources or a deployment.
 
 ## Task foundation
 
