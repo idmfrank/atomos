@@ -26,7 +26,7 @@ The task library is not connected to the CLI. The persistent task service, LAN w
 - Provenance-aware graph learning, inspect/correct/forget controls, rotating observations and deletion of derived knowledge.
 - Local rules, retrieval and useful benchmark-selected local models before external reasoning. No idle remote inference or automatic model training.
 
-Use the existing host. The owner reports 2 TB storage; verify capacity, free space and filesystem before quotas. More disk does not justify indefinite packet/transcript retention. Learn first from interactions and verified outcomes, then host events and own connection metadata. Packet content needs configured scope, exclusions, privileges and retention; do not assume whole-LAN visibility.
+Use the existing host. Determine capacity, free space and filesystem privately before configuring quotas. Do not publish deployment inventory. More disk does not justify indefinite packet/transcript retention. Learn first from interactions and verified outcomes, then host events and own connection metadata. Packet content needs configured scope, exclusions, privileges and retention; do not assume whole-LAN visibility.
 
 ## Build and offline checks
 

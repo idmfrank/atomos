@@ -12,6 +12,11 @@ Seventeen new tests passed locally, including a parent that actually kills a chi
 
 Documentation review includes README, roadmap, architecture, contract, security, resources, operations and engineering instructions. AMG, reasoning and auth APIs are unchanged; no private graph, auth vault or inference accounting access is added. Next: bounded worker/service loop and thin authenticated LAN adapter with synthetic actions; real executor and permission boundary require their own slice.
 
+## Publication privacy
+
+Deployment inventory, installed-version fingerprints and private environment measurements are excluded from public documentation and PR text. This documentation/checker change removes current public references, adds a publication rule and checks common accidental disclosures before CI proceeds. It does not erase earlier Git/PR revisions or external copies. No history rewrite, deployment or runtime change. Current-tree link/fence checks, publication-checker self-tests and source scan, and whitespace passed. The private audit found one older PR description needing sanitization, which was updated; issue/review metadata are being checked separately. No private inventory is included in the checker itself. This privacy-only PR has its own CI pending.
+
+
 ## Product and implementation
 
 One owner, continuous Linux service, LAN browser interaction, broad local agency and graph-based learning. Optional external reasoning supplements local capability with zero incremental inference spending. External effects require approval or standing policy. [Roadmap](docs/agent-roadmap.md).
@@ -22,7 +27,7 @@ Cleanup removes voice/audio components and public interfaces, obsolete one-shot 
 
 ## Current deployment
 
-Installed local/mock CLI release: e7e8fc9839090ac4cee4e6dc3140a6002124d655. Cleanup is not deployed; no host packages/configuration, credentials, private facts, capture settings or privileges changed. [Operations](docs/linux-cli-deployment.md).
+Deployment versions and inventory are maintained privately. Source changes do not authorize deployment, host configuration, credential access, capture or privilege changes. [Operations](docs/linux-cli-deployment.md).
 
 ## Validation
 
@@ -33,6 +38,6 @@ CI adds task durability measurement and a separate 1.77 task all-target check; c
 
 ## Constraints and next work
 
-Recorded hardware: i7-6700, 16 GB RAM; owner reports 2 TB storage. Verify free/usable capacity, filesystem and headroom before quotas/model selection. No new model-quality, token/power-saving or isolation claim is established.
+Deployment inventory is private. Verify free/usable capacity, filesystem and headroom privately before quotas/model selection. No new model-quality, token/power-saving or isolation claim is established.
 
 Next: implement the bounded task worker/service loop and LAN adapter; then verified local execution/external boundary, graph learning/retention, measured local reasoning and optional external integration. [Architecture](docs/architecture.md), [memory](docs/amg-architecture.md), [inference](docs/inference-architecture.md), [security](docs/threat-model.md), [resources](docs/resource-budget.md).
