@@ -10,7 +10,7 @@ Existing tmux can retain a CLI across SSH disconnects. Ctrl-b then d detaches; `
 
 ## Development and release
 
-Prepared Linux needs Rust/Cargo, compiler, pkg-config, SQLite development libraries, Python, Node and measurement tools. No speech engines, desktop stack or extra resident service. Provision dependencies explicitly, then run offline regressions and scale/recovery on the reviewed commit. Node auth tests use synthetic fixtures, not accounts or a decoder executable.
+Prepared Linux needs current Rust/Cargo (task library minimum 1.77), compiler, pkg-config, SQLite development libraries, Python, Node and measurement tools. No speech engines, desktop stack or extra resident service. Provision dependencies explicitly, then run offline regressions and scale/recovery on the reviewed commit. Node auth tests use synthetic fixtures, not accounts or a decoder executable.
 
 Keep source separate from installation. Fetch the reviewed commit, build a versioned release, verify hashes and smoke-test synthetic data before switching the current symlink. Retain a recoverable deployment and SSH access. Merge/deployment are separately owner-authorized. Do not copy decrypted credentials or replace issued identity to bypass accounting.
 

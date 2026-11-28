@@ -9,11 +9,12 @@ AtomOS will learn from owner interactions, verified task results and scoped syst
 ## Current implementation
 
 - Local/mock text CLI and bounded sessions; the CLI remains a maintenance interface.
+- [Durable synthetic task library](docs/task-runtime.md): task identities, bounded queue, intent/effect/verification records, cancellation and explicit restart reconciliation. No worker/service or real tools.
 - SQLite/FTS5 memory graph with owner scope, typed facts/relationships, source IDs, correction, deletion, scoped retrieval, integrity checks and logical recovery.
 - Offline inference broker, strict/extended response decoding, durable request-bound admission, usage settlement and conservative handling of unknown usage.
 - Explicit [owner-run authentication utility](docs/owner-auth.md) with encrypted credentials and model discovery. No production inference connection.
 
-The persistent task service, LAN web interface, autonomous executor, learning pipeline, packet observation and local model are not yet implemented. Mock responses are not evidence of intelligence. Source cleanup removes voice runtime/adapters and obsolete one-shot inference tools; voice communication is outside the project. Existing data formats remain readable without rewriting owner stores.
+The task library is not connected to the CLI. The persistent task service, LAN web interface, autonomous executor, learning pipeline, packet observation and local model are not yet implemented. Mock responses are not evidence of intelligence. Source cleanup removes voice runtime/adapters and obsolete one-shot inference tools; voice communication is outside the project. Existing data formats remain readable without rewriting owner stores.
 
 ## Product contract
 
@@ -29,7 +30,7 @@ Use the existing host. The owner reports 2 TB storage; verify capacity, free spa
 
 ## Build and offline checks
 
-On prepared Linux with Rust, SQLite development libraries, pkg-config, Python and Node:
+On prepared Linux with current Rust (new task library minimum 1.77), SQLite development libraries, pkg-config, Python and Node:
 
 ```bash
 cargo fetch --locked
@@ -54,10 +55,10 @@ Use `/help`, `/status`, `/clear`, `/quit`. Default is local/mock. Explicit memor
 
 The [MVP contract](docs/mvp-contract.md) defines supported journeys, local/external authority, durable tasks, retention, initial work bounds and acceptance gates A01-A13. It is a specification; these agent capabilities and acceptance tests are not implemented. The first MVP must work locally without a provider connection.
 
-Follow the [roadmap](docs/agent-roadmap.md): cleanup, durable tasks/service contract, LAN browser, verified local execution, continuous graph learning, measured local reasoning, optional external augmentation and sustained acceptance.
+Follow the [roadmap](docs/agent-roadmap.md): cleanup, durable task foundation and service loop, LAN browser, verified local execution, continuous graph learning, measured local reasoning, optional external augmentation and sustained acceptance.
 
 Voice, custom kernels, public hosting, multi-user operation, unbounded surveillance and automatic model training are outside scope. Repository history holds prior implementations/evidence; active documentation describes the current project only.
 
 ## Current validation
 
-Current main `ed73c6b` passed [post-merge offline CI](https://github.com/idmfrank/atomos/actions/runs/46100497944): 174 distinct tests, 18,000 decoder samples, core Rust 1.75 and accounting/session benchmarks. [Full 1K/10K/100K graph scale/recovery](https://github.com/idmfrank/atomos/actions/runs/46100262290) passed with no parity/recovery errors or remote calls. [Exact provenance and scope](PROJECT_STATE.md#validation). This evidence update changes documentation only; planned service/model/learning capabilities remain unqualified.
+The durable-task candidate passed local retained checks plus 17 new task tests: 191 distinct tests in total, 18,000 decoder samples, Rust 1.77 tasks and Rust 1.75 core. Synthetic task measurements passed on WSL ext4; these do not qualify a real worker, device performance or natural-language agency. Candidate CI and full graph scale/recovery are pending. [Exact scope and current evidence](PROJECT_STATE.md#validation).
