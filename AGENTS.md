@@ -6,9 +6,13 @@ Read PROJECT_STATE.md, [the MVP contract](docs/mvp-contract.md) and [the roadmap
 
 Build an always-running local agent on Linux, with LAN-only web interaction, broad local agency, graph learning and optional external reasoning. The CLI is maintenance. Voice, custom OS, embedded ports, public hosting, multi-user service and automatic model training are outside scope. Remove obsolete code/docs rather than retaining branch archives; use Git history when needed.
 
-The installed runtime is local/mock. Do not claim unimplemented service, web, tools, learning, capture, local model or provider capabilities. Preserve owner data and the minimum schema/migration compatibility necessary to open existing stores; compatibility is not permission to retain removed public interfaces.
+Current code has local/mock text and a synthetic task process; deployment inventory remains private. Do not claim unimplemented service, web, tools, learning, capture, local model or provider capabilities. Preserve owner data and the minimum schema/migration compatibility necessary to open existing stores; compatibility is not permission to retain removed public interfaces.
 
 Routine authorized local actions should not repeatedly prompt. External effects require approval or a standing policy, including subprocess/remote-mount/admin effects. Protect SSH and recovery. Broad local authority does not authorize credential export, private disclosure, capture or real inference outside their concrete policy. Do not unlock owner vaults or initiate live requests without explicit owner action for the reviewed procedure. Never reset account identity or unknown usage. Human approval is required before merging runtime changes.
+
+## Development location
+
+Use the approved remote development checkout or hosted CI for builds, tests and Git work. Do not run Cargo builds/tests on the desktop control client or WSL unless the owner explicitly requests it. Keep SSH profiles, addresses, paths, capacity limits and credentials private and outside the repository. Use the connected GitHub account for publication when remote push authentication is unavailable; do not copy credentials to obtain it. Development checkout and release installation must remain separate.
 
 ## Implementation and checks
 

@@ -29,6 +29,8 @@ jobs:
         run: bash scripts/test.sh
       - name: Durable synthetic task measurement
         run: timeout --kill-after=5s 90s bash scripts/benchmark-tasks.sh
+      - name: Bounded worker and service lifecycle
+        run: timeout --kill-after=5s 120s bash scripts/test-task-service.sh
       - name: Responses replay tests and parser benchmark
         run: timeout --kill-after=5s 120s bash scripts/test-responses.sh
       - name: Offline authentication protocol and storage tests
