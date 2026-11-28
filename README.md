@@ -55,3 +55,7 @@ Use `/help`, `/status`, `/clear`, `/quit`. Default is local/mock. Explicit memor
 Follow the [roadmap](docs/agent-roadmap.md): cleanup, durable tasks/service contract, LAN browser, verified local execution, continuous graph learning, measured local reasoning, optional external augmentation and sustained acceptance.
 
 Voice, custom kernels, public hosting, multi-user operation, unbounded surveillance and automatic model training are outside scope. Repository history holds prior implementations/evidence; active documentation describes the current project only.
+
+## Current validation
+
+Current main `ed73c6b` passed [post-merge offline CI](https://github.com/idmfrank/atomos/actions/runs/46100497944): 174 distinct tests, 18,000 decoder samples, core Rust 1.75 and accounting/session benchmarks. [Full 1K/10K/100K graph scale/recovery](https://github.com/idmfrank/atomos/actions/runs/46100262290) passed with no parity/recovery errors or remote calls. [Exact provenance and scope](PROJECT_STATE.md#validation). This evidence update changes documentation only; planned service/model/learning capabilities remain unqualified.
