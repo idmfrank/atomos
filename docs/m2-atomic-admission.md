@@ -147,6 +147,8 @@ Initial default-temp measurements were on tmpfs and are RAM-backed observations 
 
 ## M2.5b candidate, verified offline
 
+PR #36 is merged at `e3ebf241b64cdf5e0840f944b2c311b6f78a2427`. [Post-merge CI 46080072830](https://github.com/idmfrank/atomos/actions/runs/46080072830) passed all 193 distinct tests (139 Rust / 11 Python / 43 Node), Rust 1.75 core all-targets, 18,000 decoder samples and both admission/outcome benchmarks. Its Git tree exactly matches final PR head `2b98805ce335286cffbd802c42b6cbc4c602cdd2`, which passed [full 1K/10K/100K scale/recovery 46079729987](https://github.com/idmfrank/atomos/actions/runs/46079729987). The full-scale provenance remains that branch head; no new post-merge full-scale run is claimed.
+
 The new explicit run_sse_extended method preserves the strict method byte-for-byte and reuses existing validation/persistence/accounting primitives. Final outcomes distinguish local/completed/refused/failed, with conservative known/unknown usage and durable suspension. Independent integration tests and unit-only real OS failure injection passed along with full regression, Rust 1.75 core targets, frozen-reference benchmarks and 1K/10K/100K recovery. [Exact evidence](m2-text-outcomes.md#verified-candidate-evidence). No v1 record, header, digest, decoder, transport or CLI behavior change.
 
 ## M2.5b implemented contract
@@ -157,4 +159,4 @@ The [text-outcome contract](m2-text-outcomes.md) specifies an explicit extended 
 
 Trust the local directory, process owner, filesystem durability and injected fixture time. No same-UID tamper protection, MAC/authenticated evidence, rollback resistance, root protection, secure credential boundary, trusted time, rolling budgets, real eligibility attestation, provider generation ceiling or authoritative real usage reconciliation. Numeric model IDs are synthetic. Unkeyed identity is not a disclosure mechanism. No production transport, credentials, vault changes, live inference or private AMG disclosure. Existing live markers must never be reset.
 
-M2.5b's offline integration is implemented and verified on PR #36, awaiting human review, retaining strict reference parity and privacy/spend gates. Next define the CLI command/session slice. Transport and credential work require a later explicit scope and security review. Human review/approval is required before merge; this slice must not be merged by the agent.
+M2.5b's offline integration is implemented and verified on PR #36, merged with successful post-merge CI, retaining strict reference parity and privacy/spend gates. Next implement the [specified CLI session slice](cli-session-contract.md). Transport and credential work require a later explicit scope and security review. Human review/approval is required before merge; this slice must not be merged by the agent.

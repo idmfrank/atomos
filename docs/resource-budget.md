@@ -1,6 +1,6 @@
 # Resource budget and conversational benchmarks
 
-Status: CLI MVP measurement priorities and historical targets; PR #32 post-merge baseline is verified below and in [PROJECT_STATE](../PROJECT_STATE.md). M2.5a isolated admission measurements are in [atomic admission](m2-atomic-admission.md). Physical voice, whole-device power and reference-device active-AMG measurements remain pending; CI scale benchmarks passed.
+Status: CLI MVP measurement priorities and historical targets; current merged M2.5b evidence and historical PR #32 baseline are recorded below and in [PROJECT_STATE](../PROJECT_STATE.md). M2.5a isolated admission measurements are in [atomic admission](m2-atomic-admission.md). Physical voice and whole-device power remain pending; direct Linux-host active-AMG and hosted scale results are recorded separately below.
 
 ## CLI MVP measurements and current baseline
 
@@ -14,7 +14,13 @@ Hosted synthetic timings are not controlled cross-run comparisons or whole-devic
 
 PR #33's documentation-only CLI roadmap is now merged at `c563599f2e2c8b5abb7e03c75bb85e67e831e75d`; [post-merge CI 46029012445](https://github.com/idmfrank/atomos/actions/runs/46029012445) passed with unchanged runtime. Its CI admission/decoder/text/1K smoke checks do not replace the separately labeled PR #32 full-scale measurements above.
 
+## Proposed CLI session measurements
+
+The [session contract](cli-session-contract.md) specifies a 1,024-byte input limit, at most four whole delivered pairs/16 KiB retained UTF-8 payload, 4,096-byte inference output and existing 4,096-byte local context packet with an 8,192-byte final local response cap. These are proposed payload bounds, not measured allocation/RSS or implemented behavior. Measure container overhead, default versus replay-enabled binary size, direct replay versus session-driver latency and terminal delivery separately. Retain all existing benchmark/durability assertions and run full regression/scale for the future runtime PR. No new session measurements are claimed.
+
 ## M2.5b offline candidate evidence
+
+PR #36 is merged at `e3ebf241b64cdf5e0840f944b2c311b6f78a2427`. [Post-merge CI 46080072830](https://github.com/idmfrank/atomos/actions/runs/46080072830) passed all 193 distinct tests (139 Rust / 11 Python / 43 Node), Rust 1.75 core all-targets, 18,000 decoder samples and both admission/outcome benchmarks. Its Git tree exactly matches final PR head `2b98805ce335286cffbd802c42b6cbc4c602cdd2`, which passed [full 1K/10K/100K scale/recovery 46079729987](https://github.com/idmfrank/atomos/actions/runs/46079729987). The full-scale provenance remains that branch head; no new post-merge full-scale run is claimed.
 
 Development head `2d66c2e5ce8b9ca80c85251b6d70682b93e21f09` passed [PR CI 46077487399](https://github.com/idmfrank/atomos/actions/runs/46077487399) and [full 1K/10K/100K scale/recovery 46077563729](https://github.com/idmfrank/atomos/actions/runs/46077563729). CI tested synthetic merge `9e13874702dd190fc622ba926c07835ba1048a6a`; full scale tested the branch head. All 193 distinct tests passed: 139 Rust, 11 Python and 43 Node (173 preserved + 20 new). Repeated features/compiler runs and the ignored subprocess-only crash fixture are not additional tests. The parent crash test actually launches and terminates that fixture. Rust 1.75 candidate core all-target tests and 18,000 decoder samples passed. Host runtime regression/full scale passed at `b6152f031aebabd3ca6d9f5c8f0652a09abb2283`; its source plus benchmark additions passed the SSD-backed frozen-reference comparison at `2d66c2e`. No live calls.
 
