@@ -62,6 +62,13 @@ impl Session {
     pub fn history_bytes(&self) -> usize {
         self.bytes
     }
+    /// Measured Rust storage capacity, excluding allocator bookkeeping and
+    /// transient input/output buffers. Numeric only; exposes no retained text.
+    pub fn storage_capacity_bytes(&self) -> usize {
+        std::mem::size_of::<Self>()
+            + self.pairs.capacity() * std::mem::size_of::<(String, String)>()
+            + self.pairs.iter().map(|(q,a)|q.capacity()+a.capacity()).sum::<usize>()
+    }
     pub fn local_calls(&self) -> u64 {
         self.local
     }
@@ -257,6 +264,7 @@ mod tests {
         }
         assert_eq!(s.history_pairs(), 3);
         assert_eq!(s.history_bytes(), 15360);
+        assert!(s.storage_capacity_bytes() >= 15360);
         s.local("help", "safe local fact".into(), |_| Ok(()))
             .unwrap();
         assert_eq!(s.history_bytes(), 15360);

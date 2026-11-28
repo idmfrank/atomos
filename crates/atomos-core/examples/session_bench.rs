@@ -305,6 +305,7 @@ fn main() {
         assert_eq!(b.suspended(), isolated);
     }
     println!("mode={mode} kind={kind} samples={samples} completed={} refused={} failed={} cancelled={} unknown={} unexpected_errors=0 mismatches=0 real_calls=0 total_fixture_charge={total} background_fixture_charge={background} retained_pairs={} retained_bytes={} journal_bytes={} bytes_per_request={:.3}",if kind=="text"{samples}else{0},if kind=="refusal"{samples}else{0},if kind.starts_with("failed"){samples}else{0},if kind=="cancelled"{samples}else{0},if isolated{samples}else{0},s.history_pairs(),s.history_bytes(),bytes(root)-initial,(bytes(root)-initial)as f64/samples as f64);
+    println!("session_inline_bytes={} history_payload_bytes={} session_rust_storage_capacity_bytes={} excludes_allocator_bookkeeping=1",std::mem::size_of::<Session>(),s.history_bytes(),s.storage_capacity_bytes());
     stats("admission_at_first_read", admission);
     stats("full_replay_and_session_work", complete);
     stats("restart_replay", restart);

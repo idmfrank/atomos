@@ -1,4 +1,4 @@
-# AtomOS — current engineering state
+# AtomOS â€” current engineering state
 
 Updated 2026-11-27. Verified main is `1b07356a6ceaaaa724e3ce3329500d206cb88cf9` (merged PR #37); [post-merge CI 46086557740](https://github.com/idmfrank/atomos/actions/runs/46086557740) passed. The CLI session implementation is now a candidate on a review branch. Compilation, new session/process tests and a ten-sample benchmark smoke passed in WSL; full regression, SSD measurements, Rust 1.75 and hosted CI remain pending. The installed local/mock release stays pinned to `5869e205167a3dde3a6a77392af294101e6a46c3`; no provider or deployment change.
 
@@ -22,16 +22,16 @@ Design details: [README](README.md), [resource budget](docs/resource-budget.md),
 
 | Milestone | Evidence/status |
 | --- | --- |
-| M1.1–M1.3 | Local text and voice runtime foundations; synthetic tests passed, hardware voice unqualified. |
-| M1.4a–f | AMG foundation, scoped recall, context ranking, grants, recovery, indexing and optimization; synthetic 100K scale passed. |
+| M1.1â€“M1.3 | Local text and voice runtime foundations; synthetic tests passed, hardware voice unqualified. |
+| M1.4aâ€“f | AMG foundation, scoped recall, context ranking, grants, recovery, indexing and optimization; synthetic 100K scale passed. |
 | M2.1 | Offline broker and durable usage reservation/settlement. |
 | M2.2 | Offline bounded Responses SSE replay and strict lifecycle validation. |
 | M2.3a | Synthetic account-bound authorization and durable suspension. |
-| M2.3b–c | Official OAuth utility, encrypted vault, strict JSON and catalog support. |
+| M2.3bâ€“c | Official OAuth utility, encrypted vault, strict JSON and catalog support. |
 | M2.3d | Owner ran actual WSL sign-in, reopened vault, 18/18 local tests, retrieved 10 account-specific model identifiers. Owner screenshot showed enabled 50% personal app limit. Live refresh subsequently verified; revocation not tested. |
 | M2.4 | PR #19 merged, PR CI/post-merge CI/full scale all green. One-shot qualification harness ready for owner-run WSL build/preflight. Owner WSL build at 30df9b6 and 26/26 Node tests passed. First two live attempts rejected at headers; third delivered 8,465 bytes and eight validated SSE events, then unsupported event. All three reservations consumed with unknown usage. Owner refresh verified; no successful terminal response validated. |
 
-| M2.4b–c | PR #27 and #28 merged and verified: separate offline auxiliary and opaque reasoning/refusal profiles; strict decoder/broker and live harness unchanged. 18,000 synthetic replays passed. Actual model event compatibility still unqualified. |
+| M2.4bâ€“c | PR #27 and #28 merged and verified: separate offline auxiliary and opaque reasoning/refusal profiles; strict decoder/broker and live harness unchanged. 18,000 synthetic replays passed. Actual model event compatibility still unqualified. |
 | M2.5a | PR #30 atomic synthetic admission and PR #31 fresh time/task fix merged; PR #32 documentation reconciliation merged. 173 distinct tests and current-main CI/full scale passed. No production provider wiring. |
 | M2.5b | PR #36 merged; 193 distinct tests, Rust 1.75 core targets, 18,000 decoder samples and frozen-reference benchmarks passed. Final PR tree passed full scale/recovery and identical merged tree passed main CI; exact provenance below. |
 | CLI scope revision | Owner approved a CLI over SSH as the first MVP on 2026-11-27. Documentation only; implementation acceptance and future interface choices remain pending. |
@@ -161,7 +161,7 @@ All three datasets: 300/300 fixture facts, 100/100 complete packets, precision/r
 
 ### Historical PR #28 measurements
 
-2026-11-26 local date, PR #28 [PR CI 45918815563](https://github.com/idmfrank/atomos/actions/runs/45918815563), [post-merge CI 45919051196](https://github.com/idmfrank/atomos/actions/runs/45919051196), [scale 45919185353](https://github.com/idmfrank/atomos/actions/runs/45919185353) passed. 96 Rust + 11 Python + 43 Node = 150 distinct tests; owner WSL last verified 43/43 at 49c6cf2. Default CLI 466,512 bytes. 18,000 decoder replays zero errors, combined process RSS 2,216 KiB. Decoder p95 at 1/64/4096-byte reads (µs): strict 23.4/16.5/16.3, same-wire compat 23.0/16.8/16.1, auxiliary 26.9/19.4/18.7, same-wire extended 22.6/16.6/19.8, opaque reasoning 29.1/20.9/20.1, refusal 22.3/15.6/15.2.
+2026-11-26 local date, PR #28 [PR CI 45918815563](https://github.com/idmfrank/atomos/actions/runs/45918815563), [post-merge CI 45919051196](https://github.com/idmfrank/atomos/actions/runs/45919051196), [scale 45919185353](https://github.com/idmfrank/atomos/actions/runs/45919185353) passed. 96 Rust + 11 Python + 43 Node = 150 distinct tests; owner WSL last verified 43/43 at 49c6cf2. Default CLI 466,512 bytes. 18,000 decoder replays zero errors, combined process RSS 2,216 KiB. Decoder p95 at 1/64/4096-byte reads (Âµs): strict 23.4/16.5/16.3, same-wire compat 23.0/16.8/16.1, auxiliary 26.9/19.4/18.7, same-wire extended 22.6/16.6/19.8, opaque reasoning 29.1/20.9/20.1, refusal 22.3/15.6/15.2.
 
 | Full-scale metric (p95 unless noted) | 1K | 10K | 100K |
 | --- | ---: | ---: | ---: |
@@ -206,7 +206,7 @@ Owner spending settings observed enabled 50% app limit, purchased credits access
 
 Official [SIWC inference guide](https://developers.openai.com/siwc/token-sharing-open-source/models-and-inference) and [Responses streaming reference](https://developers.openai.com/api/reference/resources/responses/streaming-events) reviewed 2026-11-26. Official examples handle text delta, failure, completion and do not require every other event to be a text lifecycle event; success requires completed terminal. API reference has additional documented events including annotations. Exact historical event remains unknown.
 
-M2.4b–c offline [protocol compatibility](docs/m2-protocol-compatibility.md) validated queued/null-annotation events, bounded opaque reasoning item and typed refusal, with strict reference and broker unchanged. Exact live event, SDK differential execution and model qualification remain open. M2.5a implements isolated atomic account-bound admission with the existing strict decoder only; extended decoder integration is M2.5b. Secure credential handoff/transport remain future separately scoped work. No raw reasoning, tools, fallback or fourth attempt. Physical voice qualification is paused; CLI resource measurements use the existing test host.
+M2.4bâ€“c offline [protocol compatibility](docs/m2-protocol-compatibility.md) validated queued/null-annotation events, bounded opaque reasoning item and typed refusal, with strict reference and broker unchanged. Exact live event, SDK differential execution and model qualification remain open. M2.5a implements isolated atomic account-bound admission with the existing strict decoder only; extended decoder integration is M2.5b. Secure credential handoff/transport remain future separately scoped work. No raw reasoning, tools, fallback or fourth attempt. Physical voice qualification is paused; CLI resource measurements use the existing test host.
 
 ## Outstanding gates and next direction
 
@@ -220,6 +220,8 @@ M2.4b–c offline [protocol compatibility](docs/m2-protocol-compatibility.md) va
 Every new Codex session: read AGENTS.md and this file, inspect current commit and open PRs, verify evidence and report discrepancies before changing behavior. Follow the [per-commit documentation rule](AGENTS.md#documentation-is-part-of-every-commit): review and update PROJECT_STATE in every authored commit; update README and all affected technical docs in the same change, then reconcile verified evidence after every merge/test run. Preserve historical milestone evidence and explicitly distinguish current instructions from superseded ones. Record exact commit and run URLs, test counts, measured results, remaining gates, next action and evidence provenance. Distinguish owner-reported physical/live results from synthetic CI. Never mark unrun tests as passed or an unqualified feature as complete. Do not include owner identity, secrets, network addresses, private content or raw provider responses in this public repository. Use a reviewed branch/PR for executable changes; do not merge on the owner's behalf.
 
 ## CLI session implementation candidate
+
+Initial runtime 84ac69b passed all ten host stages on SSD, all 215 distinct tests (152 Rust / 20 Python / 43 Node), 18,000 decoder samples and full 1K/10K/100K recovery. [PR CI 46089508572](https://github.com/idmfrank/atomos/actions/runs/46089508572) and [full hosted scale 46089681103](https://github.com/idmfrank/atomos/actions/runs/46089681103) passed, including Rust 1.75 core all-targets. Follow-up adds numeric Rust storage-capacity measurement (inline/session container plus retained String capacities, excluding allocator bookkeeping/temporaries); logical payload is reported separately. This follow-up's CI and refreshed measurements are pending. Installed release remains pinned; no provider, merge or deployment.
 
 Shared Rust Session owns bounded input, checked counters, turn ownership and four-pair/16 KiB volatile history. The opt-in CLI adapter validates all options before data access, provides local help/status/clear/quit, delegates read-only memory, and exposes finite synthetic replay behind session-replay. AtomicReplay adds a read-only status snapshot; strict and extended replay method bodies and v1 records remain unchanged. New tests cover independent lifecycle expectations, EOF/cancellation, post-settlement output failure, ambiguous sync status, actual Ctrl-C and exact historical CLI output. New direct/session and pipe benchmarks assert accounting/journal parity; full measurements are pending. No dependency, lockfile, parser profile, credentials, live attempt, default legacy protocol or installed release change.
 
