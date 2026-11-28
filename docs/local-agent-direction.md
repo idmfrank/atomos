@@ -30,6 +30,8 @@ External work requires owner approval of the concrete destination, effect, data 
 
 Enforcement needs an explicit design and adversarial tests: an unrestricted root shell can bypass an application-only egress check. Do not claim a hard external boundary while arbitrary commands or administrative tools can bypass it. Separate planning, execution privileges and network authority, document residual trust in the owner/host administrator, and fail closed where an action's boundary cannot be established. Exact isolation and privilege mechanisms remain to be selected and validated, not implemented here.
 
+The [MVP contract](mvp-contract.md) supplies the concrete first-release scope and acceptance gates. Its default retention/work limits refine these architectural requirements without enabling any capability.
+
 ## Delivery sequence
 
 The authoritative stages and continuous-learning/storage acceptance criteria are in [the agent roadmap](agent-roadmap.md). The following interface/execution details support those stages.

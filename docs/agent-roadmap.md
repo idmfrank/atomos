@@ -4,6 +4,10 @@ Owner-approved direction, 2026-11-27. Build an always-running personal agent on 
 
 [Current state](../PROJECT_STATE.md) | [Design](local-agent-direction.md) | [Architecture](architecture.md) | [Security](threat-model.md) | [Resources](resource-budget.md)
 
+## MVP definition
+
+[The MVP contract](mvp-contract.md) is the implementation boundary and acceptance checklist A01-A13. Contract definition is complete as a reviewable document; runtime/service and its acceptance suite remain pending. Local agency and learning must work without external inference. Packet payload capture is outside the first acceptance release; own-host metadata follows configured observation controls.
+
 ## Delivery stages
 
 | Stage | Deliverable | Evidence required to exit |
@@ -43,4 +47,4 @@ Active docs contain current scope only. Git history holds prior code/evidence. E
 
 ## Immediate next step
 
-Finish and validate this cleanup, then define the persistent task/service and LAN web contract with offline acceptance fixtures. Do not resume the abandoned provider-only CLI implementation as the primary product path.
+Implement the durable task/action runtime from the MVP contract, beginning with idempotency, bounded queues, cancellation and crash reconciliation using synthetic actions. Then add LAN web access and verified local execution. The contract artifact is defined; none of the new execution gates is claimed to pass.

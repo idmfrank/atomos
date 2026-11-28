@@ -4,7 +4,7 @@ An always-running local agent with a LAN browser interface, persistent graph mem
 
 AtomOS will learn from owner interactions, verified task results and scoped system/network observations. Linux supplies the operating system. Shared Rust interfaces own tasks, memory, permissions, execution and accounting; model reasoning is an optional resource. External effects require approval or an approved standing policy. Target zero incremental inference spending with no paid fallback.
 
-[Roadmap](docs/agent-roadmap.md) | [Architecture](docs/architecture.md) | [Current state](PROJECT_STATE.md) | [Memory](docs/amg-architecture.md) | [Security](docs/threat-model.md)
+[MVP contract](docs/mvp-contract.md) | [Roadmap](docs/agent-roadmap.md) | [Architecture](docs/architecture.md) | [Current state](PROJECT_STATE.md) | [Memory](docs/amg-architecture.md) | [Security](docs/threat-model.md)
 
 ## Current implementation
 
@@ -51,6 +51,8 @@ cargo run --locked --offline -p atomos-cli --bin atomos -- --session
 Use `/help`, `/status`, `/clear`, `/quit`. Default is local/mock. Explicit memory changes use atomos-memory; conversation memory is read-only. [Text contract](docs/cli-session-contract.md).
 
 ## Delivery
+
+The [MVP contract](docs/mvp-contract.md) defines supported journeys, local/external authority, durable tasks, retention, initial work bounds and acceptance gates A01-A13. It is a specification; these agent capabilities and acceptance tests are not implemented. The first MVP must work locally without a provider connection.
 
 Follow the [roadmap](docs/agent-roadmap.md): cleanup, durable tasks/service contract, LAN browser, verified local execution, continuous graph learning, measured local reasoning, optional external augmentation and sustained acceptance.
 

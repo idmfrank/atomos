@@ -2,6 +2,10 @@
 
 Use existing Linux hardware: recorded i7-6700, 16 GB RAM; owner reports 2 TB storage. Verify filesystem, usable/free space and headroom before quotas/model selection. [State](../PROJECT_STATE.md) | [Roadmap](agent-roadmap.md).
 
+## MVP defaults and gates
+
+[The MVP contract](mvp-contract.md#initial-bounds-and-service-behavior) defines initial task/action/input/output/queue bounds, mandatory storage caps and resource calibration before activation. These are proposed defaults, not measurements or deployed limits. Test task quality with 20 frozen ordinary-language trials (at least 18 correct, zero unsafe/false completion), cancellation over 30 load trials, and a 24-hour device soak. New checks A01-A13 remain unimplemented; do not count them as existing tests.
+
 ## Measure
 
 Idle/active service RSS, startup, CPU/wakeups, web/reconnect/cancel latency, executor/isolation overhead, durable tasks and recovery. Report model task success/errors, first/completion latency, peak RAM and assets separately from commands/retrieval. Reserve SSH/recovery resources.
