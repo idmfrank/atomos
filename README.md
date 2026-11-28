@@ -61,4 +61,4 @@ Voice, custom kernels, public hosting, multi-user operation, unbounded surveilla
 
 ## Current validation
 
-The durable-task candidate passed local retained checks plus 17 new task tests: 191 distinct tests in total, 18,000 decoder samples, Rust 1.77 tasks and Rust 1.75 core. Synthetic task measurements passed on WSL ext4; these do not qualify a real worker, device performance or natural-language agency. Candidate CI and full graph scale/recovery are pending. [Exact scope and current evidence](PROJECT_STATE.md#validation).
+The task runtime passed [hosted CI](https://github.com/idmfrank/atomos/actions/runs/46104110281): 191 distinct tests, 18,000 decoder samples, Rust 1.77 tasks, core Rust 1.75 and accounting/session/task measurements. [Full 1K/10K/100K graph scale/recovery](https://github.com/idmfrank/atomos/actions/runs/46104029156) passed with zero parity/recovery errors or remote calls. Publication-only follow-up checks are pending. These fixtures do not qualify real worker behavior, local intelligence or a deployment. [Current scope/provenance](PROJECT_STATE.md#validation).
