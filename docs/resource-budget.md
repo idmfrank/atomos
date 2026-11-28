@@ -1,6 +1,6 @@
 # Resource requirements and validation
 
-Use existing Linux hardware: recorded i7-6700, 16 GB RAM; owner reports 2 TB storage. Verify filesystem, usable/free space and headroom before quotas/model selection. [State](../PROJECT_STATE.md) | [Roadmap](agent-roadmap.md).
+Use the target Linux environment. Determine filesystem, usable/free space and operational headroom privately before quotas/model selection; public docs must not identify deployment hardware or capacity. [State](../PROJECT_STATE.md) | [Roadmap](agent-roadmap.md).
 
 ## MVP defaults and gates
 
@@ -34,6 +34,6 @@ Provision locked dependencies explicitly. Durability benchmarks need private TMP
 
 CI runs regressions/decoder/auth/admission/session/1K checks; the manual workflow runs full 1K/10K/100K graph scale/recovery. Record current candidate results in PROJECT_STATE with exact source/run links. [Task measurements](task-runtime.md#validation-and-measurement) cover synthetic persistence and library cancellation acknowledgement only. New service/model/executor/learning checks await implementation. No power, token-saving or local-model quality claim is established.
 
-## Current task candidate measurement
+## Current hosted task measurement
 
-Local uncommitted candidate on WSL ext4: 200 submissions/intents, 100 effects/verifications and 100 cancellations; cancellation acknowledgement p50/p95/p99 7.836028/10.005317/19.988863 ms, open/recovery one sample 10.646181 ms, process RSS 4,560 KiB, apparent store 86,528 bytes, release example 432,104 bytes. All independent final-state assertions passed. This is a synthetic baseline, not a comparison with an equivalent previous engine or a Buzz/real-worker latency claim. Current published-source/CI provenance will be reconciled in PROJECT_STATE; earlier base SHA in a dirty measurement header does not identify the tested working-tree content.
+[Hosted CI 46104110281](https://github.com/idmfrank/atomos/actions/runs/46104110281) measured the published synthetic task fixture: 200 submissions/intents, 100 effects/verifications and 100 cancellations; acknowledgement p50/p95/p99 0.804971/0.995897/2.314585 ms; one open/recovery sample 2.035816 ms; process RSS 4,416 KiB; apparent fixture store 86,528 bytes; release example 432,112 bytes. All final-state assertions passed. This is hosted-runner product validation, not deployment inventory, private-environment evidence, an equivalent-engine comparison or real-worker latency qualification. [Source/run provenance](../PROJECT_STATE.md#validation).

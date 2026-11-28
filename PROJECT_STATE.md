@@ -1,6 +1,6 @@
 # AtomOS current engineering state
 
-Updated 2026-11-27. Active work: durable synthetic task/action runtime on main base 5edefff40248c91427270ce0422bf60e9998f82a (PR #42 merged). [Post-merge CI 46101698882](https://github.com/idmfrank/atomos/actions/runs/46101698882) passed. No merge/deployment, host configuration, credentials, private data or real inference is performed by this slice.
+Updated 2026-11-27. Active work: publication privacy and hosted-CI validation evidence. The task foundation merged in PR #43 as main 425afd58d21ebcde75d4f76e24c2a73cf94f1c85; the agent did not merge it. The follow-up branch is synchronized with that merged main so PR #44 exposes only publication/evidence changes. This follow-up changes documentation and a development publication check only, not Rust/runtime/dependency sources or a deployment.
 
 ## Task foundation
 
@@ -8,9 +8,15 @@ New Rust library atomos-tasks uses the existing pinned rusqlite dependency in a 
 
 Limits: 8 KiB goals, 16 newly admitted pending tasks plus the existing active task, 32 dispatches/600,000 active ms per task, 60,000 ms fixture effect deadline, metadata pages of 64 events/32 actions, required 64 KiB to 256 MiB main-DB cap. Recovery conservatively counts interrupted downtime and never drops acknowledged records. Terminal retention/free-space/aggregate quota, caller clock authenticity, worker cancellation and service isolation remain pending. Goals are private durable application state; Debug/events omit goal/key text. Storage failure poisons the runtime; no state reset.
 
-Seventeen new tests passed locally, including a parent that actually kills a child at eight boundaries, SQLite rollback, full-database fail-closed behavior, no duplicate effects, cancellation, time/capacity limits, cursor privacy and private-store validation. Ignored child fixture is not an extra test. Local compiler check found existing rusqlite C-string syntax incompatible with Rust 1.75; new crate explicitly declares 1.77 and CI verifies that minimum separately. Core 1.75 remains unchanged. Local full retained workspace/session/decoder/auth checks passed, along with the final 17 task tests and separate Rust 1.77 task / Rust 1.75 core checks. Final WSL ext4 synthetic task measurement passed: 100 completed, 100 cancelled, counter 100, 700 events, zero errors/calls; cancellation acknowledgement p95 10.005317 ms, peak process RSS 4,560 KiB, apparent store 86,528 bytes and release example 432,104 bytes. These measured an uncommitted candidate based on the stated main base, not an executable at that base SHA. The benchmark header now reports worktree changes explicitly. Windows-mounted 9p could not satisfy private-file checks and was rejected, not counted as a durability result. Local log: task-final-validation.log outside the repository. All 15 active Markdown files and 80 local paths/anchors/fences passed, as did whitespace and unchanged-runtime/lockfile checks. Candidate CI/full-scale checks are pending at authoring. No whole-device/A07/model-quality claim.
+Seventeen new task tests passed, including actual child death at eight boundaries, rollback, exclusive lease contention, full-database failure, limits, redaction and durable failure reasons. [Hosted PR CI 46104110281](https://github.com/idmfrank/atomos/actions/runs/46104110281) passed on synthetic merge a85271e8c0dd1779d211a7642076b5b7af1757cb of runtime source f611f3dbeb37e7933eb934e932f6aa83c47bb690. It verified Rust 1.77 task all-targets and core Rust 1.75, all 191 distinct tests, 18,000 decoder samples and accounting/session/task measurements. Ignored child fixtures and repeated compiler/feature runs are not extra tests. No deployment inventory or private-environment measurements are public evidence.
 
 Documentation review includes README, roadmap, architecture, contract, security, resources, operations and engineering instructions. AMG, reasoning and auth APIs are unchanged; no private graph, auth vault or inference accounting access is added. Next: bounded worker/service loop and thin authenticated LAN adapter with synthetic actions; real executor and permission boundary require their own slice.
+
+## Publication privacy
+
+Deployment inventory, installed-version fingerprints and private environment measurements are excluded from public documentation, metadata and evidence. The shared publication baseline from PR #44 adds generic operations guidance, mandatory manual review and a heuristic source/event-metadata check; [its CI 46104641945](https://github.com/idmfrank/atomos/actions/runs/46104641945) passed. An older PR description was sanitized; the returned issue/review metadata audit contained no remaining matching content. No private inventory is embedded in the checker. Source/link/fence/whitespace checks and sanitized metadata rejection passed.
+
+Current-text removal does not erase earlier Git/PR revisions or external copies. No shared-history rewrite or deployment was performed. This subsection concerns publication controls only; the task-runtime implementation is described above. PR #44 combines the publication correction with current hosted validation evidence; its final-head CI is pending.
 
 ## Product and implementation
 
@@ -22,17 +28,19 @@ Cleanup removes voice/audio components and public interfaces, obsolete one-shot 
 
 ## Current deployment
 
-Installed local/mock CLI release: e7e8fc9839090ac4cee4e6dc3140a6002124d655. Cleanup is not deployed; no host packages/configuration, credentials, private facts, capture settings or privileges changed. [Operations](docs/linux-cli-deployment.md).
+Deployment versions and inventory are maintained privately. Source changes do not authorize deployment, host configuration, credential access, capture or privilege changes. [Operations](docs/linux-cli-deployment.md).
 
 ## Validation
 
-Current base main passed CI as linked above. Local candidate validation covers 191 distinct tests (154 Rust, 17 Python, 20 Node): the existing 174 plus 17 task tests. Repeated compiler/feature runs and both child-only crash helpers are not extra tests. The final task/failure-reason revision passed all-targets under Rust 1.77 and the ext4 benchmark; existing CLI/core/memory runtime sources remain byte-identical to base. The lockfile adds only the workspace task package and reuses the pinned SQLite dependency. No new registry package versions.
+Runtime source f611f3dbeb37e7933eb934e932f6aa83c47bb690 passed hosted CI as linked above and [full graph scale/recovery 46104029156](https://github.com/idmfrank/atomos/actions/runs/46104029156). The graph run passed 1K/10K/100K: each size returned 300/300 expected facts and 100 complete packets, with zero parity mismatches, recovery-verification errors and remote calls. This is synthetic hosted-runner evidence, not deployment or model qualification.
 
-CI adds task durability measurement and a separate 1.77 task all-target check; core 1.75 checks remain. Current-candidate PR CI and full 1K/10K/100K graph scale/recovery are pending. No new worker/service, capture, model, actual-device or full MVP gate result is claimed.
+The hosted task measurement asserted 100 completed, 100 cancelled, counter 100 and 700 events, zero errors/calls; acknowledgement p95 0.995897 ms, process RSS 4,416 KiB, apparent fixture store 86,528 bytes and example 432,112 bytes. These characterize the published fixture on hosted CI only, not a deployed system. Current follow-up changes publication policy/checks/docs only; Rust/runtime/dependency sources are unchanged. Current-tree publication, metadata-rejection (without matched-text echo), link/fence and whitespace checks passed. Follow-up CI is pending; full MVP gates, real worker and device qualification remain pending.
+
+All 15 active docs and local paths/anchors/fences passed before publication review. Existing CLI/core/memory sources remain unchanged; lockfile adds only the task workspace package with existing registry versions. No private graph, vault or inference ledger access.
 
 
 ## Constraints and next work
 
-Recorded hardware: i7-6700, 16 GB RAM; owner reports 2 TB storage. Verify free/usable capacity, filesystem and headroom before quotas/model selection. No new model-quality, token/power-saving or isolation claim is established.
+Deployment inventory is private. Verify free/usable capacity, filesystem and headroom privately before quotas/model selection. No new model-quality, token/power-saving or isolation claim is established.
 
 Next: implement the bounded task worker/service loop and LAN adapter; then verified local execution/external boundary, graph learning/retention, measured local reasoning and optional external integration. [Architecture](docs/architecture.md), [memory](docs/amg-architecture.md), [inference](docs/inference-architecture.md), [security](docs/threat-model.md), [resources](docs/resource-budget.md).

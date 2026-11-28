@@ -26,7 +26,7 @@ The task library is not connected to the CLI. The persistent task service, LAN w
 - Provenance-aware graph learning, inspect/correct/forget controls, rotating observations and deletion of derived knowledge.
 - Local rules, retrieval and useful benchmark-selected local models before external reasoning. No idle remote inference or automatic model training.
 
-Use the existing host. The owner reports 2 TB storage; verify capacity, free space and filesystem before quotas. More disk does not justify indefinite packet/transcript retention. Learn first from interactions and verified outcomes, then host events and own connection metadata. Packet content needs configured scope, exclusions, privileges and retention; do not assume whole-LAN visibility.
+Use the existing host. Determine capacity, free space and filesystem privately before configuring quotas. Do not publish deployment inventory. More disk does not justify indefinite packet/transcript retention. Learn first from interactions and verified outcomes, then host events and own connection metadata. Packet content needs configured scope, exclusions, privileges and retention; do not assume whole-LAN visibility.
 
 ## Build and offline checks
 
@@ -61,4 +61,4 @@ Voice, custom kernels, public hosting, multi-user operation, unbounded surveilla
 
 ## Current validation
 
-The durable-task candidate passed local retained checks plus 17 new task tests: 191 distinct tests in total, 18,000 decoder samples, Rust 1.77 tasks and Rust 1.75 core. Synthetic task measurements passed on WSL ext4; these do not qualify a real worker, device performance or natural-language agency. Candidate CI and full graph scale/recovery are pending. [Exact scope and current evidence](PROJECT_STATE.md#validation).
+The task runtime passed [hosted CI](https://github.com/idmfrank/atomos/actions/runs/46104110281): 191 distinct tests, 18,000 decoder samples, Rust 1.77 tasks, core Rust 1.75 and accounting/session/task measurements. [Full 1K/10K/100K graph scale/recovery](https://github.com/idmfrank/atomos/actions/runs/46104029156) passed with zero parity/recovery errors or remote calls. Publication-only follow-up checks are pending. These fixtures do not qualify real worker behavior, local intelligence or a deployment. [Current scope/provenance](PROJECT_STATE.md#validation).
