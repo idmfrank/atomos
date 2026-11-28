@@ -31,8 +31,6 @@ jobs:
         run: |
           node --version
           timeout --kill-after=5s 30s node --test scripts/auth/protocol.test.mjs
-          cargo build --release --locked --offline -p atomos-core --features responses-replay --example responses_qualify
-          timeout --kill-after=5s 30s node --test scripts/auth/live-probe.test.mjs
           node --check scripts/auth/atomos-auth.mjs
           # Validate password prompt flags without prompting for a secret.
           /usr/bin/systemd-ask-password --timeout=60 --echo=no --help >/dev/null

@@ -1,4 +1,4 @@
-//! Isolated M2.5a synthetic candidate. No transport, credentials or public permit.
+//! Atomic synthetic admission. No transport, credentials or public permit.
 //! Trusted private Linux directory only; no same-UID/rollback protection.
 use crate::{
     authorization::{Envelope, Policy},

@@ -14,7 +14,7 @@ Owner-approved direction, 2026-11-27. Build an always-running personal agent on 
 | 3. Device agency | Execute and verify local tasks, including mediated administration, with standing local authority and protected SSH/recovery | Disposable-host tests of privilege and egress enforcement, command output limits, cancellation, resource exhaustion, rollback and interrupted actions; no claim of confinement with an unrestricted bypassing root shell |
 | 4. Continuous learning and graph | Learn from owner interactions and verified task results; add host events and the device's observed network metadata; provenance-aware consolidation and retention | Synthetic evidence ingestion, duplicate/conflict handling, confidence/source separation, poisoning resistance, correction/forget including derived records, capture overload/drop handling and disk-pressure tests |
 | 5. Local intelligence | Benchmark local models and reusable procedures using actual hardware and representative tasks; integrate the useful option | Report task success, factual error, latency, peak RAM, CPU and storage; fitting a model in RAM is not a quality result; no automatic weight training |
-| 6. Optional external augmentation | Reviewed credential bridge, full request/context binding, account-bound admission, permitted disclosure, no paid fallback | Offline failure/accounting tests, then separately owner-authorized live procedure; preserve all consumed historical qualification attempts |
+| 6. Optional external augmentation | Reviewed credential bridge, full request/context binding, account-bound admission, permitted disclosure, no paid fallback | Offline failure/accounting tests, then separately owner-authorized live procedure; preserve existing account identity and outstanding accounting |
 | 7. Integrated acceptance | Always-on agent accessible on LAN, executing local tasks and improving through useful retained knowledge | Reboot/reconnect continuity, preserved SSH, verified task outcomes, deletion, storage caps, rejected unauthorized egress and accurate model/usage status; sustained soak and recovery evidence |
 
 Stages describe implementation order, not completed work. Local model evaluation can inform early design without enabling network inference or tool autonomy. All new service, browser, executor, learning and inference acceptance results remain pending.
@@ -35,11 +35,11 @@ Routine local actions do not require repeated prompts. External effects include 
 
 The owner's requested local authority is a design requirement; this documentation does not install a service, grant privileges, access credentials or initiate capture. An enforceable separation of privileged execution and external authority is required before claiming that policy is effective.
 
-## Historical baseline and code removal
+## Current source and data compatibility
 
-The installed release remains the previously verified local/mock CLI; current source cleanup is not deployed. Preserve existing AMG data, temporal revisions, provenance, retrieval, recovery, admission, decoder and auth foundations. Legacy SQLite voice-grant tables, retirement triggers and migration/integrity checks remain only to open, verify and migrate existing schema versions; the voice disclosure APIs and grant administration commands are removed. Do not drop tables or rewrite the owner's data during cleanup.
+The installed release remains the local/mock CLI; source cleanup is not deployed. Preserve existing AMG data, temporal revisions, provenance, retrieval, recovery, admission, decoder and auth foundations. Legacy SQLite voice-grant tables, retirement triggers and migration/integrity checks remain only to open, verify and migrate existing schema versions; the voice disclosure APIs and grant administration commands are removed. Do not drop tables or rewrite the owner's data during cleanup.
 
-Historical audio and CLI milestone documents describe earlier revisions, not active requirements. Git retains removed implementations. Historical test totals and binary measurements do not describe this cleanup candidate. All three historical live attempts and 3,072 retained planning units remain consumed; the old harness must not be reset or reused.
+Active docs contain current scope only. Git history holds prior code/evidence. Existing account identity, records and outstanding usage must not be reset or orphaned. Obsolete one-shot inference and ledger-writing interfaces are removed; new live transport requires a reviewed procedure.
 
 ## Immediate next step
 

@@ -1,4 +1,4 @@
-//! M2.3 synthetic account policy, not OAuth or a live authorization grant.
+//! Synthetic account policy, not OAuth or a live authorization grant.
 //! Fixed grant/window, no automatic reset, no credentials or network.
 //! Linux/private local directory; same-UID tampering is outside this prototype.
 use crate::{broker::{self,Broker,Request,Event,Answer,Failure},governor::{Limits,Priority},resolve_local};
