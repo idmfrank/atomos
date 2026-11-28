@@ -20,7 +20,7 @@ The [MVP contract](mvp-contract.md#learning-observation-and-retention) specifies
 
 Provide inspect/correct/forget, pause-learning and purge-evidence. Propagate deletion through derived summaries, graph links, indexes and caches. Define backup retention/restore so forgotten facts do not silently return. Logical deletion is not forensic SSD/backup erasure.
 
-Exclude credentials and unrelated payloads; no automatic full-transcript or all-packet archive. Verify owner-reported 2 TB capacity/free space before quotas. Reserve recovery headroom; pause ingestion under contention/disk pressure.
+Exclude credentials and unrelated payloads; no automatic full-transcript or all-packet archive. Verify deployment capacity/free space privately before quotas; keep the inventory out of public artifacts. Reserve recovery headroom; pause ingestion under contention/disk pressure.
 
 ## Compatibility and disclosure
 

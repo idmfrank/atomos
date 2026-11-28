@@ -1,10 +1,10 @@
 # Current deployment and agent operations
 
-The device runs the local/mock CLI, not the planned web agent. PR #40 source cleanup does not deploy or change host configuration. [State](../PROJECT_STATE.md) | [Roadmap](agent-roadmap.md).
+Current source includes a local/mock CLI, not a web-agent service. Deployment state is private. PR #40 source cleanup does not deploy or change host configuration. [State](../PROJECT_STATE.md) | [Roadmap](agent-roadmap.md).
 
 ## Installed layout
 
-Installed release: e7e8fc9839090ac4cee4e6dc3140a6002124d655. Binaries live in `~/.local/lib/atomos/releases/<commit>/bin`, selected by `~/.local/lib/atomos/current`, with launchers in `~/.local/bin`. Default installation has no replay/provider enabled. Reuse existing private memory; never seed fixtures into owner data or infer permission to unlock credentials.
+Use a private versioned release directory, a selected-current link and owner-local launchers. Resolve actual paths and installed versions from a private deployment manifest; do not publish that manifest or target inventory. Default builds have no replay/provider enabled. Reuse existing private memory; never seed fixtures into owner data or infer permission to unlock credentials.
 
 Existing tmux can retain a CLI across SSH disconnects. Ctrl-b then d detaches; `/quit` exits and may end the last pane. This is not durable tasks, auto-start or crash reconciliation.
 

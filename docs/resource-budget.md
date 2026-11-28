@@ -1,6 +1,6 @@
 # Resource requirements and validation
 
-Use existing Linux hardware: recorded i7-6700, 16 GB RAM; owner reports 2 TB storage. Verify filesystem, usable/free space and headroom before quotas/model selection. [State](../PROJECT_STATE.md) | [Roadmap](agent-roadmap.md).
+Use the target Linux environment. Determine filesystem, usable/free space and operational headroom privately before quotas/model selection; public docs must not identify deployment hardware or capacity. [State](../PROJECT_STATE.md) | [Roadmap](agent-roadmap.md).
 
 ## MVP defaults and gates
 

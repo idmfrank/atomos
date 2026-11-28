@@ -8,6 +8,11 @@ Updated 2026-11-27. Active work: define the first local-agent MVP contract. Base
 
 Step 1 is complete as a concrete reviewable contract, not an executed acceptance suite. Next is the shared durable task/action runtime with synthetic fixtures for identity, limits, cancellation and crash reconciliation, followed by LAN web and real executor integration. Review updated README, roadmap, architecture, memory, security, resources and engineering instructions; existing inference, owner-auth and operations docs need no behavioral change because this slice does not activate their interfaces. Contract validation passed: 14 active documents and local links/anchors/fences, all thirteen acceptance IDs, ten two-phrase task fixtures, documentation-only scope and whitespace checks. Existing runtime regression results remain unchanged; no runtime tests or device benchmarks were rerun for this specification-only slice.
 
+## Publication privacy
+
+Deployment inventory, installed-version fingerprints and private environment measurements are excluded from public documentation and PR text. This documentation/checker change removes current public references, adds a publication rule and checks common accidental disclosures before CI proceeds. It does not erase earlier Git/PR revisions or external copies. No history rewrite, deployment or runtime change. Current-tree link/fence checks, publication-checker self-tests and source scan, and whitespace passed. The private audit found one older PR description needing sanitization, which was updated; issue/review metadata are being checked separately. No private inventory is included in the checker itself. This privacy-only PR has its own CI pending.
+
+
 ## Product and implementation
 
 One owner, continuous Linux service, LAN browser interaction, broad local agency and graph-based learning. Optional external reasoning supplements local capability with zero incremental inference spending. External effects require approval or standing policy. [Roadmap](docs/agent-roadmap.md).
@@ -18,7 +23,7 @@ Cleanup removes voice/audio components and public interfaces, obsolete one-shot 
 
 ## Current deployment
 
-Installed local/mock CLI release: e7e8fc9839090ac4cee4e6dc3140a6002124d655. Cleanup is not deployed; no host packages/configuration, credentials, private facts, capture settings or privileges changed. [Operations](docs/linux-cli-deployment.md).
+Deployment versions and inventory are maintained privately. Source changes do not authorize deployment, host configuration, credential access, capture or privilege changes. [Operations](docs/linux-cli-deployment.md).
 
 ## Validation
 
@@ -30,6 +35,6 @@ Local WSL regression and Node syntax checks also passed. All 13 active Markdown 
 
 ## Constraints and next work
 
-Recorded hardware: i7-6700, 16 GB RAM; owner reports 2 TB storage. Verify free/usable capacity, filesystem and headroom before quotas/model selection. No new model-quality, token/power-saving or isolation claim is established.
+Deployment inventory is private. Verify free/usable capacity, filesystem and headroom privately before quotas/model selection. No new model-quality, token/power-saving or isolation claim is established.
 
 Next: implement the durable task/action runtime against the defined MVP contract; then LAN web, verified local execution/external boundary, graph learning/retention, measured local reasoning and optional external integration. [Architecture](docs/architecture.md), [memory](docs/amg-architecture.md), [inference](docs/inference-architecture.md), [security](docs/threat-model.md), [resources](docs/resource-budget.md).

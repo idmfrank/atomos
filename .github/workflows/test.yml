@@ -19,6 +19,8 @@ jobs:
         run: |
           rustc --version
           cargo --version
+      - name: Public text and metadata pattern check
+        run: python3 scripts/check-publication.py
       - name: Provision locked build dependencies
         run: |
           pkg-config --modversion sqlite3
