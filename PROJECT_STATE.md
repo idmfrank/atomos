@@ -1,6 +1,6 @@
 # AtomOS current engineering state
 
-Updated 2026-11-27. Active work: persistent local-agent scope and removal of obsolete source/docs. PR #40 is open on codex/local-agent-roadmap; no merge or deployment is performed here.
+Updated 2026-11-27. Active work: persistent local-agent scope and removal of obsolete source/docs. PR #40 is merged as main ed73c6b40358ac352c38bee6144c6c207c2b4442. This follow-up updates current validation evidence only; the agent performed no merge or deployment.
 
 ## Product and implementation
 
@@ -16,7 +16,11 @@ Installed local/mock CLI release: e7e8fc9839090ac4cee4e6dc3140a6002124d655. Clea
 
 ## Validation
 
-Final cleanup passed locally in WSL: default workspace/CLI smoke, memory process persistence/recovery, feature-enabled session workspace tests, seven conversation/memory process tests, nine session process tests with exact text-reference parity, 18,000 decoder samples with zero errors, retained Node auth/storage tests including removed-command and unrecognized-state guards, and Rust 1.75 core all-targets with atomic-admission. Node syntax checks passed. All 13 current Markdown files passed link/anchor/fence checks; whitespace passed. Local synthetic log: current-scope-validation.log outside the repository. GitHub CI and full 1K/10K/100K scale/recovery for the expanded candidate are pending. New service/model/learning checks await implementation.
+Current runtime source: `80f66cea92aff4656d817a67bd9992d47396c0db`. [PR CI 46100265296](https://github.com/idmfrank/atomos/actions/runs/46100265296) passed on synthetic merge `fe80c4b4744fcf6dd1f02716244a3b2f5081715e`; [full graph scale/recovery 46100262290](https://github.com/idmfrank/atomos/actions/runs/46100262290) passed on the branch source. The merged main tree exactly matches that validated runtime source. [Post-merge CI 46100497944](https://github.com/idmfrank/atomos/actions/runs/46100497944) passed on main ed73c6b40358ac352c38bee6144c6c207c2b4442. This evidence update changes documentation only; no runtime or dependency changes.
+
+All 174 distinct tests passed: 137 Rust, 17 Python and 20 Node. Repeated feature/compiler runs and the ignored child-only crash fixture are not extra tests. Passed: workspace/CLI smoke, memory persistence/crash recovery, text-reference parity, removed-interface rejection, auth/state guards, 18,000 decoder samples with zero errors, admission/outcome/session accounting and overhead checks, Rust 1.75 core all-targets, and 1K CI graph smoke. Full 1K/10K/100K graph run returned 300/300 expected facts and 100 complete packets at each size, zero parity mismatches, zero recovery-verification errors and zero remote calls. Hosted synthetic results do not qualify new agent/model capabilities or device power.
+
+Local WSL regression and Node syntax checks also passed. All 13 active Markdown files passed local path/anchor/fence checks; whitespace passed. No service/model/learning/security qualification is claimed. The documentation-only follow-up's own CI is pending at authoring; it need not recursively add its own SHA to this file.
 
 ## Constraints and next work
 
