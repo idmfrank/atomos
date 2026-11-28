@@ -28,10 +28,6 @@ name = "responses_bench"
 required-features = ["responses-replay"]
 
 [[example]]
-name = "responses_qualify"
-required-features = ["responses-replay"]
-
-[[example]]
 name = "admission_bench"
 required-features = ["responses-replay"]
 

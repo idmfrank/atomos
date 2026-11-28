@@ -1,3 +1,4 @@
+-- Legacy on-disk compatibility only; no callable voice interface remains.
 -- Schema v2: explicit, expiring disclosure grant for one current revision.
 -- The owner-local OS account remains the trust boundary.
 CREATE TABLE voice_grant (

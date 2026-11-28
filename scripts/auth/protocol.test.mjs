@@ -1,3 +1,5 @@
+import {spawnSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {generateKeyPairSync,sign,createHash} from 'node:crypto';
@@ -203,4 +205,28 @@ test('larger catalog still rejects size, duplicate keys, depth and structural ex
     [JSON.stringify(Array(262145).fill(0)),/catalog_json_structure_limit/],
     ['{"models":',/catalog_json_invalid/]
   ])await assert.rejects(readJsonBody(new Response(raw).body,true),code);
+});
+
+
+test('removed inference commands fail before vault prompt or file access',()=>{
+  for(const command of ['qualify-once','qualify-followup-once','qualify-compat-once']){
+    const result=spawnSync(process.execPath,[fileURLToPath(new URL('./atomos-auth.mjs',import.meta.url)),command,'/nonexistent-atomos-fixture'],{encoding:'utf8',timeout:5000});
+    assert.equal(result.status,1);
+    assert.equal(result.stdout,'');
+    assert.match(result.stderr,/usage:/);
+    assert.doesNotMatch(result.stderr,/interactive_tty_required|ENOENT|passphrase/);
+  }
+});
+
+test('missing host never reinitializes a directory containing unrecognized state',async()=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'atomos-orphan-fixture-'));
+  fs.chmodSync(dir,0o700);
+  const marker=path.join(dir,'unrecognized-accounting.json');
+  fs.writeFileSync(marker,'retained fixture',{mode:0o600});
+  try{
+    await assert.rejects(()=>withStore(dir,()=>assert.fail('must not open')),/host_missing/);
+    assert.equal(fs.readFileSync(marker,'utf8'),'retained fixture');
+    assert.equal(fs.existsSync(path.join(dir,'host.json')),false);
+    assert.equal(fs.existsSync(path.join(dir,'writer.lock')),false);
+  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });

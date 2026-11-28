@@ -1,5 +1,5 @@
 //! Thin terminal adapter. No signals, network, credentials or history files.
-use crate::conversation::{Channel, Conversation};
+use crate::conversation::Conversation;
 use atomos_core::session::{self, Event, Session};
 use std::{
     ffi::OsString,
@@ -279,7 +279,7 @@ fn run(o: Options) -> Result<i32, ()> {
         ),
         None => None,
     };
-    let mut conversation = Conversation::new(reader, Channel::Text);
+    let mut conversation = Conversation::new(reader);
     let mut s = Session::default();
     let stdin = io::stdin();
     let mut input = stdin.lock();

@@ -1,6 +1,5 @@
 #![forbid(unsafe_code)]
 
-pub mod audio;
 pub mod broker;
 #[cfg(unix)]
 pub mod authorization;
@@ -11,7 +10,6 @@ pub mod responses;
 pub mod governor;
 pub mod turn;
 pub mod session;
-pub mod voice;
 
 /// No network, credentials, or external tools in this prototype.
 pub trait Inference {

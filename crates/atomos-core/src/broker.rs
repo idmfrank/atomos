@@ -1,4 +1,4 @@
-//! M2.1 offline-only inference broker. Typed synthetic events, no HTTP,
+//! Offline-only inference broker. Typed synthetic events, no HTTP,
 //! credentials, provider registration, real token estimation or AMG access.
 //! No public transport or detachable permit; admission and dispatch are one
 //! synchronous operation. The legacy mock CLI remains entirely offline.
