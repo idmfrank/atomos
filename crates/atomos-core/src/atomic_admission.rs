@@ -84,6 +84,16 @@ pub enum ReplayOutcome {
         usage: Option<Usage>,
     },
 }
+/// Read-only accounting view; never an authorization or dispatch permit.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ReplayStatus {
+    pub healthy: bool,
+    pub halted: bool,
+    pub pending_units: Option<u64>,
+    pub confirmed_total: u64,
+    pub confirmed_background: u64,
+    pub next_request_id: u64,
+}
 fn io<T>(r: std::io::Result<T>) -> Result<T, Error> {
     r.map_err(|_| Error::Storage)
 }
@@ -299,6 +309,18 @@ pub struct AtomicReplay {
     fault: Option<(u64, bool)>,
 }
 impl AtomicReplay {
+    /// On unhealthy instances totals are last-confirmed, not an authoritative
+    /// statement about ambiguous surviving journal writes.
+    pub fn status(&self) -> ReplayStatus {
+        ReplayStatus {
+            healthy: self.healthy,
+            halted: self.state.halted,
+            pending_units: self.state.pending.as_ref().map(|p| p.amount),
+            confirmed_total: self.state.total,
+            confirmed_background: self.state.background,
+            next_request_id: self.state.next,
+        }
+    }
     /// Explicit create-once; any existing namespace is an error, including partial creation.
     pub fn initialize(root: &Path, c: Configuration) -> Result<Self, Error> {
         if !c.valid() {
@@ -805,6 +827,25 @@ mod arithmetic_tests {
 #[cfg(test)]
 mod extended_fault_tests {
     use super::*;
+    #[test]
+    fn session_storage_fault_exposes_only_last_confirmed_accounting() {
+        use crate::session::{Session, Event, replay::Parameters};
+        let root=Root::new();
+        let mut b=AtomicReplay::initialize(&root.0,config()).unwrap();
+        b.fault=Some((2,false));
+        let mut s=Session::default();
+        let p=Parameters{envelope:env(1),model:7,version:1,task:5,now:200,priority:crate::governor::Priority::Interactive,max_output:64};
+        s.replay(&mut b,"question",p,SSE,||false,|e|{
+            assert_eq!(e,&Event::Replay(Err(Error::Storage)));Ok(())
+        }).unwrap();
+        let status=b.status();
+        assert!(!status.healthy);assert_eq!(status.confirmed_total,200);
+        assert_eq!(status.pending_units,Some(200));assert_eq!(s.history_pairs(),0);
+        s.local("help","local".into(), |_|Ok(())).unwrap();
+        drop(b);let b=AtomicReplay::open(&root.0,config()).unwrap();
+        assert!(b.status().healthy);assert_eq!(b.status().confirmed_total,47);
+        assert_eq!(b.status().pending_units,None);
+    }
     use crate::governor::Limits;
     use std::sync::atomic::{AtomicU64, Ordering};
     static NEXT: AtomicU64 = AtomicU64::new(0);

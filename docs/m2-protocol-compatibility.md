@@ -42,3 +42,7 @@ PR #27 merged 61a7efc; [CI](https://github.com/idmfrank/atomos/actions/runs/4591
 ## M2.4c verified result and next gate
 
 PR #28 merged f422abf; [CI](https://github.com/idmfrank/atomos/actions/runs/45919051196) / [scale](https://github.com/idmfrank/atomos/actions/runs/45919185353) passed. 150 distinct tests, all five extended tests passed. 18,000 samples, zero errors; p95 1/64/4096-byte reads strict 23.4/16.5/16.3 µs, same-wire compat 23.0/16.8/16.1, auxiliary 26.9/19.4/18.7, same-wire extended 22.6/16.6/19.8, opaque reasoning 29.1/20.9/20.1, refusal 22.3/15.6/15.2. Combined decoder benchmark RSS 2,216 KiB. No new live calls or SDK differential execution. M2.5 next: offline account-bound Governor/decoder integration, preserve strict reference and refusal semantics. Historical unsupported event remains unidentified; no fourth qualification attempt.
+
+## Session adapter candidate
+
+The new opt-in session-replay build consumes existing finite fixtures through the same extended atomic method. Fixed startup fixture selection is explicit, not negotiation or automatic fallback; no arbitrary fixture/URL, provider credentials, decoder-cap change or live request. The legacy single-turn and voice protocols remain unchanged. Full session integration verification is pending.

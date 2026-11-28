@@ -1,6 +1,6 @@
 # CLI session integration contract
 
-Status: proposed next implementation slice, 2026-11-27. This document defines behavior; it adds no commands or runtime implementation. M2.5b is merged at `e3ebf241b64cdf5e0840f944b2c311b6f78a2427`; [post-merge CI 46080072830](https://github.com/idmfrank/atomos/actions/runs/46080072830) passed 193 distinct tests, Rust 1.75 core targets, 18,000 decoder samples and both admission/outcome benchmarks. The merge has exactly the same Git tree as final PR #36 head `2b98805ce335286cffbd802c42b6cbc4c602cdd2`, which passed [full scale/recovery 46079729987](https://github.com/idmfrank/atomos/actions/runs/46079729987). That scale run is branch evidence, not a new post-merge run.
+Status: implementation candidate on a review branch, 2026-11-27. Initial compile/session/process tests and a ten-sample WSL benchmark smoke passed. Full regression, SSD measurements, Rust 1.75 and CI are pending. The installed CLI is unchanged. M2.5b is merged at `e3ebf241b64cdf5e0840f944b2c311b6f78a2427`; [post-merge CI 46080072830](https://github.com/idmfrank/atomos/actions/runs/46080072830) passed 193 distinct tests, Rust 1.75 core targets, 18,000 decoder samples and both admission/outcome benchmarks. The merge has exactly the same Git tree as final PR #36 head `2b98805ce335286cffbd802c42b6cbc4c602cdd2`, which passed [full scale/recovery 46079729987](https://github.com/idmfrank/atomos/actions/runs/46079729987). That scale run is branch evidence, not a new post-merge run.
 
 [Roadmap](cli-mvp-roadmap.md) | [Current state](../PROJECT_STATE.md) | [M2.5b](m2-text-outcomes.md) | [Architecture](architecture.md) | [Resources](resource-budget.md) | [Security](threat-model.md)
 
@@ -12,9 +12,9 @@ This slice does not connect a real model. Mock repeats input; replay returns sel
 
 Development and offline tests continue directly from this chat. No separate Codex handoff is needed. A reviewed runtime PR and owner merge precede a separately coordinated deployment.
 
-## Proposed launch surface
+## Candidate launch surface
 
-These commands are **proposed and not runnable until implemented**. Use generic paths/scopes in public examples.
+These commands are **implemented only in candidate source, not the installed release**; full validation/review remain pending. Use generic paths/scopes in public examples.
 
 | Invocation | Meaning |
 | --- | --- |
@@ -123,12 +123,20 @@ Benchmark the same preloaded synthetic streams, policy, durability and fixture t
 
 Report p50/p95/p99, sample/error/outcome counts, bounded-history operations, time before first read, full decode/settlement, output delivery separately, RSS, binary sizes with/without session-replay, retained payload and journal bytes. Measure journal admission/settlement syscall order separately; keep one A sync and required S/H sync. Identify backing filesystem and use private persistent TMPDIR for durability/AMG runs. Preserve the slower previous SSD observation without inferring improvement from new runners. Default CLI size may change when local session code links; measure it rather than promise no overhead.
 
-Before runtime review: full locked offline regression, all feature/session/Node tests with decoder prerequisite, Rust 1.75 core all-targets, existing decoder/admission/outcome benchmarks and full AMG 1K/10K/100K recovery. New CLI code runs on the normal supported workspace toolchain; whole-workspace Rust 1.75 compatibility remains unverified because of the pre-existing unrelated dependency. No dependency upgrade, install or host change is part of this specification. Proposed commands/tests/benchmarks are pending until implemented.
+Before runtime review: full locked offline regression, all feature/session/Node tests with decoder prerequisite, Rust 1.75 core all-targets, existing decoder/admission/outcome benchmarks and full AMG 1K/10K/100K recovery. New CLI code runs on the normal supported workspace toolchain; whole-workspace Rust 1.75 compatibility remains unverified because of the pre-existing unrelated dependency. No dependency upgrade, install or host change is part of this specification. The commands, tests and benchmarks are implemented on the review branch; complete verification remains pending.
 
 ## Delivery and next gate
 
-Implement this contract in a reviewed runtime branch; keep the current deployment pinned during development. Reconcile README, PROJECT_STATE and every affected architecture/security/protocol/operation/resource document with exact tested commits and evidence in each authored change. This specification's CI is pending at authoring; passing it validates existing code, not the future session implementation.
+Implement this contract in a reviewed runtime branch; keep the current deployment pinned during development. Reconcile README, PROJECT_STATE and every affected architecture/security/protocol/operation/resource document with exact tested commits and evidence in each authored change. This runtime revision's CI and complete resource validation are pending at authoring.
 
 Done means the new opt-in terminal journey is coherent, all bounds and outcome/termination semantics pass independent tests, legacy modes remain preserved, exact resource tradeoffs are documented and human review/merge is complete. It remains an offline/local/mock capability.
 
 After this slice, review the complete provider boundary: owned context/AMG disclosure, credentials, eligibility/spending/output exposure, trusted time, deadlines/cancellation and authoritative usage. That gate precedes a transport implementation and any separately authorized new live procedure. Do not reopen the consumed qualification harness.
+
+## Implementation and verification commands
+
+Shared session state is in crates/atomos-core/src/session.rs; the thin terminal adapter is apps/atomos-cli/src/session_mode.rs. Existing Conversation.reply remains intact; its new session_local adapter intercepts local-only memory/mutation intents. AtomicReplay.status returns health, halt, pending units, last-confirmed charges and next ID without a permit or prompt digest. Unhealthy status is rendered unavailable. Both existing replay methods remain unchanged.
+
+Run `bash scripts/test-session.sh` for feature-enabled workspace tests, independent process tests and a separately compiled historical CLI reference at PR #37 main 1b07356 (runtime-identical to the contract's e3ebf24 reference). `bash scripts/benchmark-session.sh` requires a private persistent TMPDIR and reports direct/session text, refusal, known/unknown failure and cancellation cases, actual journal traces, bounded-history operations, default/replay binary sizes, separate pipe round trips and standalone CLI RSS. Cancellation/unknown workloads use fresh synthetic ledgers; initialization is outside their request timing and per-request storage includes those ledger headers. Mixed-priority benchmarking does not change the foreground-only CLI priority. Pipe measurements are not physical terminal/network latency; Python harness RSS is labeled separately.
+
+The application retains the OS default signal behavior and starts no background worker, service or listener. A source build may be tested with `cargo run --locked --offline -p atomos-cli -- --session`; replay additionally needs `--features session-replay` before Cargo's argument separator. These development commands do not replace the pinned deployment or enable a real account.

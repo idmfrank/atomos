@@ -4,6 +4,10 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 
+[features]
+default = []
+session-replay = ["atomos-core/atomic-admission"]
+
 [[bin]]
 name = "atomos"
 path = "src/main.rs"

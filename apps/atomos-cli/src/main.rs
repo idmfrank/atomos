@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 mod voice_events;
 mod conversation;
+mod session_mode;
 use conversation::{Channel, Conversation};
 use atomos_memory::{open_reader, MemoryReader};
 use atomos_core::turn::{TurnManager, MAX_TRANSCRIPT_BYTES};
@@ -34,6 +35,9 @@ fn answer(provider: &mut MockInference, turns: &mut TurnManager, conversation: &
 
 fn main() -> io::Result<()> {
     let mut args: Vec<_> = std::env::args_os().skip(1).collect();
+    if let Some(code) = session_mode::run_if_requested(&args) {
+        std::process::exit(code);
+    }
     // Explicit opt-in, existing store only. Flags precede the mode.
     let reader: Option<Box<dyn MemoryReader>> = if args.first().is_some_and(|s| s == "--memory") {
         if args.len() < 3 {

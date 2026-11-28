@@ -14,9 +14,9 @@ Hosted synthetic timings are not controlled cross-run comparisons or whole-devic
 
 PR #33's documentation-only CLI roadmap is now merged at `c563599f2e2c8b5abb7e03c75bb85e67e831e75d`; [post-merge CI 46029012445](https://github.com/idmfrank/atomos/actions/runs/46029012445) passed with unchanged runtime. Its CI admission/decoder/text/1K smoke checks do not replace the separately labeled PR #32 full-scale measurements above.
 
-## Proposed CLI session measurements
+## CLI session candidate measurements, full validation pending
 
-The [session contract](cli-session-contract.md) specifies a 1,024-byte input limit, at most four whole delivered pairs/16 KiB retained UTF-8 payload, 4,096-byte inference output and existing 4,096-byte local context packet with an 8,192-byte final local response cap. These are proposed payload bounds, not measured allocation/RSS or implemented behavior. Measure container overhead, default versus replay-enabled binary size, direct replay versus session-driver latency and terminal delivery separately. Retain all existing benchmark/durability assertions and run full regression/scale for the future runtime PR. No new session measurements are claimed.
+The [session contract](cli-session-contract.md) specifies a 1,024-byte input limit, at most four whole delivered pairs/16 KiB retained UTF-8 payload, 4,096-byte inference output and existing 4,096-byte local context packet with an 8,192-byte final local response cap. These are implemented candidate payload bounds, not a measured allocation/RSS claim. A ten-sample WSL smoke passed on persistent storage; full 300-request SSD measurements and actual syscall tracing remain pending. Measure container overhead, default versus replay-enabled binary size, direct replay versus session-driver latency and terminal delivery separately. Retain all existing benchmark/durability assertions and run full regression/scale for the future runtime PR. No final session performance/resource baseline is claimed yet.
 
 ## M2.5b offline candidate evidence
 
