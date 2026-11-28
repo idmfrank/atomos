@@ -1,6 +1,6 @@
 # AtomOS threat model
 
-Status: active engineering threat model, target controls plus implemented boundaries below; not production security certification. PR #33 post-merge CI passed; last full-scale evidence remains PR #32, with unchanged PR #31 M2.5a runtime. CLI MVP scope replaces the former voice-first release gate. [Architecture](architecture.md) | [Current state](../PROJECT_STATE.md).
+Status: active engineering threat model, target controls plus implemented boundaries below; not production security certification. M2.5b merged in PR #36; post-merge CI passed and the identical final PR tree passed full 1K/10K/100K scale/recovery. [Exact provenance](m2-text-outcomes.md#verified-candidate-evidence). CLI MVP scope replaces the former voice-first release gate. [Architecture](architecture.md) | [Current state](../PROJECT_STATE.md).
 
 ## CLI MVP security boundary
 
@@ -23,6 +23,10 @@ The M2.5b candidate now has private unit-test-only write/sync fault injection; i
 ## M2.5b offline outcome boundary
 
 The [offline integration contract](m2-text-outcomes.md) preserves strict/extended parser caps and explicit profile selection. Refusal and failure carry no answer/raw refusal/reasoning text. Validated known usage settles once; unknown/cancelled/invalid outcomes retain the reservation. Rate/auth failures and overrun suspend durably. Admission, settlement and revocation storage faults must suppress delivery and poison the instance; complete surviving records may have committed despite a returned sync error. Forced termination leaves a stale writer lock for investigation, not automatic cleanup. These controls passed synthetic outcome/fault tests on PR #36. They are isolated library controls, not a qualified provider, credential or CLI deployment boundary.
+
+## Proposed CLI session boundary
+
+The [session contract](cli-session-contract.md) is specified but unimplemented. It validates launch options before opening data, rejects control/oversized input before dispatch, isolates synthetic replay from memory, keeps mutation intents local and bounds local-only volatile working turns. Status exposes categories/counters and read-only accounting state, not prompts, provider IDs or journal digests. Clearing history does not alter facts, charges, halt or a writer lock. Default Ctrl-C is process termination; no implicit crash recovery, refund or graceful upstream cancellation is promised. Retained history is not covered by the current-question digest and cannot become provider context without separately binding/disclosing it. These are acceptance requirements, not verified controls in the installed CLI.
 
 ## Assets and trust boundaries
 

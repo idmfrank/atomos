@@ -1,20 +1,24 @@
 # OpenAI-native inference architecture
 
-Status: target architecture; M2.1–M2.4c isolated offline broker, account policy and decoder profiles verified. Actual owner OAuth/catalog/refresh succeeded. Three fixed live attempts consumed without validated completion or usage. M2.5a isolated atomic admission merged with PR #31 time/task follow-up merged externally and verified offline; M2.5b offline decoder integration is verified on PR #36 and awaits human review; no general live inference. [Current state](../PROJECT_STATE.md) | [Architecture](architecture.md) | [Resource budget](resource-budget.md).
+Status: target architecture; M2.1–M2.4c isolated offline broker, account policy and decoder profiles verified. Actual owner OAuth/catalog/refresh succeeded. Three fixed live attempts consumed without validated completion or usage. M2.5a isolated atomic admission merged with PR #31 time/task follow-up merged externally and verified offline; M2.5b offline decoder integration is merged in PR #36 with successful post-merge CI; no general live inference. [Current state](../PROJECT_STATE.md) | [Architecture](architecture.md) | [Resource budget](resource-budget.md).
 
 ## CLI MVP scope
 
-The [CLI roadmap](cli-mvp-roadmap.md) is the active product boundary. Text input/output replaces voice as the first interface; one owner and one active conversation are sufficient. Current text interaction remains local/mock. The [M2.5b offline outcome/admission/cancellation/settlement contract](m2-text-outcomes.md) is implemented and verified offline on PR #36, followed by the separately specified CLI integration. Transport, secure credentials, real account controls and private AMG disclosure remain separately gated.
+The [CLI roadmap](cli-mvp-roadmap.md) is the active product boundary. Text input/output replaces voice as the first interface; one owner and one active conversation are sufficient. Current text interaction remains local/mock. The [M2.5b offline outcome/admission/cancellation/settlement contract](m2-text-outcomes.md) is implemented and verified offline on PR #36, followed by the [specified CLI session integration](cli-session-contract.md). Transport, secure credentials, real account controls and private AMG disclosure remain separately gated.
 
 The CLI is a thin adapter: no terminal command can bypass admission, change billing route or silently authorize memory egress. Define bounded working-turn retention, cancellation, EOF and disconnect behavior. No full transcript persistence or automatic memory extraction. Synthetic current decoders buffer until validated terminal/settlement; choosing future incremental display requires explicit outcome/accounting semantics.
 
 ## Deployed local/mock boundary
 
-The [Linux CLI deployment](linux-cli-deployment.md) at merged PR #34 is tested and running under the explicitly selected owner account. Rust stays on the hot path; Node/Python/compiler tools support offline development and are not resident inference workers. No real account session, transport, provider model, private AMG disclosure or inference quota is enabled. The M2.5b runtime candidate is verified offline and awaits review; it is not deployed here.
+The [Linux CLI deployment](linux-cli-deployment.md) at merged PR #34 is tested and running under the explicitly selected owner account. Rust stays on the hot path; Node/Python/compiler tools support offline development and are not resident inference workers. No real account session, transport, provider model, private AMG disclosure or inference quota is enabled. The M2.5b runtime candidate is merged and verified offline; it is not deployed here.
 
 The owner authorized host provisioning and local deployment, not a fourth live qualification attempt. Exact host/account/key data remain local. Local recall and bounded context use measured host resources before future remote admission; context bytes and RSS do not establish actual token, power or billing savings.
 
 M2.5b's extended synthetic replay and typed Local/Completed/Refused/Failed results are implemented and verified offline on PR #36. Known usage settles; unknown outcomes stay charged/pending; refusal contains no answer text. This is library integration only, not a provider adapter or conversational CLI integration.
+
+## CLI session and future context binding
+
+The [session contract](cli-session-contract.md) is the next implementation slice, not an enabled provider client. Explicit fixed-fixture replay uses the same current-question admission and v1 ledger. Working turns are bounded, volatile and local-only; they do not enter the digest or reservation estimate. Before any provider sends history or AMG context, define a complete owned/canonical request that binds every byte and obeys reviewed disclosure and input/output bounds. Never bolt extra history onto a previously authorized current-question request. Status distinguishes mock calls/synthetic units from real usage, and no automatic retry is introduced. Cooperative replay tests do not establish signal handling, blocking-I/O cancellation or a production deadline.
 
 ## Integration contract
 
