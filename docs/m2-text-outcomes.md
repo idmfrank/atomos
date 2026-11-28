@@ -128,3 +128,5 @@ No new failure was found within this offline implementation review. Residual gat
 ## CLI consumer candidate
 
 The session contract now has a candidate shared Rust driver and thin CLI consumer. It uses the existing explicit extended method, keeps local memory outside replay, renders typed refusal/failure without hidden text and preserves unknown/poisoned accounting. Post-settlement delivery cancellation/output error does not refund or retry. Both replay methods and parser profiles are preserved; complete consumer regression/resource/MSRV/CI checks passed on PR #38. [Exact evidence](cli-session-contract.md#verified-session-implementation).
+
+Deployment note: merged PR #38 default local/mock session is deployed at e7e8fc9. It exposes local session controls/read-only memory; optional synthetic replay is not enabled in the installed binary. No provider terminal response or actual usage is claimed. [Deployment evidence](linux-cli-deployment.md#deployed-session-release).

@@ -1,6 +1,6 @@
 # CLI session integration contract
 
-Status: implemented and verified offline on [PR #38](https://github.com/idmfrank/atomos/pull/38), 2026-11-27, awaiting human runtime review/merge. The installed CLI is unchanged. Current verification follows; original acceptance contract is preserved below. M2.5b is merged at `e3ebf241b64cdf5e0840f944b2c311b6f78a2427`; [post-merge CI 46080072830](https://github.com/idmfrank/atomos/actions/runs/46080072830) passed 193 distinct tests, Rust 1.75 core targets, 18,000 decoder samples and both admission/outcome benchmarks. The merge has exactly the same Git tree as final PR #36 head `2b98805ce335286cffbd802c42b6cbc4c602cdd2`, which passed [full scale/recovery 46079729987](https://github.com/idmfrank/atomos/actions/runs/46079729987). That scale run is branch evidence, not a new post-merge run.
+Status: implemented and verified offline on [PR #38](https://github.com/idmfrank/atomos/pull/38), 2026-11-27, merged in PR #38 and deployed in default local/mock session mode. [Deployment verification](linux-cli-deployment.md#deployed-session-release). Current verification follows; original acceptance contract is preserved below. M2.5b is merged at `e3ebf241b64cdf5e0840f944b2c311b6f78a2427`; [post-merge CI 46080072830](https://github.com/idmfrank/atomos/actions/runs/46080072830) passed 193 distinct tests, Rust 1.75 core targets, 18,000 decoder samples and both admission/outcome benchmarks. The merge has exactly the same Git tree as final PR #36 head `2b98805ce335286cffbd802c42b6cbc4c602cdd2`, which passed [full scale/recovery 46079729987](https://github.com/idmfrank/atomos/actions/runs/46079729987). That scale run is branch evidence, not a new post-merge run.
 
 [Roadmap](cli-mvp-roadmap.md) | [Current state](../PROJECT_STATE.md) | [M2.5b](m2-text-outcomes.md) | [Architecture](architecture.md) | [Resources](resource-budget.md) | [Security](threat-model.md)
 
@@ -14,7 +14,7 @@ Development and offline tests continue directly from this chat. No separate Code
 
 ## Candidate launch surface
 
-These commands are **implemented only in candidate source, not the installed release**; full offline validation passed; human review/merge and deployment remain pending. Use generic paths/scopes in public examples.
+The local/mock session commands are **installed and verified** in PR #38 release e7e8fc9. Synthetic replay invocations below require the separate session-replay build, which is not installed by the default deployment. Use generic paths/scopes in public examples.
 
 | Invocation | Meaning |
 | --- | --- |
@@ -149,6 +149,6 @@ Runtime `1823fb9bdd210f841fd99ba1b4ac0d6bc965e050` passed [PR CI 46090015295](ht
 
 The numeric storage_capacity_bytes report measures inline Session, allocated pair slots and retained String capacities. It is not payload length or process RSS and excludes allocator bookkeeping/rounding and transient buffers. The completed fixture retained 100 bytes of payload in four pairs and 372 bytes of Rust state/capacity, with an 80-byte inline Session; tests separately exercise the 16 KiB logical cap.
 
-The default CLI grows by 12,224 bytes against the prior same-host installed baseline; explicit replay adds 90,488 bytes beyond the new default. These costs and the slower SSD Session timing are recorded. There is no token, power, model-quality or isolated CPU-overhead claim. CLI provider integration, complete context binding, trusted time, real spending/usage and blocking-I/O deadlines/cancellation remain later gates. Human runtime review/merge and coordinated deployment remain pending; no separate Codex handoff.
+The default CLI grows by 12,224 bytes against the prior same-host installed baseline; explicit replay adds 90,488 bytes beyond the new default. These costs and the slower SSD Session timing are recorded. There is no token, power, model-quality or isolated CPU-overhead claim. CLI provider integration, complete context binding, trusted time, real spending/usage and blocking-I/O deadlines/cancellation remain later gates. The owner merged PR #38 and authorized the verified default-feature deployment; no separate Codex handoff. Provider integration is still a later gate.
 
 Status counters count local answer turns and mock response attempts; slash commands/help do not create inference turns or consume replay IDs. History counts only delivered completed pairs. This distinction leaves status/clear observational and prevents command activity being reported as provider calls.

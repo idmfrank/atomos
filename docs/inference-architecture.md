@@ -10,7 +10,7 @@ The CLI is a thin adapter: no terminal command can bypass admission, change bill
 
 ## Deployed local/mock boundary
 
-The [Linux CLI deployment](linux-cli-deployment.md) at merged PR #34 is tested and running under the explicitly selected owner account. Rust stays on the hot path; Node/Python/compiler tools support offline development and are not resident inference workers. No real account session, transport, provider model, private AMG disclosure or inference quota is enabled. The M2.5b runtime candidate is merged and verified offline; it is not deployed here.
+The [Linux CLI deployment](linux-cli-deployment.md#deployed-session-release) at merged PR #38 is tested and running under the explicitly selected owner account. Rust stays on the hot path; Node/Python/compiler tools support offline development and are not resident inference workers. No real account session, transport, provider model, private AMG disclosure or inference quota is enabled. The M2.5b source is merged and verified offline; default deployment does not enable synthetic replay or a provider.
 
 The owner authorized host provisioning and local deployment, not a fourth live qualification attempt. Exact host/account/key data remain local. Local recall and bounded context use measured host resources before future remote admission; context bytes and RSS do not establish actual token, power or billing savings.
 
@@ -87,3 +87,5 @@ M2.4b–c [protocol compatibility](m2-protocol-compatibility.md) validated separ
 ## Session candidate implementation
 
 The new shared Session wraps the existing extended replay in one synchronous call, with turn ownership, post-settlement stale-delivery suppression and retention only after successful output/flush. AtomicReplay.status is a read-only accounting view, not a dispatch permit. Unknown usage, storage failure and durable halt retain the existing state-machine semantics. The CLI remains local/mock or explicit fixed-fixture replay; full regression, resource and CI evidence passed. [Exact tested commits and measurements](resource-budget.md#cli-session-verified-evidence).
+
+PR #38 default local/mock session deployment at e7e8fc9 is verified. The installed CLI uses bounded local-only working turns and read-only memory; optional session-replay was not installed. Provider, vault, real account usage and private context egress remain disabled. [Deployment evidence](linux-cli-deployment.md#deployed-session-release).
