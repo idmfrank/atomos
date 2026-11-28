@@ -11,4 +11,4 @@ fi
 # Text-only simulation, NOT a conversational latency or power benchmark.
 { for ((i=0;i<1000;i++)); do echo 'what is your name?'; done; echo '/quit'; } |
   /usr/bin/time -f 'elapsed_seconds=%e peak_rss_kib=%M' "$binary" >/dev/null
-echo 'Physical ASR/TTS, latency, and wall power remain unmeasured.'
+echo 'Agent task quality, local-model inference and whole-device power remain unmeasured.'

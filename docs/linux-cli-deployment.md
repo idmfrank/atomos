@@ -1,5 +1,7 @@
 # Linux CLI development and local deployment
 
+**Deployment scope:** This guide records the installed local/mock CLI and its historical validation. The [active agent roadmap](agent-roadmap.md) adds persistent service operation, LAN web access, local agency and learning; those changes are not deployed here. Voice source/adapters are removed by the cleanup candidate; do not run the old audio commands on current source.
+
 Status: PR #38 default-feature local/mock session release deployed and verified at `e7e8fc9839090ac4cee4e6dc3140a6002124d655`. [Post-merge CI 46094284130](https://github.com/idmfrank/atomos/actions/runs/46094284130) passed. [Current deployment](#deployed-session-release) supersedes the historical PR #34 layout/build observations below; provider integration remains disabled.
 
 [Current state](../PROJECT_STATE.md) | [CLI roadmap](cli-mvp-roadmap.md) | [Architecture](architecture.md) | [Resource evidence](resource-budget.md) | [M2.5b contract](m2-text-outcomes.md)
@@ -42,7 +44,7 @@ cargo build --workspace --release --locked --offline
 bash scripts/benchmark.sh
 ```
 
-The release decoder executable is a prerequisite for Node replay tests. These scripts use synthetic fixtures, including fake voice workers; preserving their regression coverage does not require speech models or hardware.
+The release decoder executable is a prerequisite for Node replay tests. The retained scripts use synthetic text, memory, protocol and accounting fixtures; removed voice harness tests are no longer part of current source.
 
 All 173 distinct baseline tests passed on the host: 119 Rust, 11 Python and 43 Node. All 18,000 decoder samples passed. Repeated feature executions are not extra distinct tests. The source checkout stayed clean; no runtime, dependency lock or workflow changes were needed.
 

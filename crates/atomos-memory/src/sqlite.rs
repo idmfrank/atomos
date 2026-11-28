@@ -300,22 +300,6 @@ impl crate::MemoryReader for SqliteReader {
         tx.commit()?;
         Ok(fact)
     }
-    fn recall_voice(&self,s:&str,p:&str)->Result<Option<Fact>> {
-        if s!="owner" || !matches!(p,"favorite_color"|"favorite_food"|"favorite_music") {
-            return Err(Error::DisclosureDenied);
-        }
-        let o=&self.identity.owner_scope;
-        let tx=self.conn.unchecked_transaction()?;
-        let id=entity_id(&tx,o,s)?;
-        let fact=current(&tx,o,id,p)?;
-        if let Some(f)=&fact {
-            if !matches!(&f.value,Value::Text(_)) { return Err(Error::DisclosureDenied); }
-            let allowed:bool=tx.query_row("SELECT EXISTS(SELECT 1 FROM voice_grant WHERE assertion_id=?1 AND expires_at>unixepoch())",[f.revision],|r|r.get(0))?;
-            if !allowed { return Err(Error::DisclosureDenied); }
-        }
-        tx.commit()?;
-        Ok(fact)
-    }
     fn retrieve(&self, request:&ContextRequest) -> Result<RankedRetrieval> {
         self.retrieve_with_plan(request,true)
     }
@@ -487,29 +471,4 @@ impl SqliteMemory {
         Ok(())
     }
 
-    pub fn allow_voice(&mut self,s:&str,p:&str,revision:i64,ttl_seconds:i64)->Result<()> {
-        if s!="owner" || !matches!(p,"favorite_color"|"favorite_food"|"favorite_music")
-            || !(1..=86400).contains(&ttl_seconds) {
-            return Err(Error::DisclosureDenied);
-        }
-        let o=&self.identity.owner_scope;
-        let tx=self.conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
-        let fact=current(&tx,o,entity_id(&tx,o,s)?,p)?.ok_or(Error::Missing)?;
-        if fact.revision!=revision {return Err(Error::Conflict);}
-        if !matches!(fact.value,Value::Text(_)) {return Err(Error::DisclosureDenied);}
-        tx.execute("INSERT INTO voice_grant(assertion_id,expires_at) VALUES(?1,unixepoch()+?2)
-          ON CONFLICT(assertion_id) DO UPDATE SET expires_at=excluded.expires_at",params![revision,ttl_seconds])?;
-        tx.commit()?;
-        Ok(())
-    }
-    pub fn revoke_voice(&mut self,s:&str,p:&str)->Result<usize> {
-        key(p)?;
-        let o=&self.identity.owner_scope;
-        let tx=self.conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
-        let sid=entity_id(&tx,o,s)?;
-        let n=tx.execute("DELETE FROM voice_grant WHERE assertion_id IN
-            (SELECT id FROM assertion WHERE owner_scope=?1 AND subject_id=?2 AND predicate=?3)",params![o,sid,p])?;
-        tx.commit()?;
-        Ok(n)
-    }
 }

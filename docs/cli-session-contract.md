@@ -1,12 +1,14 @@
 # CLI session integration contract
 
+**Scope update:** The [agent roadmap](agent-roadmap.md) supersedes the CLI-only product boundary. This contract remains the maintenance text/session baseline. Voice/AEC modes and harnesses described in the original frozen-reference requirements below have been intentionally removed; comparisons now preserve default text, single-turn and text-memory behavior, with explicit rejection tests for removed modes. No service or task-recovery capability is implied by this historical terminal contract.
+
 Status: implemented and verified offline on [PR #38](https://github.com/idmfrank/atomos/pull/38), 2026-11-27, merged in PR #38 and deployed in default local/mock session mode. [Deployment verification](linux-cli-deployment.md#deployed-session-release). Current verification follows; original acceptance contract is preserved below. M2.5b is merged at `e3ebf241b64cdf5e0840f944b2c311b6f78a2427`; [post-merge CI 46080072830](https://github.com/idmfrank/atomos/actions/runs/46080072830) passed 193 distinct tests, Rust 1.75 core targets, 18,000 decoder samples and both admission/outcome benchmarks. The merge has exactly the same Git tree as final PR #36 head `2b98805ce335286cffbd802c42b6cbc4c602cdd2`, which passed [full scale/recovery 46079729987](https://github.com/idmfrank/atomos/actions/runs/46079729987). That scale run is branch evidence, not a new post-merge run.
 
 [Roadmap](cli-mvp-roadmap.md) | [Current state](../PROJECT_STATE.md) | [M2.5b](m2-text-outcomes.md) | [Architecture](architecture.md) | [Resources](resource-budget.md) | [Security](threat-model.md)
 
 ## Objective and scope
 
-Build one coherent, bounded terminal session over the existing Rust components. One owner, one foreground process and at most one active request. Provide local commands, explicit read-only AMG access and honest outcome/accounting status. Demonstrate M2.5b through finite synthetic replay. Preserve the existing default, single-turn and voice-event modes as the frozen reference.
+Build one coherent, bounded terminal session over the existing Rust components. One owner, one foreground process and at most one active request. Provide local commands, explicit read-only AMG access and honest outcome/accounting status. Demonstrate M2.5b through finite synthetic replay. Preserve default and single-turn text modes as the frozen reference; voice-event modes are intentionally removed.
 
 This slice does not connect a real model. Mock repeats input; replay returns selected synthetic fixtures. Neither is conversation-quality evidence. Keep the existing Linux/Rust/SQLite foundation. No browser, network listener, service, scheduler, worker pool, shell/tools, automatic memory extraction, credential/vault access, new live attempt, private AMG disclosure, transport, billing route or paid fallback. No host configuration or deployed release change is authorized by this contract. All three consumed owner attempts, markers and 3,072 retained planning units remain intact.
 
@@ -23,7 +25,7 @@ The local/mock session commands are **installed and verified** in PR #38 release
 | `atomos --session --replay NAME --ledger DIR` | Explicit synthetic replay; open an existing private atomic namespace |
 | `atomos --session --replay NAME --ledger DIR --init-ledger` | Explicit create-once synthetic namespace in an already private root; any existing namespace is an error |
 
-Replay is Linux/Unix-only and enabled by a new opt-in CLI feature `session-replay` forwarding to `atomos-core/atomic-admission`. A build without it rejects replay flags before opening files; it never silently selects mock. The new local/mock session is available without that feature. Existing `atomos`, `--single-turn`, `--voice-events` and their memory/AEC combinations retain existing behavior and output. Do not change speech harnesses to use the new session protocol.
+Replay is Linux/Unix-only and enabled by a new opt-in CLI feature `session-replay` forwarding to `atomos-core/atomic-admission`. A build without it rejects replay flags before opening files; it never silently selects mock. The new local/mock session is available without that feature. Existing `atomos`, `--single-turn` and their text-memory combinations retain existing behavior and output. Removed voice/AEC modes must fail clearly.
 
 Validate the entire argument combination before opening a memory store or ledger. Reject duplicate/unknown options, missing arguments, replay without ledger, ledger/init without replay, memory combined with replay, and session combined with single-turn/voice/AEC. No inferred ledger path, auto-initialize-on-open, reset, unlock, repair, deletion or automatic fallback.
 
@@ -63,7 +65,7 @@ A later provider slice must define a canonical complete request including every 
 
 Buffer synthetic text until finite stream validation and required durable settlement. Print fixed mode/outcome labels, then validated ordinary text; no raw refusal, reasoning, failed provider message or decoder dump. Ordinary inference output stays within the existing 4,096-byte decoder limit. Reuse the local context-preview budget; cap the final local response at 8,192 bytes including its preview heading, without increasing the 4,096-byte context packet budget. Invalid/unsafe local text yields a fixed local error, never raw terminal controls or a model fallback. Allow newline/tab only in validated response bodies; reject all other control characters. Fixed labels/status do not include user strings.
 
-No prompts, banners, mock labels or accounting changes are added to legacy single-turn/voice protocols. New mode is line-oriented and requires no ANSI sequences, cursor manipulation, terminal size, full-screen UI or shell startup modification.
+No prompts, banners, mock labels or accounting changes are added to legacy single-turn text protocol. New mode is line-oriented and requires no ANSI sequences, cursor manipulation, terminal size, full-screen UI or shell startup modification.
 
 ## Shared session and accounting interface
 
@@ -108,7 +110,7 @@ Freeze current main `e3ebf24` for legacy behavior. Preserve all 193 distinct bas
 
 Required coverage:
 
-- Legacy default, single-turn and voice/AEC/memory behavior unchanged on equivalent inputs; compare exact observable output, exit and store state, with historical reference runs where available.
+- Legacy default, single-turn and text-memory behavior unchanged on equivalent inputs; compare exact observable output, exit and store state, with historical reference runs where available.
 - Launch grammar, mode/feature conflicts, complete validation before file access, explicit create-once/open-only, private permissions, occupied namespace, wrong header and locked/corrupt ledger. No implicit fallback or repair.
 - Input lengths 0/1/1,024/1,025, UTF-8 boundaries, CRLF, EOF-final line, embedded controls, oversized tails and piped command injection; invalid input never dispatches.
 - Exact local commands/unknown slash commands, memory-disabled and unavailable cases, mutation-intent denial, local recall/context and correction/deletion visibility with synthetic facts; no local result enters inference history/input.

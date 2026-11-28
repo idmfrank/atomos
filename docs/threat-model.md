@@ -1,10 +1,20 @@
 # AtomOS threat model
 
-Status: active engineering threat model, target controls plus implemented boundaries below; not production security certification. M2.5b merged in PR #36; post-merge CI passed and the identical final PR tree passed full 1K/10K/100K scale/recovery. [Exact provenance](m2-text-outcomes.md#verified-candidate-evidence). CLI MVP scope replaces the former voice-first release gate. [Architecture](architecture.md) | [Current state](../PROJECT_STATE.md).
+**New target boundary:** [Local agency and LAN-only web access](local-agent-direction.md) adds authenticated HTTPS, explicit LAN restrictions, browser request protections, privileged execution mediation and external-effect approval requirements. None is implemented or security-qualified by this documentation revision. The CLI boundaries below describe the installed baseline.
+
+Status: active engineering threat model, target controls plus implemented boundaries below; not production security certification. M2.5b merged in PR #36; post-merge CI passed and the identical final PR tree passed full 1K/10K/100K scale/recovery. [Exact provenance](m2-text-outcomes.md#verified-candidate-evidence). The persistent agent roadmap replaces the former CLI/voice release gates. [Architecture](architecture.md) | [Current state](../PROJECT_STATE.md).
+
+## Continuous learning and observation boundary
+
+The agent may observe interactions, verified task outcomes, host events and scoped visible network metadata under configured local policy. Do not turn credentials, packet payloads or untrusted instructions into trusted graph facts. Separate evidence from assertions; preserve source, timestamps, confidence, sensitivity and derivation links. Bound capture buffers, queues, CPU and disk; handle overload visibly. Exclude secrets and pause collection on disk pressure. Capture privileges must not become general web-process privileges.
+
+Explicitly configure packet-content scope and retention before enabling capture. No TLS interception or assumption of whole-LAN visibility. Changes to other devices or networking equipment require external authorization. Deleting a source must invalidate derived facts/indexes/caches according to retention policy; backup restore must not silently resurrect forgotten knowledge. Learning cannot expand permissions, execute procedures without policy checks or export private observations.
+
+Voice is removed from the product. Legacy grant schema remains only for database compatibility; no voice disclosure API or grant command remains. Historical sections below describe their tested revisions and are not current callable interfaces.
 
 ## CLI MVP security boundary
 
-The [CLI MVP](cli-mvp-roadmap.md) uses one unprivileged owner process through existing SSH/local login. No new network listener, browser session, multi-user service or arbitrary shell/tool execution is introduced. Reuse host authentication; do not change SSH configuration or add a new service under this roadmap. A later web interface needs a separate authentication/session/CSRF and hosting review.
+The installed local/mock CLI uses one unprivileged owner process through existing SSH/local login. No new network listener, browser session, multi-user service or arbitrary shell/tool execution is introduced. Reuse host authentication; do not change SSH configuration or add a new service under this roadmap. The planned LAN web interface requires authentication/session/CSRF and hosting validation under the active roadmap.
 
 Treat terminal input, retrieved text and model output as untrusted at their respective boundaries. SSH does not authorize model-directed actions, private AMG disclosure or credential access. Do not print tokens, raw provider diagnostics or private memory in logs. Terminal echo/scrollback, `tmux` buffers, shell history, redirected output and crash dumps can retain content; full transcript logging is outside the MVP. Explicit memory operations remain owner-controlled and fact values enter on stdin.
 
@@ -61,7 +71,7 @@ Mute stops capture and discards pending volatile audio; software mute is not equ
 - Verify no remote calls in idle/offline/muted tests; inspect outbound payloads for unnecessary sensitive data.
 - Confirm official sign-in eligibility and subscription-only settings before live tests. No API-key fallback, automatic credits or limit circumvention.
 - Test memory export, correction and deletion, log redaction and recovery.
-- If voice is resumed, verify physical mute and listening indicators before normal household use; deferred from CLI acceptance.
+- Voice is removed from active scope; do not reintroduce audio capture or its former disclosure APIs.
 
 Residual risks: provider-side retention and account-wide usage are outside local control; audio transcription can misinterpret speech; physical compromise and upstream vulnerabilities remain possible. Document provider policies and hardware properties before deployment. AtomOS is not a safety-critical or emergency response device.
 

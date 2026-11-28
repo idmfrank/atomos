@@ -2,19 +2,14 @@
 use atomos_core::{respond, MockInference};
 use atomos_memory::{MemoryReader, Value, ContextRequest, compile_ranked_context};
 
-#[derive(Clone,Copy,PartialEq,Eq)]
-pub enum Channel { Text, Voice }
-
 pub struct Conversation {
     reader: Option<Box<dyn MemoryReader>>,
-    channel: Channel,
     last_subject: Option<String>,
     local_recalls: usize,
 }
 
 const NO_FACT: &str = "I do not have that fact in my memory.";
 const UNAVAILABLE: &str = "My local memory is unavailable.";
-const VOICE_DENIED: &str = "That memory requires the local text interface.";
 
 fn key(s:&str)->bool {
     !s.is_empty() && s.len()<=64 && s.bytes().all(|b|b.is_ascii_lowercase()||b.is_ascii_digit()||matches!(b,b'_'|b'-'|b'.'))
@@ -27,7 +22,7 @@ fn predicate(words:&str)->Option<String> {
 fn safe_text(s:&str,max:usize)->bool {
     !s.trim().is_empty() && s.len()<=max && !s.chars().any(char::is_control)
 }
-fn speak_value(value:Value)->Option<String> {
+fn display_value(value:Value)->Option<String> {
     match value {
         Value::Text(v) if safe_text(&v,1024)=>Some(v),
         Value::Entity(v) if key(&v)=>Some(v.replace('_'," ")),
@@ -37,8 +32,8 @@ fn speak_value(value:Value)->Option<String> {
     }
 }
 impl Conversation {
-    pub fn new(reader:Option<Box<dyn MemoryReader>>,channel:Channel)->Self {
-        Self {reader,channel,last_subject:None,local_recalls:0}
+    pub fn new(reader:Option<Box<dyn MemoryReader>>)->Self {
+        Self {reader,last_subject:None,local_recalls:0}
     }
     pub fn clear(&mut self) { self.last_subject=None; }
     pub fn local_recalls(&self)->usize { self.local_recalls }
@@ -85,7 +80,6 @@ impl Conversation {
         // Do not normalize the actual question to lower case before validation.
         if s=="context" || s.starts_with("context ") {
             self.clear();
-            if self.channel==Channel::Voice { return VOICE_DENIED.into(); }
             let Some((anchor,question))=input.trim().split_once(' ').and_then(|(_,rest)|rest.trim().split_once(' ')) else {
                 return "Use context SUBJECT QUESTION in the local text interface.".into();
             };
@@ -120,17 +114,11 @@ impl Conversation {
             return "Please specify the subject and fact to recall.".into();
         };
         self.clear();
-        // Voice is not authenticated. Only a tiny demo allowlist, with explicit
-        // owner activation at launch; never arbitrary graph or historical reads.
-        if self.channel==Channel::Voice && (subject!="owner" || !matches!(p.as_str(),"favorite_color"|"favorite_food"|"favorite_music")) {
-            return VOICE_DENIED.into();
-        }
         let reader=self.reader.as_ref().expect("reader checked");
-        let result=if self.channel==Channel::Voice {reader.recall_voice(&subject,&p)} else {reader.recall(&subject,&p)};
+        let result=reader.recall(&subject,&p);
         match result {
             Ok(Some(f)) if f.subject==subject && f.predicate==p && f.superseded_at.is_none()=>{
-                if self.channel==Channel::Voice && !matches!(&f.value,Value::Text(_)) { return VOICE_DENIED.into(); }
-                let Some(value)=speak_value(f.value) else {return UNAVAILABLE.into();};
+                let Some(value)=display_value(f.value) else {return UNAVAILABLE.into();};
                 // Store only a subject identifier, never a fact value. Re-query
                 // each turn to observe correction/deletion by the administrator.
                 self.last_subject=Some(subject);
@@ -139,7 +127,6 @@ impl Conversation {
             }
             Ok(Some(_))=>UNAVAILABLE.into(),
             Ok(None)=>NO_FACT.into(),
-            Err(atomos_memory::Error::DisclosureDenied)=>VOICE_DENIED.into(),
             Err(_)=>UNAVAILABLE.into(),
         }
     }

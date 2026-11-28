@@ -1,12 +1,16 @@
 # AtomOS engineering rules
 
+## Revised product direction
+
+Follow [the agent roadmap](docs/agent-roadmap.md) and [LAN agent design](docs/local-agent-direction.md). The owner selects an always-running local agent, LAN-only web interaction, broad local agency, graph-based continuous learning and optional external inference. Voice is removed from the product and roadmap. The CLI is a maintenance/recovery adapter. Preserve historical evidence and existing owner data; remove unnecessary voice code without deleting schema migration compatibility. This overrides earlier voice-preservation and CLI-only scope instructions.
+
 ## Session startup and handoff
 
 Read [PROJECT_STATE.md](PROJECT_STATE.md) before starting work. It records the verified baseline, current objective, environment boundaries and pending gates. Check the actual checkout and latest CI; never assume a snapshot is current. Apply the per-commit documentation rule below, including documentation-only changes. Verify post-merge results before updating verified evidence. Codex may build and run offline tests; interactive vault operations and live inference require explicit owner action per the documented M2.4 procedure.
 
 ## Current product scope
 
-The owner-approved first MVP is a single-owner CLI on an existing Linux host, accessed locally or over SSH. Follow [the CLI MVP roadmap](docs/cli-mvp-roadmap.md) and the [CLI session contract](docs/cli-session-contract.md) for the next implementation slice. PR #38 implements the contract and the default local/mock session is deployed; [verified operations](docs/linux-cli-deployment.md#deployed-session-release). Optional synthetic replay requires its separate build; no live provider or private-memory egress is enabled. Do not treat local-only working history as provider-bound context. Keep the CLI thin over shared Rust interfaces. Voice development/physical qualification, browser UI, scheduler, autonomous tools and custom OS work are deferred; preserve existing code and offline regression tests. This scope change does not authorize live inference, vault access, private AMG disclosure, installs or host/SSH configuration changes. Read-only local/mock operation and historical evidence must remain distinguishable from the planned integrated MVP.
+Build on the existing Linux device with shared Rust task, memory, permission and inference interfaces. The installed release remains the local/mock CLI; proposed service, LAN web access, tools, learning, capture and local models are not implemented or validated. External effects require approval or an approved standing policy; routine authorized local actions should not prompt repeatedly. LAN authentication, HTTPS, explicit subnet restrictions, privileged execution mediation and egress enforcement are required. Keep consumed qualification history; live inference, credential access and private disclosure retain separate gates. Follow [the active roadmap](docs/agent-roadmap.md), not historical CLI/voice milestones, for new work.
 
 ## Documentation is part of every commit
 
@@ -18,7 +22,7 @@ The owner-approved first MVP is a single-owner CLI on an existing Linux host, ac
 ## Engineering rules
 
 - Preserve natural conversation quality, zero incremental inference spend, privacy, and deterministic bounded local operation. No unofficial provider access or paid fallback.
-- Keep production hot paths in Rust. Measure any cross-language/IPC overhead before a rewrite. Native speech adapters remain provisional; do not sacrifice speech quality.
+- Keep production hot paths in Rust. Measure any cross-language/IPC overhead before a rewrite.
 - For behavioral changes, freeze the existing reference and compare equivalent inputs/state. For retrieval compare facts, revision/source IDs, ranking/connector flags, truncation and compiled bytes, not just counts. Add independent expected-result tests; never weaken an assertion merely to make CI pass. Document intentional semantic changes explicitly.
 - Prefer fast synthetic local replay and differential checks before PR review; then run locked offline regression CI and scale benchmarks on reviewed commits. Reference and candidate must use equivalent durability, policy and inputs. Do not call a live model twice for verification: replay one recorded synthetic or authorized response stream through parsers. Never duplicate billing, side effects or writes.
 - Record failures by stage, sanitized category, counts/lengths and build ID; distinguish media type from content encoding using allowlisted classifications, never raw headers or response bodies; no private memory, prompt, credentials, audio or raw transcript logs. Synthetic fixtures may be inspected in full. Keep diagnostic work bounded and opt-in.

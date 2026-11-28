@@ -1,12 +1,14 @@
 # Resource budget and conversational benchmarks
 
-Status: CLI MVP measurement priorities and historical targets; current merged M2.5b evidence and historical PR #32 baseline are recorded below and in [PROJECT_STATE](../PROJECT_STATE.md). M2.5a isolated admission measurements are in [atomic admission](m2-atomic-admission.md). Physical voice and whole-device power remain pending; direct Linux-host active-AMG and hosted scale results are recorded separately below.
+**Revised measurement scope:** [The local agent direction](local-agent-direction.md) adds web idle/active memory, task persistence, executor/isolation overhead, cancellation latency and local-model quality/latency/peak memory measurements. These are pending; existing CLI and retrieval benchmarks do not establish agent or model performance. Also measure observation throughput/drop counts, raw-evidence rotation, graph/index growth, consolidation CPU/I/O and deletion/recovery under disk pressure. The owner reports 2 TB capacity; verify available bytes and filesystem before allocating quotas. Reserve host resources for SSH/recovery and measure before selecting a model.
+
+Status: persistent-agent measurement requirements and historical CLI targets; current merged M2.5b evidence and historical PR #32 baseline are recorded below and in [PROJECT_STATE](../PROJECT_STATE.md). M2.5a isolated admission measurements are in [atomic admission](m2-atomic-admission.md). Physical voice and whole-device power remain pending; direct Linux-host active-AMG and hosted scale results are recorded separately below.
 
 ## CLI MVP measurements and current baseline
 
-The [CLI MVP roadmap](cli-mvp-roadmap.md) uses the existing Linux/SSH host and requires no audio gear, new hardware or custom image. Measure local terminal response, context compilation, admission/settlement, startup, active-store RSS/storage and binary size. Later authorized provider tests report first validated/displayed text, completion, cancellation, errors and actual usage separately; do not reuse speech timing targets as CLI claims.
+The historical [CLI MVP roadmap](cli-mvp-roadmap.md) used the existing Linux/SSH host and requires no audio gear, new hardware or custom image. Measure local terminal response, context compilation, admission/settlement, startup, active-store RSS/storage and binary size. Later authorized provider tests report first validated/displayed text, completion, cancellation, errors and actual usage separately; do not reuse speech timing targets as CLI claims.
 
-One foreground session, no scheduler/background inference and zero idle calls. Capture p50/p95/p99 with sample/error counts and test-host/build details. Optional `tmux` continuity is an operator arrangement, not runtime recovery. Full transcript logging, new purchases, dependencies and host configuration are not authorized.
+The CLI baseline is one foreground session with no scheduler/background inference and zero idle calls. The agent target adds bounded background learning, persistent tasks and LAN service operation; no idle remote inference. Capture p50/p95/p99 with sample/error counts and test-host/build details. Optional `tmux` continuity is an operator arrangement, not runtime recovery. Full transcript logging, new purchases, dependencies and host configuration are not authorized.
 
 Last full-scale measurement baseline (PR #32) `5bca8a15e8245e9631d8a978a988c01cdc812f7a`: [CI](https://github.com/idmfrank/atomos/actions/runs/46025742630), [full scale](https://github.com/idmfrank/atomos/actions/runs/46026109238), same 173 distinct tests and 18,000 decoder samples; CLI 466,512 bytes, decoder RSS 2,180 KiB. Admission reference/candidate p95 0.402973/0.216750 ms, traced fsyncs 2/1, RSS 2,236/2,200 KiB, harness bytes 416,520/440,144 and journal bytes/request 52.560/104.280. Charge 14,100 each, candidate background 7,050, zero errors. 100K CLI 4,232 KiB vs no-store 2,592; selective p95 0.3143 ms, common 2.5666 vs 38.7607 reference, restore 14.1180 s / 9,192 KiB. [Full tables](../PROJECT_STATE.md#latest-verified-test-and-benchmark-baseline).
 
@@ -214,7 +216,9 @@ Candidate background charge 7,050 and 600 append records/syncs include settlemen
 
 These local retrieval/footprint results fit the existing targets and do not justify replacing Linux, adding another database server/local model, enlarging caches indiscriminately or consuming CPU/RAM while idle. Local context/recall remains zero-inference work. Physical power/energy, real provider token savings, model quality and end-to-end network conversation remain unmeasured. Test retained data are synthetic; no private AMG or vault was copied. Earlier GitHub tables retain their own tested SHA and provenance.
 
-## Historical evidence and deferred voice reference configuration
+The following audio/appliance figures are historical design notes only. Voice is removed from the roadmap; these are not future work or acceptance gates.
+
+## Archived voice planning: removed from active scope
 
 Historical verified main `a91ccd9e9190334f1d7259c9413e40494121a01c`: [post-merge CI](https://github.com/idmfrank/atomos/actions/runs/46024100103) / [scale](https://github.com/idmfrank/atomos/actions/runs/46024473201), all 173 tests, Rust 1.75 core targets and 18,000 decoder samples passed. Admission p50/p95/p99 reference 0.563104/0.641059/0.777855 ms vs candidate 0.276983/0.324064/0.413111 ms; trace fsyncs 2/1, write syscalls 4/2. RSS 2,260/2,264 KiB, harness size 416,520/440,144 bytes, journal bytes/request 52.560/104.280, exact charge 14,100 each, zero errors/parity. Decoder process 2,204 KiB. 100K CLI 4,268 KiB vs 2,612 no-store; selective p95 0.2966 ms, common 1.9801 vs 30.1055 reference, restore 9.1048 s / 8,988 KiB. Earlier head 10K remember tail returned to 0.6367 ms p95; cause unisolated. [Full post-merge method/results](m2-atomic-admission.md#post-merge-main-verification). Both runtime PRs were merged externally, not by the agent; the subsequent PR #32 documentation reconciliation is merged.
 
@@ -242,7 +246,7 @@ Efficient x86-64 mini PC: N100/N150-class baseline or better, 16 GB RAM preferre
 
 Initial active RAM planning allocation: OS/core 64 MiB, context/cache 128 MiB, ASR 768 MiB, TTS 1024 MiB, audio processing 64 MiB, working buffers 512 MiB = 2560 MiB (2.5 GiB). This is a hypothesis; report process PSS/RSS and whole-system memory without double counting. Model storage and installed OS footprint are measured separately; no hard model storage ceiling until engines are selected. Keep the 64 MiB and 128 MiB core goals as optimization hypotheses, not reasons to degrade voice.
 
-## Deferred voice latency definitions and target gates
+## Archived voice latency targets
 
 | Metric | Definition | Initial target |
 | --- | --- | --- |
@@ -258,13 +262,13 @@ Initial active RAM planning allocation: OS/core 64 MiB, context/cache 128 MiB, A
 
 Capture time points with monotonic clock; use audio loopback or independent microphone to confirm actual speaker timing, not just enqueue time. Separate endpointing, ASR, context, network/model first delta, chunking, TTS and playback delay. Report p50/p95, sample count and failures; do not omit failed requests. Remote latency is partly outside local control.
 
-## Deferred voice and future mixed-use workload
+## Archived audio workload
 
 Create versioned, consented or synthetic speech fixtures with transcripts, annotated endpoints and interruption times. Test short commands, open questions, follow-ups, corrections, long pauses, code-switching where supported, competing audio and agent speech. Include quiet/noisy rooms and distances 1/3/5 m; record microphone orientation, room, noise level and audio chain. Use at least 30 repetitions per latency scenario in initial comparisons, with cold/warm starts labeled; report uncertainty and limitations. Evaluate word error rate, semantic task success, false wakes, missed wakes, false endpoints, echo-induced activations, interruption success and owner-rated naturalness/prosody. Do not treat WER as equivalent to conversational quality.
 
 Define a separate repeatable 100-event daily workload (25 open-ended turns, 50 routine commands/fact lookups, 25 timer/sensor events) for token tests. Track the actual local resolution rate, counting only correctly resolved events. Report conversation-only results separately. Include follow-ups, retries, background consolidation, cancellation and provider usage gaps. Compare against a baseline with full context/no local resolver on mock or eligible bounded tests; never exceed spending policy to benchmark.
 
-## Later physical-device power and cost method
+## Archived appliance power and cost method
 
 Use an AC wall meter including power supply, microphone and speaker; record idle wake listening, active local voice, remote turn and playback. Measure energy per completed task and an overnight/24-hour idle run, then a representative mixed-use day. Report average watts, peak watts, Wh/day, joules/task, total setup cost and estimated 3-year cost. External host energy and network/provider energy are separate; report unknowns rather than assuming zero. A local model is optional only if task quality, latency and total energy justify it.
 

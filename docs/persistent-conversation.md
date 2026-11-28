@@ -1,5 +1,7 @@
 # M1.3: Persistent conversational coordinator
 
+**Historical, superseded:** Voice is removed from the product and its runtime/adapters have been removed from current source. Commands and results below apply only to their historical revisions. Follow [the active agent roadmap](agent-roadmap.md).
+
 > **CLI MVP scope update (2026-11-27):** The owner selected a single-owner text CLI over existing SSH as the first MVP. Voice development and physical speech qualification are paused; preserve this historical implementation, its code, fixtures and offline tests. Audio/device/model qualification and the original voice-first exit criteria do not block the CLI path. See [the active roadmap](cli-mvp-roadmap.md) and [current state](../PROJECT_STATE.md). This note changes scope only and does not authorize live inference.
 
 > **Milestone context (reviewed through PR #28, 2026-11-26):** This remains the documented local conversation coordinator and optional warm speech adapter. Automated fixture success is not physical-device qualification; wake word, native-model quality, AEC/barge-in, device latency and power measurements remain open. The separate M2 provider qualification does not enable remote speech. See [architecture](architecture.md) and [resource budget](resource-budget.md). [Current project state](../PROJECT_STATE.md) is authoritative; status and next-step statements below describe the original milestone unless explicitly updated.

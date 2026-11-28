@@ -1,12 +1,14 @@
 # OpenAI-native inference architecture
 
+**Revised integration target:** [The local agent direction](local-agent-direction.md) places optional external reasoning alongside deterministic local work and benchmark-selected local inference, behind a shared task/policy interface. LAN web hosting is separate from inference egress authorization. Existing provider gates and consumed qualification history remain intact; neither a useful local model nor production provider integration is verified.
+
 Status: target architecture; M2.1–M2.4c isolated offline broker, account policy and decoder profiles verified. Actual owner OAuth/catalog/refresh succeeded. Three fixed live attempts consumed without validated completion or usage. M2.5a isolated atomic admission merged with PR #31 time/task follow-up merged externally and verified offline; M2.5b offline decoder integration is merged in PR #36 with successful post-merge CI; no general live inference. [Current state](../PROJECT_STATE.md) | [Architecture](architecture.md) | [Resource budget](resource-budget.md).
 
-## CLI MVP scope
+## Active agent scope
 
-The [CLI roadmap](cli-mvp-roadmap.md) is the active product boundary. Text input/output replaces voice as the first interface; one owner and one active conversation are sufficient. Current text interaction remains local/mock. The [M2.5b offline outcome/admission/cancellation/settlement contract](m2-text-outcomes.md) is implemented and verified offline on PR #36, followed by the [specified CLI session integration](cli-session-contract.md). Transport, secure credentials, real account controls and private AMG disclosure remain separately gated.
+The [agent roadmap](agent-roadmap.md) is the active product boundary: persistent local operation, LAN browser interaction, local agency and continuous graph learning. The CLI is a maintenance adapter. Keep reasoning behind shared context, permission and accounting interfaces; neither browser interaction nor an autonomous task grants external disclosure authority.
 
-The CLI is a thin adapter: no terminal command can bypass admission, change billing route or silently authorize memory egress. Define bounded working-turn retention, cancellation, EOF and disconnect behavior. No full transcript persistence or automatic memory extraction. Synthetic current decoders buffer until validated terminal/settlement; choosing future incremental display requires explicit outcome/accounting semantics.
+Current text interaction remains local/mock. The offline outcome/admission/cancellation/settlement implementation and session layer are retained foundations, not a connected provider. Secure credentials, real account controls and private AMG disclosure remain separately gated. Local-model selection requires hardware and quality measurements; continuous learning does not imply continuous remote inference.
 
 ## Deployed local/mock boundary
 
@@ -40,11 +42,9 @@ Ledger fields: request ID, task ID, turn/epoch, account alias, model, priority, 
 
 Preserve owner instructions, applicable safety policy, recent turn state, task-relevant typed facts and only needed tool schemas. Use AMG exact entity/property lookup, bounded graph traversal, scoped FTS5 and local ranking initially; optional local embeddings only after benchmark. See [AMG architecture](amg-architecture.md). Preserve provenance, validity, conflicts and scope; return ambiguity/truncation metadata. No remote retrieval/routing requirement. Use stable prompt prefixes where appropriate; prompt caching is not assumed to reduce subscription usage. Keep essential context even if a task requires larger budget; ask the owner or defer rather than silently degrade accuracy. Untrusted content remains clearly delimited. Store facts with source, timestamp and confirmation status. No remote model call to select a model for every request.
 
-## Deferred voice integration
+## Local-agent integration
 
-Voice work and physical qualification are paused. This retained target applies only if a later voice interface is separately selected; it does not block text provider integration or CLI acceptance.
-
-Local wake, VAD, streaming ASR, endpointing and local TTS consume no remote model tokens. Do not infer on speculative ASR partials. Stream text deltas to a bounded clause segmenter, then local TTS. On barge-in, stop playback locally and cancel upstream work where supported; reconcile outstanding usage. Record what was delivered, not merely generated. More advanced voice integrations require verified subscription eligibility and measured quality improvement.
+Voice is removed from product scope. Inference is a reasoning resource for the persistent agent, not a terminal or speech protocol. Local procedures, retrieval and benchmark-selected local models should handle useful work before optional external requests. Event-driven learning consumes bounded local resources; no periodic remote inference or automatic model training. Full context binding, private disclosure policy, account-bound accounting and cancellation remain required before external dispatch. [Active roadmap](agent-roadmap.md).
 
 ## Failure modes and testing
 

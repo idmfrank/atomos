@@ -1,5 +1,7 @@
 # M1.4d — Memory disclosure and logical recovery
 
+**Historical interface note:** Voice commands/recall were removed by the agent scope cleanup. Legacy grant tables/migration/integrity logic remain for existing-store compatibility. Text recall, memory administration and recovery remain supported. Follow [the active roadmap](agent-roadmap.md).
+
 > **Milestone context (reviewed through PR #28, 2026-11-26):** M1.4d's schema v2 disclosure/recovery behavior below is the historical slice. M1.4e adds schema v3 indexed deletion and M1.4f adds bounded streaming backup/restore and storage accounting. See [optimization](m1-amg-optimization.md). No private authenticated deployment, encryption/key recovery or forensic deletion guarantee. [Current project state](../PROJECT_STATE.md) is authoritative; status and next-step statements below describe the original milestone unless explicitly updated.
 
 

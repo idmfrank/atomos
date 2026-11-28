@@ -1,5 +1,5 @@
 #![forbid(unsafe_code)]
-//! Explicit owner-operated memory administration; no voice authorization.
+//! Explicit owner-operated memory administration; no remote disclosure.
 use atomos_memory::{compile_context, init, open, Error, Fact, MemoryStore, Result, SqliteMemory, Value};
 use std::io::{self, Read};
 use std::path::Path;
@@ -65,12 +65,6 @@ fn run()->Result<()> {
         ["storage"]=>storage_report(dir)?,
         ["verify"]=>{db.verify()?;println!("integrity ok");},
         ["export",path]=>println!("exported_rows={}",db.export_logical(Path::new(path))?),
-        ["voice-allow",s,p,revision,ttl]=>{
-            db.allow_voice(s,p,revision.parse().map_err(|_|Error::Invalid("invalid revision"))?,
-                ttl.parse().map_err(|_|Error::Invalid("invalid grant duration"))?)?;
-            println!("voice grant saved");
-        },
-        ["voice-revoke",s,p]=>println!("revoked={}",db.revoke_voice(s,p)?),
         ["identity"]=>println!("agent_id={} name={:?}",db.identity().agent_id,db.identity().display_name),
         ["entity",k,label,kind]=>{ db.add_entity(k,label,kind)?; println!("saved"); },
         ["remember",s,p,k]=>show(&db.remember(s,p,input_value(k)?)?),
@@ -85,7 +79,7 @@ fn run()->Result<()> {
             let r=atomos_memory::Retrieval {facts,truncated:false,visited:0};
             print!("{}",compile_context(&r,4096)?);
         },
-        _=>return Err(Error::Invalid("commands: init NAME, migrate, verify, storage, export PATH, restore PATH --accept-snapshot, voice-allow SUBJECT PREDICATE REVISION TTL_SECONDS, voice-revoke SUBJECT PREDICATE, identity, entity KEY LABEL KIND, remember SUBJECT PREDICATE TYPE, correct SUBJECT PREDICATE REVISION TYPE, recall SUBJECT PREDICATE, forget SUBJECT PREDICATE, history SUBJECT PREDICATE, search PHRASE, graph SUBJECT, context SUBJECT PREDICATE")),
+        _=>return Err(Error::Invalid("commands: init NAME, migrate, verify, storage, export PATH, restore PATH --accept-snapshot, identity, entity KEY LABEL KIND, remember SUBJECT PREDICATE TYPE, correct SUBJECT PREDICATE REVISION TYPE, recall SUBJECT PREDICATE, forget SUBJECT PREDICATE, history SUBJECT PREDICATE, search PHRASE, graph SUBJECT, context SUBJECT PREDICATE")),
     }
     Ok(())
 }

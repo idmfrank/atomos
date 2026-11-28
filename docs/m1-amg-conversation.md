@@ -1,5 +1,7 @@
 # M1.4b — Read-only conversational AMG integration
 
+**Historical interface note:** Voice commands/recall were removed by the agent scope cleanup. Legacy grant tables/migration/integrity logic remain for existing-store compatibility. Text recall, memory administration and recovery remain supported. Follow [the active roadmap](agent-roadmap.md).
+
 > **Milestone context (reviewed through PR #28, 2026-11-26):** The original read-only conversation interface is retained. M1.4d adds explicit revision-specific expiring demo voice grants; M1.4e–f add deletion and retrieval improvements. Use the [current AMG architecture](amg-architecture.md) and [recovery/disclosure](m1-amg-recovery.md) for the newer boundary; voice is not authentication. Physical speech remains unqualified. [Current project state](../PROJECT_STATE.md) is authoritative; status and next-step statements below describe the original milestone unless explicitly updated.
 
 

@@ -167,7 +167,7 @@ class SessionProcesses(unittest.TestCase):
     def test_legacy_output_exit_and_memory_match_frozen_reference(self):
         store=self.root/'legacy'
         run(ADMIN,[store,'demo','init','Aster'])
-        for args,data in [([],b'what is your name?\nquestion\n/quit\n'),(['--single-turn'],b'question\n'),(['--voice-events'],b'ARM\n'),(['--voice-events','--aec-verified'],b'ARM\n'),(['--memory',store,'demo'],b'what is your name?\nrecall owner favorite_color\n/quit\n')]:
+        for args,data in [([],b'what is your name?\nquestion\n/quit\n'),(['--single-turn'],b'question\n'),(['--memory',store,'demo'],b'what is your name?\nrecall owner favorite_color\n/quit\n')]:
             old=run(REFERENCE,args,data)
             new=run(DEFAULT,args,data)
             self.assertEqual((old.stdout,old.stderr,old.returncode),(new.stdout,new.stderr,new.returncode))

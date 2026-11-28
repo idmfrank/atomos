@@ -1,13 +1,15 @@
 # AtomOS Memory Graph (AMG)
 
-Status: accepted target architecture. M1.4a–f, schema v3 deletion, scoped context, grants, optimization and logical recovery merged and tested through 100K entities. Private deployment security and physical hardware validation pending. See [current state](../PROJECT_STATE.md).
+Status: accepted target architecture. M1.4a–f, schema v3 deletion, scoped context, grants, optimization and logical recovery merged and tested through 100K entities. Private deployment security and new learning/retention controls remain pending. See [current state](../PROJECT_STATE.md).
 See [system architecture](architecture.md), [inference architecture](inference-architecture.md), [resource budget](resource-budget.md), and [threat model](threat-model.md).
 
-## CLI MVP boundary
+## Persistent local-agent memory boundary
 
-The [CLI MVP roadmap](cli-mvp-roadmap.md) prioritizes persistent identity and explicitly committed owner facts, local recall, correction/forget and export on the existing Linux host. The conversational CLI currently has a read-only MemoryReader; explicit writes use `atomos-memory`. A coherent owner command surface is planned, not implemented by this roadmap. Keep values on stdin rather than shell arguments/history and avoid transcript logging.
+The [agent roadmap](agent-roadmap.md) expands AMG from explicitly committed facts to provenance-aware learning from interactions, verified task outcomes and scoped host/network observations. The implemented conversational reader remains read-only; writes use atomos-memory. Automatic ingestion, consolidation, sensitivity classification, quotas and complete deletion of derived knowledge are planned, not implemented.
 
-A single authenticated SSH login establishes host access only. It does not qualify encrypted private storage, multi-user isolation or provider disclosure. Use synthetic facts until private deployment controls are reviewed. Full transcript persistence, automatic extraction/consolidation and reminders remain deferred. Working turns may be bounded volatile state. Preserve voice grants and existing tests as optional historical assets; they are not prerequisites for text interaction.
+Keep rotating observation evidence separate from durable assertions, procedures and task state. Record source, observation time, trust/confidence, retention and derivation links. Owner correction and forgetting must propagate through derived summaries/indexes/caches, with explicit backup behavior. No credentials, indiscriminate packet archive or automatic full-transcript retention. The owner reports 2 TB disk capacity; verify available space and reserve recovery headroom before setting quotas.
+
+Authenticated LAN access and broad local authority do not authorize private-memory export. Keep values off command lines and out of diagnostic logs. Voice is removed from product scope; legacy grant tables and migration/integrity checks remain solely for existing-store compatibility, with no voice recall API or grant commands.
 
 ## Implemented baseline versus remaining design
 
@@ -16,7 +18,7 @@ A single authenticated SSH login establishes host access only. It does not quali
 - M1.4c: bounded graph/FTS retrieval, deterministic ranking, required facts, connector/truncation flags and byte-bounded local context preview implemented. [Implementation](m1-amg-context.md). No live model calls or private context egress.
 - M1.4d–f: expiring revision-specific demo voice grants, logical export/restore without grants, indexed deletion/schema v3, reference parity, streaming recovery and storage accounting implemented. SQLite retained; alternative engines deferred, not equivalently benchmarked. Authenticated private-memory access, encryption/key recovery, hard aggregate quota, complete memory classes and valid-world-time semantics remain unqualified or unimplemented. [Recovery](m1-amg-recovery.md) | [Optimization](m1-amg-optimization.md).
 
-The schema and architecture below specify the target, not a claim that every control or memory class exists. Current reader exposes identity, exact recall, expiring revision-specific demo voice recall and scoped graph/FTS retrieval; administration owns mutation. Voice is not authentication. Synthetic fixtures only.
+The schema and architecture below specify the target, not a claim that every control or memory class exists. Current reader exposes identity, exact recall and scoped graph/FTS retrieval; administration owns mutation. Historical voice recall and grant APIs have been removed. Synthetic qualification fixtures remain separate from private deployment.
 
 ## Decision
 
@@ -107,7 +109,7 @@ A project status query should retrieve milestone and evidence without reading un
 
 ## Storage and concurrency
 
-Version the schema. Use one serialized write path, short transactions, foreign keys on every connection, parameterized SQL, validated migrations, application-controlled query templates and atomic data/index updates. Evaluate WAL versus rollback journal under realistic write/recovery/disk constraints. Choose durability settings using crash tests. Never hold a transaction across ASR, TTS, inference or external actions. Do not run DB work on audio callback threads. Bound queues and deadlines; pause consolidation under contention.
+Version the schema. Use one serialized write path, short transactions, foreign keys on every connection, parameterized SQL, validated migrations, application-controlled query templates and atomic data/index updates. Evaluate WAL versus rollback journal under realistic write/recovery/disk constraints. Choose durability settings using crash tests. Never hold a transaction across inference, observation capture or external actions. Keep capture and learning work off latency-sensitive request handling. Bound queues and deadlines; pause consolidation under contention.
 
 Require FTS5 for reference search; verify availability at startup. Evaluate tokenizer, normalization and language behavior with fixtures. Escape/tokenize search inputs instead of accepting raw FTS syntax. Limit traversal depth, fan-out, visited IDs, result count, payload and execution time. A recursive CTE result LIMIT alone does not bound work; use indexed frontier expansion/cycle detection and cancellation, or deterministic iterative traversal.
 
@@ -160,7 +162,7 @@ Compare exact/graph/FTS compiled context with full-history and selected-excerpt 
 
 - Typed Rust interface, schema version and reference SQLite adapter; document bindings, FTS5, migration and offline build.
 - Durable ID/config, scoped entities/aliases, typed facts/edges, sources, explicit owner-directed memory operations and bounded retrieval. Working context stays in RAM; selected committed episodes only. Synthetic data until owner controls exist.
-- Exact lookup, bounded traversal, FTS5, provenance-aware context compiler and deterministic local fact response; integrate local/mock CLI and voice controller without audio-thread blocking.
+- Exact lookup, bounded traversal, FTS5, provenance-aware context compiler and deterministic local fact response; integrate shared agent interfaces and retain local/mock CLI compatibility.
 - Tests: restart, correction/as-of queries, conflict and alias ambiguity, scope, cycles/high-degree limits, deletion/index invalidation, export, migration, transaction rollback, crash/disk-full, quotas, zero remote inference and context completeness.
 - Reproducible benchmarks and comparable alternative engine evaluation before permanent selection. Preserve offline CI with explicitly provisioned dependencies.
 - Exit: restart restores identity/approved facts; local fact query uses zero inference; update/delete affects retrieval and indexes; context preserves necessary facts/provenance; corrupt/full storage cannot bypass policy. CI is necessary, not proof of acoustic, privacy or power targets.

@@ -1,4 +1,6 @@
-# AtomOS CLI MVP roadmap
+# Historical AtomOS CLI MVP roadmap
+
+**Superseded future scope:** The owner now requests local device agency and LAN-only browser access. See [the active agent roadmap](agent-roadmap.md) for the proposed architecture, authority boundary and delivery sequence. The CLI capabilities and evidence below remain the implemented baseline, not the new product limit.
 
 Decision: owner-approved scope change, 2026-11-27. The first usable MVP is a single-owner text CLI on an existing Linux host, accessed locally or over the owner's existing SSH connection. This supersedes the voice-first MVP and its acoustic, audio-hardware and boot-image exit criteria. It changes development priorities, not implemented behavior or live-inference authorization.
 
@@ -9,7 +11,7 @@ Decision: owner-approved scope change, 2026-11-27. The first usable MVP is a sin
 - One owner, one Linux host, one active conversation and one foreground process.
 - Plain terminal input/output. SSH supplies remote login and transport; AtomOS adds no web server, network listener, SSH server or authentication service.
 - Optional existing `tmux` session for process continuity across SSH disconnects. This is an operator convenience, not implemented AtomOS session recovery, automatic startup or credential unlocking. No installation or SSH configuration changes are part of this decision.
-- A thin CLI calls shared Rust conversation, memory and inference interfaces. Later browser/voice adapters should reuse those interfaces after a separate scope decision.
+- A thin CLI calls shared Rust conversation, memory and inference interfaces. The current product uses these shared interfaces through a planned LAN web adapter.
 - Local commands and supported memory queries remain useful offline. A provider failure must leave the local interface usable.
 
 ## Existing capability versus MVP work
@@ -32,7 +34,7 @@ Historical milestone numbers and evidence remain intact. M2.5a is complete as an
 | CLI integration: merged and deployed local/mock session | Implement the [session contract](cli-session-contract.md): opt-in terminal mode, bounded local-only working turns, read-only memory and visible mock/synthetic outcome/accounting status | Complete local owner journey works over terminal I/O; no automatic memory mutation or private provider disclosure |
 | Provider integration gate and slice | Separately review secure credential handoff, account/model eligibility, trusted admission time, spending controls, output/unknown-usage exposure, cancellation/deadlines and reconciliation before enabling an adapter | Approved transport implementation may be tested offline; any new live test requires separate explicit owner authorization and a reviewed procedure |
 | CLI MVP acceptance | Run the owner journey over existing SSH; qualify real text conversation only after the provider gate | Local persistence/failure tests and authorized provider results are recorded separately; until then label the interface local/mock |
-| After MVP | Evaluate browser or voice access from actual use; separately consider reminders, scheduling and approved tools | New interface/execution surfaces require their own scope and security review |
+| Superseding product | Persistent local agent, LAN browser access, local agency and continuous learning | Follow the active agent roadmap; voice is removed |
 | Long-term | Autonomous tasks, bootable OS, satellites, distributed operation and OS specialization | Deferred; no automatic promotion into the CLI MVP |
 
 ## CLI MVP acceptance criteria
@@ -50,9 +52,7 @@ Historical milestone numbers and evidence remain intact. M2.5a is complete as an
 
 ## Deferred work and retained assets
 
-Voice development and physical qualification are paused. Preserve the PCM coordinator, adapters, fixtures, tests and historical benchmarks. Keep existing offline regression checks; do not delete code or relax assertions merely because voice is deferred. Wake word, VAD tuning, ASR/TTS quality, AEC, barge-in, far-field acoustics and audio power budgets apply only if voice is resumed.
-
-A browser UI is a later option. HTTP hosting, browser sessions, web authentication and frontend work are not dependencies of this CLI. Automatic daemon startup, service management, multi-user sessions, reminders, tool execution, autonomous workflows, model routing, cross-device sync, custom images and new hardware purchases are also deferred.
+This document is historical CLI baseline evidence. [The active agent roadmap](agent-roadmap.md) replaces its future delivery sequence. Voice is removed from product scope; its runtime/adapters and dedicated tests are removed in the cleanup candidate. Historical milestone documents and Git history retain evidence, not a commitment to restore voice. Browser interaction, service startup, local tools and learning are now planned work.
 
 ## Safety and data boundaries
 
