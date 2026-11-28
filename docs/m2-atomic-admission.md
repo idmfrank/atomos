@@ -164,3 +164,5 @@ M2.5b's offline integration is implemented and verified on PR #36, merged with s
 ## Session candidate accounting view
 
 The CLI session candidate adds AtomicReplay.status as a bounded read-only snapshot of health, permanent halt, optional pending units, last-confirmed total/background charges and next ID. It exposes no permit, mutation, prompt/digest or provider content. Unhealthy instances are rendered accounting-unavailable because a complete record may have survived an ambiguous sync. Strict and extended replay method bodies, journal/header/digest format and caps remain unchanged. Status/output-fault tests and full session verification passed on PR #38. [Exact evidence](cli-session-contract.md#verified-session-implementation).
+
+Deployment note: PR #38 source is merged, but the installed e7e8fc9 default local/mock session does not enable atomic replay. Its /status correctly reports accounting not applicable; synthetic units must not be treated as real tokens or an unlocked provider. [Deployment](linux-cli-deployment.md#deployed-session-release).

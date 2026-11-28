@@ -1,6 +1,6 @@
 # Linux CLI development and local deployment
 
-Status: verified local/mock deployment, 2026-11-27, at source `5869e205167a3dde3a6a77392af294101e6a46c3` (merged PR #34). [Main CI 46055361823](https://github.com/idmfrank/atomos/actions/runs/46055361823) passed. The source checkout, release binaries, local identity store and terminal session were verified directly on the owner-authorized Linux host. This is deployment of the existing CLI, not implementation of M2.5b or production inference.
+Status: PR #38 default-feature local/mock session release deployed and verified at `e7e8fc9839090ac4cee4e6dc3140a6002124d655`. [Post-merge CI 46094284130](https://github.com/idmfrank/atomos/actions/runs/46094284130) passed. [Current deployment](#deployed-session-release) supersedes the historical PR #34 layout/build observations below; provider integration remains disabled.
 
 [Current state](../PROJECT_STATE.md) | [CLI roadmap](cli-mvp-roadmap.md) | [Architecture](architecture.md) | [Resource evidence](resource-budget.md) | [M2.5b contract](m2-text-outcomes.md)
 
@@ -63,7 +63,7 @@ The verified run used ext4 on the SATA SSD; `stat -f` reports its shared ext2/ex
 
 Local logs are owner-private under `~/.local/state/atomos/verification-20261127-214716/`: `results.json`, eight stage logs, `ssd-results.json`, `ssd-admission.log` and `ssd-full-amg-scale.log`. These are direct host observations, not GitHub Actions results. [Sanitized measurements](resource-budget.md#verified-linux-cli-host-baseline).
 
-## Installed release layout and smoke checks
+## Historical PR #34 installed release layout and smoke checks
 
 The verified setup uses:
 
@@ -104,8 +104,22 @@ The SSD baseline at 100K entities shows exact recall p95 0.0793 ms, selective co
 
 Use local deterministic recall, bounded context and checked admission to reduce unnecessary inference work; do not equate context bytes with provider tokens or infer energy savings. Physical power, real model quality, token savings, provider usage and network latency remain unmeasured. More available RAM/CPU is capacity, not an instruction to consume it while idle.
 
-M2.5b runtime is implemented and verified offline on PR #36, merged with successful post-merge CI. Development source is now a detached review-branch checkout, separate from the pinned installed release; the clean-main source statements above describe the historical deployment verification. [Exact development evidence](m2-text-outcomes.md#verified-candidate-evidence). The [specified CLI session integration](cli-session-contract.md) is next; its launch/command surface exists on a review branch but is not installed. Full offline verification passed; human runtime review/merge precedes coordinated deployment. No installed command or session was changed. Keep the current release and tmux session pinned during development. The deployed CLI does not yet connect extended atomic replay to conversation or a provider. Explicit memory mutations still use the separate administration binary. Keep credential, spending, private-memory disclosure and live-request gates intact; the three historical attempts and 3,072 retained planning units remain consumed.
+M2.5b and the session layer are merged in PR #36/#38; the default local/mock session is deployed as recorded below. Explicit memory mutations remain in atomos-memory. Optional synthetic replay is not installed and no provider, credential or private AMG egress is enabled. The three historical attempts and 3,072 retained planning units remain consumed.
 
-## Verified session source, not deployed
+## Historical PR #38 pre-deployment verification
 
 [PR #38](https://github.com/idmfrank/atomos/pull/38) implements the new session and passed full host/CI verification; [exact commits, logs and measurements](resource-budget.md#cli-session-verified-evidence). The host source is a clean detached test checkout; installed symlinks still select 5869e205167a3dde3a6a77392af294101e6a46c3. Use checkout-local binaries only for new-mode development, not the existing installed path. No automatic service, credential enrollment, package installation or private-data deployment was added. After human merge, coordinate a pinned release update and operator smoke test separately.
+
+## Deployed session release
+
+Merged PR #38 main `e7e8fc9839090ac4cee4e6dc3140a6002124d655` passed [post-merge CI 46094284130](https://github.com/idmfrank/atomos/actions/runs/46094284130). The owner-authorized deployment built default-feature release binaries as the unprivileged owner, compared installed/source SHA-256 digests, checked dynamic libraries and existing memory integrity, and passed installed help/status/clear/mock smoke tests. Persistent main memory files were hash-identical before/after verification; SQLite transient WAL/SHM sidecars were excluded from that comparison. One fresh atomos tmux session runs the verified release image with explicit read-only memory and --session. No previous session was active or interrupted. Default CLI 491,896 bytes; memory admin 462,280 bytes. No provider, replay feature, vault, private facts, service autostart, dependency installation or SSH/network configuration change.
+
+Current: ~/.local/lib/atomos/current points to releases/e7e8fc9839090ac4cee4e6dc3140a6002124d655; existing ~/.local/bin launchers resolve through it. The installed binary is the default build: local/mock session and existing legacy modes, with no session-replay feature. Optional synthetic replay remains a separately compiled development mode and is not an enabled provider. The existing private store/scope are reused read-only; no fact or identity is seeded, migrated or changed.
+
+Before activation, the staged release passed installed-binary /help, /status, /clear, a synthetic mock question and /quit; memory verification and file hashes remained healthy/unchanged. Both installed hashes match the release build. The symlink changed atomically; activation/session failures would restore the old link. Prior release 5869e205167a3dde3a6a77392af294101e6a46c3 and the prior manifest are preserved. Manifest records current/previous releases, hashes, sizes, scope, checks and mode; it remains owner-private. Logs are ~/.local/state/atomos/deploy-e7e8fc9/{build.log,installed-smoke.log,results.json}. Actual host/account identifiers remain private.
+
+A fresh atomos tmux session was started and its live executable/arguments verified against the release. Attach through the existing SSH login with `tmux attach -t atomos`; detach with Ctrl-b then d. Commands include /help, /status and /clear. The actual session starts with empty working history, separate from the installed-binary smoke process. No daemon, automatic startup or reboot persistence is added. Ctrl-C terminates the process; do not confuse tmux continuity with conversation recovery.
+
+To start after a normal exit/reboot, first check that no duplicate atomos session exists. Use the exact private owner scope from deployment.json, not an inferred login name, with the installed default binary: `atomos --memory "$HOME/.local/share/atomos/memory" "$ATOMOS_OWNER" --session`. Starting a detached tmux session is an operator action, not a service. Keep the existing release/data when updating; real credentials, provider transport and private-memory disclosure remain separately gated.
+
+The owner reported ending the first deployed CLI with /quit. This exits AtomOS and, as the last pane program, closes that tmux session; it does not establish an SSH/persistence failure. The session was restarted and observed alive across separate fresh SSH connections. Detach with Ctrl-b then d to leave it running. No logind, lingering, SSH or service policy was changed; temporary exit-retention diagnostics were removed.
